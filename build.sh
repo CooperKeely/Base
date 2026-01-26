@@ -63,4 +63,8 @@ fi
 
 cd ..
 
-if [ -v didbuild ] && [ -v run ]; then echo "[Running]"; ./build/app; fi
+if [ -v didbuild ] && [ -v run ]; then 
+	echo "[running build]"; 
+	echo "";
+	./build/app; 
+fi
