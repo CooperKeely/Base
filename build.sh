@@ -28,10 +28,13 @@ clang_link="-lrt"
 clang_out="-o"
 
 gcc_common="-I../src -I../include -std=c99 -rdynamic -DBUILD_GIT_HASH=\"$git_hash\" -DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -Wall -Wextra -Wno-unused-function -Wno-unused-value -Wno-unused-variable -Wno-compare-distinct-pointer-types"
-gcc_debug="$compiler -g -O0 -fsanitize=address ${gcc_common} ${auto_compile_flags}"
+gcc_debug="$compiler -g -O0 ${gcc_common} ${auto_compile_flags}"
 gcc_release="$compiler -g -O3 -DBUILD_DEBUG=0 ${gcc_common} ${auto_compile_flags}"
 gcc_link="-lrt"
 gcc_out="-o"
+
+# --- Per-Build Settings
+link_os_gfx="-lX11 -lXext"
 
 # --- Choose Compile/Link lines
 if [ -v gcc ];			then compile_debug="$gcc_debug"; fi
@@ -55,7 +58,7 @@ if [ -v clean ]; then echo "[clean build]"; rm -rf build/*; fi
 
 # --- Build Everything
 cd build
-if [ -v main ]; 	then didbuild=1 && $compile ../src/main.c $compile_link $out app; fi
+if [ -v main ]; 	then didbuild=1 && $compile ../src/main.c $compile_link $link_os_gfx $out app; fi
 
 if [ ! -v didbuild ]; then
 	echo "[Warning] no valid build target specified";

@@ -1,6 +1,180 @@
 #ifndef BASE_H
 #define BASE_H
 
+
+
+///////////////////////////////////////
+/// cjk: Context Cracking 
+
+#if defined(__STDC_VERSION__)
+# if __STDC_VERSION__ < 199901L
+#  error "base.h requires a C99 compatible compiler for higher"
+# endif
+#else
+# error "base.h requires a C99 compatible compiler for higher"
+#endif
+
+#if defined(__clang__)
+
+# define COMPILER_CLANG 1
+
+# if defined(_WIN32)
+#  define OS_WINDOWS 1
+# elif defined(__gnu_linux__) || defined(__linux__)
+#  define OS_LINUX 1
+# elif defined(__APPLE__) && defined(__MACH__)
+#  define OS_MAC 1
+# else
+#  error "This compiler/OS combo is not supported"
+# endif
+
+# if defined(__amd64__) || defined(__amd64) || defined(__x86_64) || defined(__x86_64__)
+#  define ARCH_X64 1
+# elif defined(i386) || defined(__i386) || defined(__i386__)
+#  define ARCH_X86 1
+# elif defined(__aarch64__)
+#  define ARCH_ARM64
+# elif defined(__arm__)
+#  define ARCH_ARM32
+# else
+#  error "Architecture not supported"
+# endif
+
+#elif defined(_MSC_VER)
+
+# define COMPILER_MSVC 1
+
+# if defined(_WIN32)
+#  define OS_WINDOWS 1
+# else
+#  error "This compiler/OS combo is not supported"
+# endif
+
+# if defined(_M_AMD64)
+#  define ARCH_X64 1
+# elif defined(_M_IX86)
+#  define ARCH_X86 1
+# elif defined(_M_ARM64)
+#  define ARCH_ARM64 1
+# elif defined(_M_ARM)
+#  define ARCH_ARM32 1
+# else
+#  error "Architecture not supported"
+# endif
+
+#elif defined(__GNUC__) || defined(__GNUG__) 
+
+# define COMPILER_GCC 1 
+
+# if defined(__gnu_linux__) || defined(__linux__)
+#  define OS_LINUX 1
+# else
+#  error "This compiler/OS combo is not supported"
+# endif
+
+# if defined(__amd64__) || defined(__amd64) || defined(__x86_64) || defined(__x86_64__)
+#  define ARCH_X64 1
+# elif defined(i386) || defined(__i386) || defined(__i386__)
+#  define ARCH_X86 1
+# elif defined(__aarch64__)
+#  define ARCH_ARM64 1
+# elif defined(__arm__)
+#  define ARCH_ARM32 1
+# else
+#  error "Architecture not supported"
+# endif
+
+#else
+# error "Compiler not supported"
+#endif
+
+// clang compatability
+#ifndef COMPILER_CLANG 
+# ifndef __has_feature
+#  define __has_feature(x) 0
+# endif
+# ifndef __has_attribute
+#  define __has_attribute(x) 0
+# endif
+# ifndef __has_builtin
+#  define __has_builtin(x) 0
+# endif
+#endif
+
+#if defined(__cplusplus)
+# define LANG_CPP
+#else
+# define LANG_C
+#endif
+
+#if !defined(BUILD_DEBUG)
+# define BUILD_DEBUG 1
+#endif
+
+#if defined(ARCH_X64)
+# define ARCH_64BIT 1
+#elif defined(ARCH_x86)
+# define ARCH_32BIT 1
+#endif
+
+#if ARCH_ARM32 || ARCH_ARM64 || ARCH_X64 || ARCH_X86
+# define ARCH_LITTLE_ENDIAN 1
+#else
+# error "Endianness of this architecture is not understood by context cracker"
+#endif
+
+// Zero all undefined options
+#if !defined(ARCH_32BIT)
+# define ARCH_32BIT 0
+#endif
+#if !defined(ARCH_64BIT)
+# define ARCH_64BIT 0
+#endif
+#if !defined(ARCH_X64)
+# define ARCH_X64 0
+#endif
+#if !defined(ARCH_X86)
+# define ARCH_X86 0
+#endif
+#if !defined(ARCH_ARM64)
+# define ARCH_ARM64 0
+#endif
+#if !defined(ARCH_ARM32)
+# define ARCH_ARM32 0
+#endif
+#if !defined(COMPILER_MSVC)
+# define COMPILER_MSVC 0
+#endif
+#if !defined(COMPILER_GCC)
+# define COMPILER_GCC 0
+#endif
+#if !defined(COMPILER_CLANG)
+# define COMPILER_CLANG 0
+#endif
+#if !defined(OS_WINDOWS)
+# define OS_WINDOWS 0
+#endif
+#if !defined(OS_LINUX)
+# define OS_LINUX 0
+#endif
+#if !defined(OS_MAC)
+# define OS_MAC 0
+#endif
+
+// Throw error for unsupported platforms 
+#if OS_WINDOWS || OS_MAC
+# error "OS not supported yet"
+#elif COMPILER_MSVC
+# error "Compiler not supported yet"
+#elif !defined(ARCH_X64)
+# error "Architecture not supported yet"
+#endif
+
+
+
+///////////////////////////////////////
+/// cjk: File Includes 
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,16 +185,181 @@
 
 
 ///////////////////////////////////////
-/// cjk: Macro Magic 
+/// cjk: Codebase Keywords 
+
+#define global static
+#define internal static
+#define local_persist static
+
+#if COMPILER_MSVC || (COMPILER_CLANG && OS_WINDOWS)
+# pragma section(".rdata$", read)
+# define read_only __declspec(allocate(".rdata$"))
+#elif (COMPILER_CLANG && OS_LINUX)
+# define read_only __attribute__((section(".rodata")))
+#else
+# define read_only
+#endif
+
+#if COMPILER_MSVC
+# define thread_static __declspec(thread)
+#elif COMPILER_CLANG || COMPILER_GCC 
+# define thread_static __thread
+#else
+# error "thread_static not defined for this compiler"
+#endif
+
+#if COMPILER_MSVC
+# define force_inline __forceinline
+#elif COMPILER_CLANG || COMPILER_GCC 
+# define force_inline __attribute__((always_inline)) 
+#else
+# error "force_inline not defined for this compiler"
+#endif
+
+#if COMPILER_MSVC
+# define no_discard _Check_return_ 
+#elif COMPILER_CLANG || COMPILER_GCC 
+# define no_discard __attribute__((warn_unused_result)) 
+#else
+# error "no_discard not defined for this compiler"
+#endif
+
+///////////////////////////////////////
+/// cjk: Linkage Keyword Macros
+
+#if LANG_CPP
+# define C_LINKAGE_BEGIN extern "C"{
+# define C_LINKAGE_END }
+# define C_LINKAGE extern "C"
+#else
+# define C_LINKAGE_BEGIN
+# define C_LINKAGE_END 
+# define C_LINKAGE
+#endif
+
+///////////////////////////////////////
+/// cjk: Brach Predictor Helper 
+
+#if COMPILER_CLANG
+# define Expect(expr, val) __builtin_expect((expr), (val))
+#else
+# define Expect(expr, val) (expr)
+#endif
+
+# define Likely(x) Expect(x, 1)
+# define Unlikely(x) Expect(x, 0)
+
+///////////////////////////////////////
+/// cjk: Type -> Alignment
+
+#if COMPILER_MSVC
+# define AlignOf(T) __alignof(T)
+#elif COMPILER_CLANG
+# define AlignOf(T) __alignof(T)
+#elif COMPILER_GCC 
+# define AlignOf(T) __alignof__(T)
+#else
+# error "AlignOf not defined for this compiler"
+#endif
+
+#if COMPILER_MSVC
+# define AlignType(x) __declspec(align(x)) 
+#elif COMPILER_CLANG || COMPILER_GCC 
+# define AlignType(x) __attribute__((aligned(x))
+#else
+# error "AlignType not defined for this compiler"
+#endif
+
+
+
+///////////////////////////////////////
+/// cjk: Error Handeling 
+
+#define STACK_TRACE_SIZE 10
+
+#if COMPILER_MSVC
+# define Trap() __debugbreak()
+#elif COMPILER_CLANG || COMPILER_GCC
+# define Trap() __builtin_trap()
+#else
+# error "Unknow trap for this compiler"
+#endif
+
+#if COMPILER_MSVC
+# define MarkUnreachable() __assume(0) 
+#elif COMPILER_CLANG || COMPILER_GCC
+# define MarkUnreachable() __builtin_unreachable() 
+#else
+# error "Unknown unreachable for this compiler"
+#endif
+
+
+#if BUILD_DEBUG
+#define Assert(condition) do { if (Unlikely(!(condition))) { Trap();}} while(0)
+#define InvalidPath do { if((!"Invalid Code Path")){ Trap(); MarkUnreachable();} } while(0);
+#define NotImplemented Assert(!"Not Implemented");
+#else
+#define Assert(condition, message) 
+#define InvalidPath
+#define NotImplemented
+#endif
+
+# define StaticAssert(c, label) global U8 Glue(label, __LINE__)[(c)?1:-1] 
+
+
+///////////////////////////////////////
+/// cjk: Asan
+
+#if COMPILER_MSVC
+# if defined(__SANITIZE_ADDRESS__)
+#  define ASAN_ENABLED 1
+#  define NO_ASAN __declspec(no_sanitize_address)
+# else	
+#  define ASAN_ENABLED 0
+#  define NO_ASAN
+# endif
+#elif COMPILER_CLANG
+# if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
+#  define ASAN_ENABLED 1
+# else
+#  define ASAN_ENABLED 0
+# endif
+# define NO_ASAN __attribute__((no_sanitize("address")))
+#else
+# define ASAN_ENABLED 0
+# define NO_ASAN
+#endif
+
+#if ASAN_ENABLED
+C_LINKAGE void __asan_poison_memory_region(void const volatile *addr, size_t size);
+C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr, size_t size);
+# define AsanPoisonMemoryRegion(addr, size) __asan_poison_memory_region((addr), (size))
+# define AsanUnpoisonMemoryRegion(addr, size) __asan_unpoison_memory_region((addr), (size))
+#else
+# define AsanPoisonMemoryRegion(addr, size) ((void) (addr), (void) (size)) 
+# define AsanUnpoisonMemoryRegion(addr, size) ((void) (addr), (void) (size)) 
+#endif
+
+
+
+
+///////////////////////////////////////
+/// cjk: Misc Macro Helpers 
+
+#define Stringify_(S) #S
+#define Stringify(S) Stringify_(S)
+
+#define Glue_(A,B) A##B
+#define Glue(A,B) Glue_(A,B)
+
+#define ArrayCount(a) (sizeof(a) / (sizeof(a[0]))
+
+
+
+///////////////////////////////////////
+/// cjk: Loop Helpers 
 
 #define DeferLoop(begin, end) for(int _i_ = ((begin), 0); _i_ != 1 ; _i_ += 1 , (end))
-
-#if defined(__clang__) || defined(__GNUC__)
-	#define Trap() __builtin_trap()
-	#define Likely(x) __builtin_expect(!!(x), 1)
-	#define Unlikely(x) __builtin_expect(!!(x), 0)
-	#define StaticAssert(c, label) _Static_assert(c, #label)
-#endif
 
 // For loop helpers
 #define EachInRange(idx, range) (U64 idx = (range).min; idx < (range).max; idx++)
@@ -30,13 +369,7 @@
 
 
 ///////////////////////////////////////
-/// cjk: Helper Macros + Types
-
-#define Min(A,B) (((A)<(B))?(A):(B))
-#define Max(A,B) (((A)>(B))?(A):(B)) 
-
-#define ClampMax(A,B) Min(A,B)
-#define ClampMin(A,B) Max(A,B)
+/// cjk: Units 
 
 #define KB(n) (((U64)(n)) << 10)
 #define MB(n) (((U64)(n)) << 20)
@@ -45,6 +378,25 @@
 #define Thousand(n) ((n) * 1000)
 #define Million(n) ((n) * Thousand(1000))
 #define Billion(n) ((n) * Million(1000))
+
+
+
+///////////////////////////////////////
+/// cjk: Memory Operations Macros 
+
+#define MemoryCopy(dest, src, num_bytes) memmove((dest), (src), (num_bytes))
+#define MemorySet(dest, byte, num_bytes) memset((dest), (byte), (num_bytes))
+
+
+
+///////////////////////////////////////
+/// cjk: Math Functions 
+
+#define Min(A,B) (((A)<(B))?(A):(B))
+#define Max(A,B) (((A)>(B))?(A):(B)) 
+
+#define ClampMax(A,B) Min(A,B)
+#define ClampMin(A,B) Max(A,B)
 
 #define R1U32(min, max)  rng_1u32((min), (max))
 #define R1F32(min, max)  rng_1f32((min), (max))
@@ -134,61 +486,6 @@ Rng1U64 rng_1u64(U64 min, U64 max);
 U64 dim_r1u64(Rng1U64 range);
 
 Rng1F64 rng_1f64(F64 min, F64 max);
-
-
-
-///////////////////////////////////////
-/// cjk: Memory Operations Macros 
-
-#define MemoryCopy(dest, src, num_bytes) memmove((dest), (src), (num_bytes))
-#define MemorySet(dest, byte, num_bytes) memset((dest), (byte), (num_bytes))
-
-
-
-///////////////////////////////////////
-/// cjk: Error Handeling 
-
-#define STACK_TRACE_SIZE 10
-
-#define Assert(condition, message) \
-	do { \
-		if (Unlikely(!(condition))) { \
-			    fprintf(stderr, "\033[1;31m\n[ASSERTION FAILED]: %s\033[0m\n", message); \
-			    fprintf(stderr, "\033[1mExpression:\033[0m %s\n", #condition); \
-			    fprintf(stderr, "\033[1mLocation:\033[0m   %s:%d\n", __FILE__, __LINE__); \
-			    print_stack_trace(); \
-			    Trap(); \
-		} \
-    	} while(0)
-
-#define AssertNotNull(var)\
-	do { \
-		if (Unlikely((var) == NULL)) { \
-			    fprintf(stderr, "\033[1;31m\n[ASSERT NOT NULL FAILED]: %s\033[0m\n", #var); \
-			    fprintf(stderr, "\033[1mLocation:\033[0m   %s:%d\n", __FILE__, __LINE__); \
-			    print_stack_trace(); \
-			    Trap(); \
-		} \
-    	} while(0)
-
-#define Unreachable(message)\
-	do { \
-		    fprintf(stderr, "\033[1;31m\n[UNREACHABLE CODE PATH]: %s\033[0m\n", message); \
-		    fprintf(stderr, "\033[1mLocation:\033[0m   %s:%d\n", __FILE__, __LINE__); \
-		    print_stack_trace(); \
-		    Trap(); \
-	} while(0)
-
-
-#define Panic(message)\
-	do { \
-		    fprintf(stderr, "\033[1;31m\n[PANIC]: %s\033[0m\n", message); \
-		    fprintf(stderr, "\033[1mLocation:\033[0m   %s:%d\n", __FILE__, __LINE__); \
-		    print_stack_trace(); \
-		    Trap(); \
-	} while(0)
-
-void print_stack_trace(void);
 
 
 
@@ -314,7 +611,7 @@ void hash_map_put(HashMap* hash_map, Str8 key, void* data);
 U64 hash_fnv1a_u64(Str8 str);
 
 U64 hash_fnv1a_u64(Str8 str){
-	Assert(str.size > 0, "String has no size");
+	Assert(str.size > 0);
 	
 	// two 19 digit prime numbers DO NOT TOUCH
 	U64 fnv_prime  = 6550123626356161697;
@@ -374,6 +671,13 @@ CSV csv_init(Arena* arena, CSV_Config config, char* file_path);
 CSV_Row* csv_next_row(CSV* csv);
 void csv_row_parse(CSV* csv, Str8 raw_row);
 
+///////////////////////////////////////
+/// cjk: Window Functions 
+#ifdef BASE_ENABLE_WINDOW
+
+
+#endif
+
 
 
 #endif //BASE_H
@@ -389,7 +693,7 @@ void csv_row_parse(CSV* csv, Str8 raw_row);
 /// cjk: Math Functions 
 
 Rng1U32 rng_1u32(U32 min, U32 max){
-	Assert(min < max, "Min is larger than Max");
+	Assert(min < max);
 	return (Rng1U32){
 		.min = min,
 		.max = max
@@ -397,7 +701,7 @@ Rng1U32 rng_1u32(U32 min, U32 max){
 }
 
 Rng1F32 rng_1f32(F32 min, F32 max){
-	Assert(min < max, "Min is larger than Max");
+	Assert(min < max);
 	return (Rng1F32){
 		.min = min,
 		.max = max
@@ -405,7 +709,7 @@ Rng1F32 rng_1f32(F32 min, F32 max){
 }
 
 Rng1U64 rng_1u64(U64 min, U64 max){
-	Assert(min < max, "Min is larger than Max");
+	Assert(min < max);
 	return (Rng1U64){
 		.min = min,
 		.max = max
@@ -413,7 +717,7 @@ Rng1U64 rng_1u64(U64 min, U64 max){
 }
 
 Rng1F64 rng_1f64(F64 min, F64 max){
-	Assert(min < max, "Min is larger than Max");
+	Assert(min < max);
 	return (Rng1F64){
 		.min = min,
 		.max = max
@@ -428,33 +732,10 @@ U64 dim_r1u64(Rng1U64 r){
 
 
 ///////////////////////////////////////
-/// cjk: Error Handeling Implementation
-
-void print_stack_trace(void){
-	void* buffer[STACK_TRACE_SIZE];
-	int size = backtrace(buffer, STACK_TRACE_SIZE);
-	char** symbols = backtrace_symbols(buffer, size);
-
-	if(symbols == NULL) return;
-
-	fprintf(stderr, "\n\033[1;33m--- STACK TRACE ---\033[0m\n");
-   
-    	// Start from i= 1 to skip print_stack_trace and the assert macro/caller
-    	for EachInRange(i, R1U64(1, size-3)) {
-		// Highlighting the function name and address
-		fprintf(stderr, " \033[1;30m[%ld]\033[0m %s\n", i - 1, symbols[i]);
-    	}
-
-        fprintf(stderr, "\033[1;33m-------------------\033[0m\n\n");
-}
-
-
-
-///////////////////////////////////////
 /// cjk: arena implementation
 
 U64 arena_get_position(Arena* arena){
-	AssertNotNull(arena);
+	Assert(arena != NULL);
 	return arena->next_free;
 }
 
@@ -464,12 +745,12 @@ Arena* arena_alloc(){
 
 Arena* arena_alloc_with_capacity(U64 size){
 	Arena* arena = (Arena*) malloc(sizeof(Arena));
-	Assert(arena,"memory allocation failed");
+	Assert(arena != NULL);
 
 	arena->capacity = size;
 
 	arena->mem_ptr = (U8*) malloc(arena->capacity);
-	Assert(arena->mem_ptr,"memory allocation failed");
+	Assert(arena->mem_ptr != NULL);
 	
 	arena->next_free = 0;
 	return arena;
@@ -477,7 +758,7 @@ Arena* arena_alloc_with_capacity(U64 size){
 }
 
 void arena_release(Arena* arena){
-	AssertNotNull(arena);
+	Assert(arena != NULL);
 	arena->capacity = 0;
 	arena->next_free = 0;
 	free(arena->mem_ptr);
@@ -485,44 +766,43 @@ void arena_release(Arena* arena){
 }
 
 void* arena_push(Arena* arena, U64 size){
-	AssertNotNull(arena);
+	Assert(arena != NULL);
 	if(arena->next_free + size <= arena->capacity){
 		void* ptr = arena->mem_ptr + arena->next_free;
 		arena->next_free += size;
 		return ptr;
 	}
-	Panic("Arena full");
+	InvalidPath;
 	return NULL;
 }
 
 void* arena_push_zero(Arena* arena, U64 size){
-	Assert(arena,"Arena is null");
+	Assert(arena != NULL);
 	if(arena->next_free + size <= arena->capacity){
 		void* ptr = arena->mem_ptr + arena->next_free;
 		arena->next_free += size;
 		memset(ptr, 0, size);
 		return ptr;
 	}
-	Panic("Arena full");
+	InvalidPath;
 	return NULL;
 }
 
 void arena_pop(Arena* arena, U64 size){
-	AssertNotNull(arena);
+	Assert(arena != NULL);
 	U64 pos = arena->next_free - size;
 	arena_pop_to(arena, pos);
-	Panic("Tried to remove from an empty arena");
 }
 
 void arena_pop_to(Arena* arena, U64 pos){
-	AssertNotNull(arena);
-	Assert(pos < arena_get_position(arena), "Position is outside of current arena");
+	Assert(arena != NULL);
+	Assert(pos < arena_get_position(arena));
 	
 	arena->next_free = pos;
 }
 
 ScratchArena scratch_arena_begin(Arena* arena){
-	AssertNotNull(arena);
+	Assert(arena != NULL);
 	return (ScratchArena){
 		.arena = arena,
 		.original_position = arena_get_position(arena)
@@ -530,7 +810,7 @@ ScratchArena scratch_arena_begin(Arena* arena){
 }
 
 void scratch_arena_end(ScratchArena scratch){
-	AssertNotNull(scratch.arena);
+	Assert(scratch.arena != NULL);
 	arena_pop_to(scratch.arena, scratch.original_position);
 }
 
@@ -540,13 +820,13 @@ void scratch_arena_end(ScratchArena scratch){
 /// cjk: String Implementation 
 
 Str8 str8(U8* str, U64 length){
-	AssertNotNull(str);
+	Assert(str != NULL);
 	return (Str8) {str, length};
 }
 
 void str8_printf(FILE* file_ptr, const char* format, ...){
-	AssertNotNull(file_ptr);
-	AssertNotNull(format);
+	Assert(file_ptr != NULL);
+	Assert(format != NULL);
 	va_list args;
 	va_start(args, format);
 	vfprintf(file_ptr, format, args);
@@ -557,12 +837,12 @@ U8 str8_get(Str8 string, U64 idx){
 	if(idx < string.size){
 		return string.str[idx];
 	}	
-	Panic("Out of bounds string access");
+	InvalidPath;
 	return '\0';
 }
 
 U64 cstring_length(char* c){
-	AssertNotNull(c);
+	Assert(c != NULL);
 	U64 length = 0;
 	if(c){
 		U8 *p = (U8*)c;	
@@ -573,7 +853,7 @@ U64 cstring_length(char* c){
 }
 
 Str8 cstring_to_str8(char *c){
-	AssertNotNull(c);
+	Assert(c != NULL);
 	return (Str8){
 		(U8*) c,
 		cstring_length(c),
@@ -582,7 +862,7 @@ Str8 cstring_to_str8(char *c){
 
 
 Str8 str8_concat(Arena* arena, Str8 s1, Str8 s2){
-	AssertNotNull(arena);
+	Assert(arena != NULL);
 
 	U64 new_size = s1.size + s2.size;
 	U8* character_buffer = ArenaPushArray(arena, U8, new_size);
@@ -597,7 +877,7 @@ Str8 str8_concat(Arena* arena, Str8 s1, Str8 s2){
 }
 
 Str8 str8_copy(Arena* arena, Str8 s1){
-	AssertNotNull(arena);
+	Assert(arena != NULL);
 
 	Str8 new_string = (Str8){
 		.str = ArenaPushArray(arena, U8, s1.size),
@@ -627,8 +907,8 @@ Str8List str8_list(){
 }
 
 Str8Node* str8_list_push_node(Str8List* list, Str8Node* node){
-	AssertNotNull(list);
-	AssertNotNull(node);
+	Assert(list != NULL);
+	Assert(node != NULL);
 	
 	if(list->last == NULL && list->first == NULL){
 		list->last = node;
@@ -644,8 +924,8 @@ Str8Node* str8_list_push_node(Str8List* list, Str8Node* node){
 }
 
 Str8Node* str8_list_push_node_front(Str8List* list, Str8Node* node){
-	AssertNotNull(list);
-	AssertNotNull(node);
+	Assert(list != NULL);
+	Assert(node != NULL);
 	
 	if(list->last == NULL && list->first == NULL){
 		list->last = node;
@@ -662,8 +942,8 @@ Str8Node* str8_list_push_node_front(Str8List* list, Str8Node* node){
 }
 
 Str8Node* str8_list_push(Arena* arena, Str8List* list, Str8 string){
-	AssertNotNull(arena);
-	AssertNotNull(list);
+	Assert(arena != NULL);
+	Assert(list != NULL);
 
 
 	Str8Node* node = ArenaPushStruct(arena, Str8Node);
@@ -673,8 +953,8 @@ Str8Node* str8_list_push(Arena* arena, Str8List* list, Str8 string){
 }
 
 Str8Node* str8_list_push_front(Arena* arena, Str8List* list, Str8 string){
-	AssertNotNull(arena);
-	AssertNotNull(list);
+	Assert(arena != NULL);
+	Assert(list != NULL);
 
 	Str8Node* node = ArenaPushStruct(arena, Str8Node);
 	*node = (Str8Node) {.next=NULL, .string=string};
@@ -683,8 +963,8 @@ Str8Node* str8_list_push_front(Arena* arena, Str8List* list, Str8 string){
 }
 
 Str8List* str8_tokenize_list(Arena* arena, Str8 string, Str8 delimiters){
-	AssertNotNull(arena);
-	Assert(delimiters.size > 0, "No delimiters passed");
+	Assert(arena != NULL);
+	Assert(delimiters.size > 0);
 	
 	U64 start_idx = 0;
 	Str8List* list = ArenaPushStruct(arena, Str8List);
@@ -735,8 +1015,8 @@ void profile_end(Str8 message){
 /// cjk: CSV Parser Implementation
 
 CSV csv_init(Arena* arena, CSV_Config config, char* file_path){
-	AssertNotNull(arena);
-	AssertNotNull(file_path);
+	Assert(arena != NULL);
+	Assert(file_path != NULL);
 
 	CSV csv_parser = {
 		.file_ptr = fopen(file_path, "rb"),
@@ -748,13 +1028,13 @@ CSV csv_init(Arena* arena, CSV_Config config, char* file_path){
 		.columns = 0
 	};
 
-	Assert(csv_parser.file_ptr != NULL, "Failed to open file");
+	Assert(csv_parser.file_ptr != NULL);
 
 	return csv_parser;
 }
 
 CSV_Row* csv_next_row(CSV* csv){
-	AssertNotNull(csv);
+	Assert(csv != NULL);
 	
 	char* err = fgets((char*) csv->row_buffer, sizeof(csv->row_buffer) , csv->file_ptr);
 	if(err == NULL) return NULL;
@@ -766,7 +1046,7 @@ CSV_Row* csv_next_row(CSV* csv){
 }
 
 void csv_row_parse(CSV* csv, Str8 raw_row){
-	AssertNotNull(csv);
+	Assert(csv != NULL);
 
 	U64 start_idx = 0;
 	Str8 delimiters = csv->config.delimiters;
@@ -818,5 +1098,9 @@ void csv_row_parse(CSV* csv, Str8 raw_row){
 	}
 }
 
+#ifdef BASE_ENABLE_WINDOW
+	
+
+#endif
 
 #endif //BASE_IMPLEMENTATION
