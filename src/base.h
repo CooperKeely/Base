@@ -299,12 +299,12 @@
 #define InvalidPath do { if((!"Invalid Code Path")){ Trap(); MarkUnreachable();} } while(0);
 #define NotImplemented Assert(!"Not Implemented");
 #else
-#define Assert(condition, message) 
+#define Assert(condition) 
 #define InvalidPath
 #define NotImplemented
 #endif
 
-# define StaticAssert(c, label) global U8 Glue(label, __LINE__)[(c)?1:-1] 
+#define StaticAssert(c, label) global U8 Glue(label, __LINE__)[(c)?1:-1] 
 
 
 ///////////////////////////////////////
@@ -340,9 +340,6 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr, size_t s
 # define AsanUnpoisonMemoryRegion(addr, size) ((void) (addr), (void) (size)) 
 #endif
 
-
-
-
 ///////////////////////////////////////
 /// cjk: Misc Macro Helpers 
 
@@ -354,7 +351,9 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr, size_t s
 
 #define ArrayCount(a) (sizeof(a) / (sizeof(a[0]))
 
-
+#define AlignPow2(x, b) (((x) + (b) - 1)&(~((b) - 1))
+#define AlignDownPow2(x, b) ((x)&(~((b) - 1))
+#define IsPow2(x) ((x) != 0 && ((x)&((x)-1)) == 0)
 
 ///////////////////////////////////////
 /// cjk: Loop Helpers 
@@ -365,7 +364,6 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr, size_t s
 #define EachInRange(idx, range) (U64 idx = (range).min; idx < (range).max; idx++)
 #define EachIndex(idx, count) (U64 idx = 0; idx < (count); idx++)
 #define EachNode(idx, T, first) (T* idx = first; idx != NULL; idx = idx->next)
-
 
 
 ///////////////////////////////////////
@@ -380,13 +378,25 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr, size_t s
 #define Billion(n) ((n) * Million(1000))
 
 
-
 ///////////////////////////////////////
 /// cjk: Memory Operations Macros 
 
 #define MemoryCopy(dest, src, num_bytes) memmove((dest), (src), (num_bytes))
 #define MemorySet(dest, byte, num_bytes) memset((dest), (byte), (num_bytes))
+#define MemoryCmp(a, b, num_bytes) memcmp((a), (b), (num_bytes))
+#define MemoryStrlen(ptr) strlen(ptr)
 
+#define MemoryCopyStruct(dest, src) MemoryCopy((dest), (src), sizeof(*(dest)))
+#define MemoryCopyArray(dest, src) MemoryCopy((dest), (src), sizeof(dest))
+#define MemoryCopyStr8(dest, src) MemoryCopy((dest), (src).str, (src).size)) 
+
+#define MemoryZero(dest, num_bytes) memset((dest), 0, (num_bytes))
+#define MemoryZeroStruct(src) MemoryZero((src), sizeof(*(s)))
+#define MemoryZeroArray(src) MemoryZero((src), sizeof(src))
+
+#define MemoryMatch(a, b, num_bytes) (MemoryCmp((a), (b), (num_bytes)) == 0)
+#define MemoryMatchStruct(a, b) MemoryMatch((a), (b), sizeof(*(a)))
+#define MemoryMatchArray(a, b) MemoryMatch((a), (b), sizeof((a)))
 
 
 ///////////////////////////////////////
@@ -416,32 +426,44 @@ typedef int64_t S64;
 typedef float F32;
 typedef double F64;
 
-typedef enum{
-	FALSE = 0,
-	TRUE = 1
-} Bool;
+typedef S8 B8;
+typedef S16 B16;
+typedef S32 B32;
+typedef S64 B64;
 
 // Vector Types
-typedef struct{
-	U32 x;
-	U32 y;
+typedef union{
+	struct{
+		U32 x;
+		U32 y;
+	};
+	U32 v[2];
 } Vec2U32;
 
-typedef struct{
-	F32 x;
-	F32 y;
+typedef union{
+	struct{
+		F32 x;
+		F32 y;
+	};
+	F32 v[2];
 } Vec2F32;
 
-typedef struct{
-	U32 x;
-	U32 y;
-	U32 z;
+typedef union{
+	struct{
+		U32 x;
+		U32 y;
+		U32 z;
+	};
+	U32 v[2];
 } Vec3U32;
 
-typedef struct{
-	F32 x;
-	F32 y;
-	F32 z;
+typedef union{
+	struct{
+		F32 x;
+		F32 y;
+		F32 z;
+	};
+	F32 v[3];
 } Vec3F32;
 
 // Range Type
@@ -647,7 +669,7 @@ void profile_end(Str8 description);
 
 typedef struct{
 	Str8 delimiters;
-	Bool headers_enabled;
+	B32 headers_enabled;
 } CSV_Config;
 
 typedef struct {
@@ -671,12 +693,21 @@ CSV csv_init(Arena* arena, CSV_Config config, char* file_path);
 CSV_Row* csv_next_row(CSV* csv);
 void csv_row_parse(CSV* csv, Str8 raw_row);
 
+
+///////////////////////////////////////
+/// cjk: Enable OS Functionality 
+#ifdef BASE_ENABLE_OS
+
+
+
+#endif
+
 ///////////////////////////////////////
 /// cjk: Window Functions 
 #ifdef BASE_ENABLE_WINDOW
 
 
-#endif
+#endif // BASE_ENABLE_WINDOW
 
 
 
@@ -970,11 +1001,11 @@ Str8List* str8_tokenize_list(Arena* arena, Str8 string, Str8 delimiters){
 	Str8List* list = ArenaPushStruct(arena, Str8List);
 
 	for EachIndex(i, string.size){
-		Bool is_delimiter = FALSE;	
+		B32 is_delimiter = 0;	
 
 		for EachIndex(delim, delimiters.size){
 			if(str8_get(string, i) == str8_get(delimiters, delim)){
-				is_delimiter = TRUE;
+				is_delimiter = 1;
 				break;
 			}
 		}
@@ -1056,15 +1087,15 @@ void csv_row_parse(CSV* csv, Str8 raw_row){
 		csv->current_row.list = ArenaPushStructZero(csv->arena, Str8List);
 		*csv->current_row.list = str8_list();
 
-		Bool is_quoted = FALSE;
+		B32 is_quoted = 0;
 
 		for EachIndex(i, raw_row.size){
 			U8 current_char = str8_get(raw_row, i);
 			
-			Bool is_quote_char = FALSE;
+			B32 is_quote_char = 0;
 			for EachIndex(quote, quotes.size){
 				if(current_char == str8_get(quotes, quote)){
-					is_quote_char = TRUE;
+					is_quote_char = 1;
 					break;
 				}
 			}
@@ -1076,10 +1107,10 @@ void csv_row_parse(CSV* csv, Str8 raw_row){
 
 			if(is_quoted) break;
 
-			Bool is_delimiter = FALSE;	
+			B32 is_delimiter = 0;	
 			for EachIndex(delim, delimiters.size){
 				if(current_char == str8_get(delimiters, delim)){
-					is_delimiter = TRUE;
+					is_delimiter = 1;
 					break;
 				}
 			}
