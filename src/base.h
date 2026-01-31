@@ -11,7 +11,7 @@
 #  error "base.h requires a C99 compatible compiler for higher"
 # endif
 #else
-# error "base.h requires a C99 compatible compiler for higher"
+#  error "base.h requires a C99 compatible compiler for higher"
 #endif
 
 #if defined(__clang__)
@@ -661,6 +661,120 @@ void profile_begin();
 void profile_end(Str8 description);
 
 
+///////////////////////////////////////
+/// cjk: Time
+
+typedef enum {
+	WeekDay_Sun,
+	WeekDay_Mon,
+	WeekDay_Tue,
+	WeekDay_Wed,
+	WeekDay_Thu,
+	WeekDay_Fri,
+	WeekDay_Sat,
+	WeekDay_COUNT
+}WeekDay;
+
+typedef enum{
+	Month_Jan,
+	Month_Feb,
+	Month_Mar,
+	Month_Apr,
+	Month_May,
+	Month_Jun,
+	Month_Jul,
+	Month_Aug,
+	Month_Sep,
+	Month_Oct,
+	Month_Nov,
+	Month_Dec,
+	Month_COUNT
+}Month;
+
+typedef struct{
+	U16 micro_sec; // [0, 999]
+	U16 mil_sec; // [0 , 999]
+	U16 sec; // [0, 60]
+	U16 min; // [0, 59]
+	U16 hour; // [0 23]
+	U16 day; // [0 30]
+	union {
+		WeekDay week_day;
+		U32 week_day_num;	
+	};
+	union {
+		Month month;
+		U32 month_num;
+	};
+	U32 year; // BC = 0, AD = 1
+} DateTime;
+
+typedef U64 DenseTime;
+
+DenseTime datetime_to_densetime(DateTime time);
+DateTime densetime_to_datetime(DenseTime time);
+DateTime unixtime_to_datetime(U64 unix_time);
+
+
+///////////////////////////////////////
+/// cjk: OS API
+typedef U32 OS_AccessFlags;
+enum{
+	OS_AccessFlag_Read 		= (1<<0),
+	OS_AccessFlag_Write 		= (1<<1),
+	OS_AccessFlag_Execute 		= (1<<2),
+	OS_AccessFlag_Append 		= (1<<3),
+	OS_AccessFlag_ShareRead 	= (1<<4),
+	OS_AccessFlag_ShareWrite 	= (1<<5),
+	OS_AccessFlag_Inherited 	= (1<<6)
+};
+
+typedef U32 OS_FileIterFlags;
+enum{
+	OS_FileIterFlag_SkipFolders	= (1<<0),
+	OS_FileIterFlag_SkipFiles	= (1<<1),
+	OS_FileIterFlag_SkipHiddenFiles	= (1<<2),
+	OS_FileIterFlag_Done		= (1<<31),
+};
+
+typedef U32 OS_FilePropertyFlag;
+enum{
+	OS_FilePropertyFlag_IsFolder	= (1 << 0),
+	OS_FilePropertyFlag_IsFile	= (1 << 1),
+};
+
+typedef struct {
+	U32 logical_processor_count;
+	U64 page_size;
+	U64 large_page_size;
+	U64 allocation_ganularity;
+	Str8 machine_name;
+}OS_SystemInfo;
+
+typedef struct {
+	U32 pid;
+	B32 large_pages_allowed;
+	Str8 binary_path;
+	Str8 initial_path;
+	Str8 user_program_data_path;
+	Str8List module_load_paths;
+	Str8List environment;
+}OS_ProcessInfo;
+
+
+typedef struct{
+	OS_FileIterFlags flags;
+	U8 buf[KB(2)];
+}OS_FileIter;
+
+
+typedef struct{
+	Str8 name;
+	DenseTime created;
+	DenseTime modified;
+	OS_FilePropertyFlag flags;
+}OS_FileProperties;
+
 
 ///////////////////////////////////////
 /// cjk: CSV Parser Implementation
@@ -782,7 +896,8 @@ Arena* arena_alloc_with_capacity(U64 size){
 
 	arena->mem_ptr = (U8*) malloc(arena->capacity);
 	Assert(arena->mem_ptr != NULL);
-	
+	AsanPoisonMemoryRegion(arena->mem_ptr, size);
+
 	arena->next_free = 0;
 	return arena;
 
@@ -800,6 +915,7 @@ void* arena_push(Arena* arena, U64 size){
 	Assert(arena != NULL);
 	if(arena->next_free + size <= arena->capacity){
 		void* ptr = arena->mem_ptr + arena->next_free;
+		AsanUnpoisonMemoryRegion(ptr, size);
 		arena->next_free += size;
 		return ptr;
 	}
@@ -811,6 +927,7 @@ void* arena_push_zero(Arena* arena, U64 size){
 	Assert(arena != NULL);
 	if(arena->next_free + size <= arena->capacity){
 		void* ptr = arena->mem_ptr + arena->next_free;
+		AsanUnpoisonMemoryRegion(ptr, size);
 		arena->next_free += size;
 		memset(ptr, 0, size);
 		return ptr;
@@ -822,13 +939,15 @@ void* arena_push_zero(Arena* arena, U64 size){
 void arena_pop(Arena* arena, U64 size){
 	Assert(arena != NULL);
 	U64 pos = arena->next_free - size;
+	void* ptr = arena->mem_ptr + pos;
+	AsanPoisonMemoryRegion(ptr, size);
 	arena_pop_to(arena, pos);
 }
 
 void arena_pop_to(Arena* arena, U64 pos){
 	Assert(arena != NULL);
 	Assert(pos < arena_get_position(arena));
-	
+
 	arena->next_free = pos;
 }
 
@@ -1038,6 +1157,87 @@ void profile_end(Str8 message){
 	global_profiling_end = clock();
 	F64 time_spent = (F64)(global_profiling_end - global_profiling_begin)/CLOCKS_PER_SEC;
 	str8_printf(stderr, "[PROFILING] %.*s: %.4f(s)\n", Str8VArg(message), time_spent);
+}
+
+///////////////////////////////////////
+/// cjk: Time functions 
+
+DenseTime datetime_to_densetime(DateTime time){
+	DenseTime result = 0;
+	result += time.year;
+	result *= 12;
+	result += time.month;
+	result *= 31;
+	result += time.day;
+	result *= 24;
+	result += time.hour;
+	result *= 60;
+	result += time.min;
+	result *= 61;
+	result += time.sec;
+	result *= 1000;
+	result += time.mil_sec;
+	result *= 1000;
+	result += time.micro_sec;
+	return result;
+}
+DateTime densetime_to_datetime(DenseTime time){
+	DateTime result = {0};
+	result.micro_sec = time%1000;
+	time /= 1000;
+	result.mil_sec = time%1000;
+	time /= 1000;
+	result.sec = time%61;
+	time /= 61;
+	result.min = time%60;
+	time /= 60;
+	result.hour = time%24;
+	time/=24;
+	result.month = time%31;
+	time /= 31;
+	result.year = (U32) time;
+	return result;
+}
+
+DateTime unixtime_to_datetime(U64 unix_time){
+	DateTime result = {0};
+	result.year = 1970;
+	result.day = 1 + (unix_time / 86400);
+	result.min = (U32) unix_time % 60;
+	result.sec = (U32)(unix_time/60) %60;
+	result.hour = (U32)(unix_time/3600) % 24;
+
+	while(1){
+		for(result.month = 0; result.month <= 12; result.month ++){
+			U64 c = 0;
+			switch(result.month){
+				case Month_Jan: c = 31; break;
+				case Month_Feb: {
+					if((result.year % 4 == 0) && ((result.year % 100 != 0) || (result.year % 400 == 0))) c = 29;
+					else c = 28;
+				}
+				case Month_Mar: c = 31; break;
+				case Month_Apr: c = 30; break;
+				case Month_May: c = 31; break;
+				case Month_Jun: c = 30; break;
+				case Month_Jul: c = 31; break;
+				case Month_Aug: c = 31; break;
+				case Month_Sep: c = 31; break;
+				case Month_Oct: c = 31; break;
+				case Month_Nov: c = 31; break;
+				case Month_Dec: c = 31; break;
+				default: InvalidPath
+			}
+
+			if(result.day <= c){
+				goto exit;				
+			}
+			result.day -= c;
+		}
+		++result.year;
+	}
+	exit:;
+	return result;
 }
 
 
