@@ -28,7 +28,7 @@ void hashtable_main(){
 	int test_data = 100;
 	
 	Profile("Hashtable"){
-		for EachIndex(i, 3000){
+		for EachIndex(i, 5000){
 			Str8 key = str8_pushf(arena, "%d", i);
 			hash_map_put(hash_map, key, &test_data);
 		}
@@ -38,14 +38,14 @@ void hashtable_main(){
 
 
 void os_main(){
-	
-
+	os_entry_point(0, NULL);
 }
 
 
 
 int main(void){
-	os_main();
+	os_entry_point(0, NULL);
+	hashtable_main();
         return 0;
 }
 

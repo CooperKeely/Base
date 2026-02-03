@@ -1,10 +1,11 @@
 #ifndef BASE_H
 #define BASE_H
 
-
-
 ///////////////////////////////////////
 /// cjk: Context Cracking 
+
+// this is only used for better signalhandeling
+#define _POSIX_C_SOURCE 200809L
 
 #if defined(__STDC_VERSION__)
 # if __STDC_VERSION__ < 199901L
@@ -175,12 +176,16 @@
 ///////////////////////////////////////
 /// cjk: File Includes 
 #if OS_LINUX
+# define _GNU_SOURCE
 # include <stdint.h>
 # include <stdio.h>
 # include <stdlib.h>
 # include <string.h>
 # include <time.h>
 # include <stdarg.h>
+# include <signal.h>
+# include <execinfo.h>
+# include <dlfcn.h>
 #endif
 
 
@@ -354,7 +359,7 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr, size_t s
 #define Glue_(A,B) A##B
 #define Glue(A,B) Glue_(A,B)
 
-#define ArrayCount(a) (sizeof(a) / (sizeof(a[0]))
+#define ArrayCount(a) (sizeof(a) / sizeof(a[0]))
 
 #define AlignPow2(x, b) (((x) + (b) - 1)&(~((b) - 1))
 #define AlignDownPow2(x, b) ((x)&(~((b) - 1))
@@ -642,14 +647,22 @@ void scratch_arena_end(ScratchArena scratch);
 #define Str8Lit(S) str8((U8*)(S), sizeof(S)-1)
 #define Str8VArg(s) (U32)(s).size, (s).str
 
+typedef U32 Str8_MatchFlags;
+enum{
+	Str8_MatchRightSideSloppy = (1<<0),
+	Str8_MatchCaseInsensitive = (1<<1),
+};
+
 typedef struct {
 	U8* str;
 	U64 size;
 } Str8;
 
+U8 upper_from_char(U8 chr);
 Str8 str8(U8* str, U64 length);
 void str8_printf(FILE* file_ptr, const char* format, ...);
 Str8 str8_pushf(Arena* arena, const char* format, ...);
+Str8 str8_skip_last_slash(Str8 str);
 inline U8 str8_get(Str8 str, U64 idx);
 U64 cstring_length(char* c);
 Str8 cstring_to_str8(char *c);
@@ -657,6 +670,7 @@ Str8 str8_substr(Str8 s1, Rng1U64 range);
 Str8 str8_concat(Arena* arena, Str8 s1, Str8 s2);
 Str8 str8_copy(Arena* arena, Str8 s1);
 B32 str8_cmp(Str8 s1, Str8 s2);
+B32 str8_match(Str8 s1, Str8 s2, Str8_MatchFlags flags);
 
 
 
@@ -858,7 +872,7 @@ typedef struct{
 } OS_Handle;
 
 // TODO: Finish os implementation
-// 	1) OS entry point 
+// 	1) OS entry point - DONE
 //	2) File operations
 //	3) System and process info
 //	4) OS time info
@@ -869,7 +883,7 @@ typedef struct{
 //	9) DLL support
 
 // OS entry point
-void			os_entry_point(U32 argc, U8* argv);
+void			os_entry_point(U32 argc, U8** argv);
 
 // File operations
 OS_Handle 		os_file_open(Str8 path, OS_FileProperties props);
@@ -1144,6 +1158,13 @@ void scratch_arena_end(ScratchArena scratch){
 ///////////////////////////////////////
 /// cjk: String Implementation 
 
+U8 upper_from_char(U8 chr){
+	if(chr > 'A'){
+		return chr - 32;
+	}
+	return chr;
+}
+
 Str8 str8(U8* str, U64 length){
 	Assert(str != NULL);
 	return (Str8) {str, length};
@@ -1176,6 +1197,24 @@ Str8 str8_pushf(Arena* arena, const char* format, ...){
 	
 	va_end(args);
 	return (Str8){ptr, len};
+}
+
+Str8 str8_skip_last_slash(Str8 str){
+	Assert(str.size > 0);
+	Assert(str.str);
+	
+	U8* ptr = str.str + str.size - 1;
+	for(; ptr >= str.str; ptr -= 1){
+		if(*ptr == '/' || *ptr == '\\') break;
+	}
+
+	if(ptr >= str.str){
+		ptr += 1;
+		str.size = (U64)(str.str + str.size - ptr);
+		str.str = ptr;
+	}
+	return str;
+
 }
 
 U8 str8_get(Str8 string, U64 idx){
@@ -1250,6 +1289,37 @@ B32 str8_cmp(Str8 s1, Str8 s2){
 
 	if(s1.size != s2.size) return false;
 	return MemoryMatch(s1.str, s2.str, s1.size);
+}
+
+B32 str8_match(Str8 s1, Str8 s2, Str8_MatchFlags flags){
+	B32 result = 1;
+
+	if(s1.size == s2.size && (flags == 0)){
+		return MemoryMatch(s1.str, s2.str, s1.size);	
+	}
+
+	else if(s1.size == s2.size || (flags & Str8_MatchRightSideSloppy)){
+
+		B32 case_insensitive = (flags & Str8_MatchCaseInsensitive);
+		U64 size = Min(s1.size, s2.size);
+
+		for EachIndex(i, size){
+			U8 s1_char = s1.str[i];
+			U8 s2_char = s2.str[i];
+			
+			if(case_insensitive){
+				s1_char = upper_from_char(s1_char);
+				s2_char = upper_from_char(s2_char);
+			}
+
+			if(s1_char != s2_char) {
+				result = 0;
+				break;
+			}
+		}
+
+	}
+	return result;
 }
 
 Str8List str8_list(){
@@ -1639,9 +1709,58 @@ void csv_row_parse(CSV* csv, Str8 raw_row){
 /// cjk: OS API
 #if OS_LINUX
 
-// OS entry point
-void os_entry_point(U32 argc, U8* argv){
+void lnx_signal_handler(int sig, siginfo_t* info, void* arg){
+	local_persist void* bt_buffer[KB(4)];
+	U64 bt_count = backtrace(bt_buffer, ArrayCount(bt_buffer));
 	
+	for EachIndex(i, bt_count){
+
+		Dl_info dl_info = {0};
+		dladdr(bt_buffer[i], &dl_info);
+	
+		char cmd[KB(2)];
+		snprintf(cmd, sizeof(cmd), "llvm-symbolizer --relative-address -f -e %s %lu", dl_info.dli_fname, (unsigned long)bt_buffer[i] - (unsigned long)dl_info.dli_fbase);
+
+		FILE* f = popen(cmd, "r");
+
+		if(f){
+			char func_name[256], file_name[256];
+			if(fgets(func_name, sizeof(func_name), f) && fgets(file_name, sizeof(file_name), f)){
+				Str8 func = cstring_to_str8(func_name);
+				if(func.size > 0) func.size -= 1;
+				Str8 module = str8_skip_last_slash(cstring_to_str8(dl_info.dli_fname));
+				Str8 file = str8_skip_last_slash(cstring_to_str8(file_name));
+				if(file.size > 0) file.size -= 1;
+				
+				B32 no_func = str8_match(func, Str8Lit("??"), Str8_MatchRightSideSloppy);
+				B32 no_file = str8_match(file, Str8Lit("??"), Str8_MatchRightSideSloppy);
+				if(no_func){ func = (Str8){0};}
+				if(no_file){ file = (Str8){0};}
+
+				fprintf(stderr, "%ld. [0x%016lx] %.*s%s%.*s %.*s\n", i + 1, (unsigned long)bt_buffer[i], Str8VArg(module), (!no_file || !no_file) ? ", ":"", Str8VArg(func), Str8VArg(file));
+			}
+			pclose(f);	
+		}else{
+			fprintf(stderr, "%ld. [0x%016lx] %s\n", i + 1, (unsigned long)bt_buffer[i], dl_info.dli_fname);
+		}
+	}
+	exit(0);
+}
+
+// OS entry point
+void os_entry_point(U32 argc, U8** argv){
+	(void) argc;
+	(void) argv;
+
+	struct sigaction handler = {.sa_sigaction=&lnx_signal_handler, .sa_flags=SA_SIGINFO};
+	sigfillset(&handler.sa_mask);
+	sigaction(SIGILL, &handler, NULL);
+	sigaction(SIGTRAP, &handler, NULL);
+	sigaction(SIGABRT, &handler, NULL);
+	sigaction(SIGQUIT, &handler, NULL);
+	sigaction(SIGSEGV, &handler, NULL);
+	sigaction(SIGFPE, &handler, NULL);
+	sigaction(SIGBUS, &handler, NULL);
 
 }
 
