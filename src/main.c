@@ -37,11 +37,15 @@ void hashtable_main(){
 }
 
 
+void os_main(){
+	
+
+}
+
 
 
 int main(void){
-	hashtable_main();
-
+	os_main();
         return 0;
 }
 

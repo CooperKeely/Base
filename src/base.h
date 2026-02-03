@@ -174,14 +174,14 @@
 
 ///////////////////////////////////////
 /// cjk: File Includes 
-
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <stdarg.h>
-
+#if OS_LINUX
+# include <stdint.h>
+# include <stdio.h>
+# include <stdlib.h>
+# include <string.h>
+# include <time.h>
+# include <stdarg.h>
+#endif
 
 
 ///////////////////////////////////////
@@ -270,8 +270,6 @@
 # error "AlignType not defined for this compiler"
 #endif
 
-
-
 ///////////////////////////////////////
 /// cjk: Error Handeling 
 
@@ -293,12 +291,7 @@
 
 
 #if BUILD_DEBUG
-# define Assert(condition) do {\
-	if (Unlikely(!(condition))) {\
-		Trap();\
-	}\
-	} while(0)
-
+# define Assert(condition) do {if (Unlikely(!(condition))) {Trap();}} while(0)
 # define InvalidPath do { if((!"Invalid Code Path")){ Trap(); MarkUnreachable();} } while(0)
 # define NotImplemented Assert(!"Not Implemented")
 
@@ -842,7 +835,6 @@ typedef struct {
 	Str8List environment;
 }OS_ProcessInfo;
 
-
 typedef struct{
 	OS_FileIterFlags flags;
 	U8 buf[KB(2)];
@@ -856,6 +848,72 @@ typedef struct{
 	OS_FilePropertyFlag flags;
 }OS_FileProperties;
 
+typedef struct{
+	Str8 path;
+	OS_FileProperties props;
+}OS_FileInfo;
+
+typedef struct{
+	U64 u64[1];
+} OS_Handle;
+
+// TODO: Finish os implementation
+// 	1) OS entry point 
+//	2) File operations
+//	3) System and process info
+//	4) OS time info
+//	5) Memory Allocation
+//	6) Directory iteration and creation
+//	7) file memory maps
+//	8) Large page allocations
+//	9) DLL support
+
+// OS entry point
+void			os_entry_point(U32 argc, U8* argv);
+
+// File operations
+OS_Handle 		os_file_open(Str8 path, OS_FileProperties props);
+void 			os_file_close(OS_Handle file_handle);
+U64 			os_file_read_data(OS_Handle file_handle, Rng1U64 range, void* out_data);
+OS_FileProperties	os_properties_from_file(OS_Handle file_handle);
+B32			os_file_delete_at_path(Str8 path);
+B32 			os_copy_file_path(Str8 src, Str8 dest);
+Str8			os_full_path_from_rel_path(Arena* arena, Str8 rel_path);
+B32 			os_file_path_exists(Str8 path);
+B32			os_folder_path_exists(Str8 path);
+OS_FileProperties	os_properties_from_file_path(Str8 path);
+
+// File map operations
+OS_Handle		os_file_map_open(OS_Handle file_handle, OS_AccessFlags flags);
+void			os_file_map_close(OS_Handle map);
+void* 			os_file_map_view_open(OS_Handle map, OS_AccessFlags flags, Rng1U64 range);
+void 			os_file_map_view_close(OS_Handle map, void* ptr, Rng1U64 range);
+
+// Directory iteration
+OS_FileIter* 		os_file_iter_begin(Arena* arena, Str8 path, OS_FileIterFlags flags);
+B32			os_file_iter_next(Arena* arena, OS_FileIter* iter, OS_FileInfo* info_out);
+void 			os_file_iter_end(OS_FileIter* iter);
+
+// Directory creation
+B32 			os_make_directory(Str8 path);
+
+// System and process info
+Str8 			os_get_current_path(Arena* arena);
+OS_SystemInfo 		os_get_system_info();
+
+// OS memory allocation
+void* 			os_reserve_memory(U64 size);
+void			os_commit_memory(void* ptr, U64 size);
+void			os_decommit_memory(void* ptr, U64 size);
+void 			os_release_memory(void* ptr, U64 size);
+
+// OS time
+U64 			os_now_microseconds();
+U32 			os_now_unix();
+DateTime		os_now_universal_time();
+DateTime		os_universal_time_from_local(DateTime* local_time);
+DateTime		os_local_time_from_universal(DateTime* universal_time);
+void			os_sleep_milliseconds(U64 msec);
 
 ///////////////////////////////////////
 /// cjk: CSV Parser Implementation
@@ -1579,10 +1637,66 @@ void csv_row_parse(CSV* csv, Str8 raw_row){
 
 ///////////////////////////////////////
 /// cjk: OS API
+#if OS_LINUX
+
+// OS entry point
+void os_entry_point(U32 argc, U8* argv){
+	
+
+}
+
+// File operations
+OS_Handle os_file_open(Str8 path, OS_FileProperties props){NotImplemented;}
+void os_file_close(OS_Handle file_handle){NotImplemented;}
+U64 os_file_read_data(OS_Handle file_handle, Rng1U64 range, void* out_data){NotImplemented;}
+OS_FileProperties os_properties_from_file(OS_Handle file_handle){NotImplemented;}
+B32 os_file_delete_at_path(Str8 path){NotImplemented;}
+B32 os_copy_file_path(Str8 src, Str8 dest){NotImplemented;}
+Str8 os_full_path_from_rel_path(Arena* arena, Str8 rel_path){NotImplemented;}
+B32 os_file_path_exists(Str8 path){NotImplemented;}
+B32 os_folder_path_exists(Str8 path){NotImplemented;}
+OS_FileProperties os_properties_from_file_path(Str8 path){NotImplemented;}
+
+// File map operations
+OS_Handle os_file_map_open(OS_Handle file_handle, OS_AccessFlags flags){NotImplemented;}
+void os_file_map_close(OS_Handle map){NotImplemented;}
+void* os_file_map_view_open(OS_Handle map, OS_AccessFlags flags, Rng1U64 range){NotImplemented;}
+void os_file_map_view_close(OS_Handle map, void* ptr, Rng1U64 range){NotImplemented;}
+
+// Directory iteration
+OS_FileIter* os_file_iter_begin(Arena* arena, Str8 path, OS_FileIterFlags flags){NotImplemented;}
+B32 os_file_iter_next(Arena* arena, OS_FileIter* iter, OS_FileInfo* info_out){NotImplemented;}
+void os_file_iter_end(OS_FileIter* iter){NotImplemented;}
+
+// Directory creation
+B32 os_make_directory(Str8 path){NotImplemented;}
+
+// System and process info
+Str8 os_get_current_path(Arena* arena){NotImplemented;}
+OS_SystemInfo os_get_system_info(){NotImplemented;}
+
+// OS memory allocation
+void* os_reserve_memory(U64 size){NotImplemented;}
+void os_commit_memory(void* ptr, U64 size){NotImplemented;}
+void os_decommit_memory(void* ptr, U64 size){NotImplemented;}
+void os_release_memory(void* ptr, U64 size){NotImplemented;}
+
+// OS time
+U64 os_now_microseconds(){NotImplemented;}
+U32 os_now_unix(){NotImplemented;}
+DateTime os_now_universal_time(){NotImplemented;}
+DateTime os_universal_time_from_local(DateTime* local_time){NotImplemented;}
+DateTime os_local_time_from_universal(DateTime* universal_time){NotImplemented;}
+void os_sleep_milliseconds(U64 msec){NotImplemented;}
 
 
-
-
+#elif OS_WINDOWS
+# error "Windows is currently unsupporrted"
+#elif OS_MAC
+# error "Mac is currently unsupported"
+#else
+# error "Unknown OS error"
+#endif
 
 #ifdef BASE_ENABLE_WINDOW
 	
