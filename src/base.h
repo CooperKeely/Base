@@ -246,8 +246,8 @@
 # define Expect(expr, val) (expr)
 #endif
 
-# define Likely(x) Expect(x, 1)
-# define Unlikely(x) Expect(x, 0)
+# define Likely(x) Expect((x), (1))
+# define Unlikely(x) Expect((x), (0))
 
 ///////////////////////////////////////
 /// cjk: Type -> Alignment
@@ -275,8 +275,6 @@
 ///////////////////////////////////////
 /// cjk: Error Handeling 
 
-#define STACK_TRACE_SIZE 10
-
 #if COMPILER_MSVC
 # define Trap() __debugbreak()
 #elif COMPILER_CLANG || COMPILER_GCC
@@ -295,13 +293,27 @@
 
 
 #if BUILD_DEBUG
-#define Assert(condition) do { if (Unlikely(!(condition))) { Trap();}} while(0)
-#define InvalidPath do { if((!"Invalid Code Path")){ Trap(); MarkUnreachable();} } while(0);
-#define NotImplemented Assert(!"Not Implemented");
+# define Assert(condition) do {\
+	if (Unlikely(!(condition))) {\
+		Trap();\
+	}\
+	} while(0)
+
+# define InvalidPath do { if((!"Invalid Code Path")){ Trap(); MarkUnreachable();} } while(0)
+# define NotImplemented Assert(!"Not Implemented")
+
+# ifdef __has_builtin
+#   if __has_builtin(__builtin_types_compatible_p)
+#    define IsType(x, T) __builtin_types_compatible_p(__typeof__(x), T) 
+#   endif
+# else
+#  define IsType(x, T) (void)0 
+# endif
 #else
-#define Assert(condition) 
-#define InvalidPath
-#define NotImplemented
+#define Assert(condition) (void)0
+#define InvalidPath (void)0
+#define NotImplemented (void)0
+#define IsType(x, T) 1 
 #endif
 
 #define StaticAssert(c, label) global U8 Glue(label, __LINE__)[(c)?1:-1] 
@@ -413,6 +425,17 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr, size_t s
 #define R1U64(min, max)  rng_1u64((min), (max))
 #define R1F64(min, max)  rng_1f64((min), (max))
 
+#define ConstU64(x) Glue(x, UL)
+#define ConstS64(x) Glue(x, L)
+#define ConstF64(x) Glue(x, )
+
+#define ConstU32(x) Glue(x, U)
+#define ConstS32(x) Glue(x, )
+#define ConstF32(x) Glue(x, F)
+
+#define false 0
+#define true 1
+
 typedef uint8_t U8;
 typedef uint16_t U16;
 typedef uint32_t U32;
@@ -430,6 +453,71 @@ typedef S8 B8;
 typedef S16 B16;
 typedef S32 B32;
 typedef S64 B64;
+
+typedef union{
+        U8  u8[16];
+        U16 u16[8];
+        U32 u32[4];
+        U64 u64[2];
+} U128;
+
+typedef union{
+        U8   u8[32];
+        U16  u16[16];
+        U32  u32[8];
+        U64  u64[4];
+        U128 u128[2];
+} U256;
+
+typedef union{
+        U8   u8[64];
+        U16  u16[32];
+        U32  u32[16];
+        U64  u64[8];
+        U128 u128[4];
+        U256 u256[2];
+} U512;
+
+StaticAssert(IsType(ConstU32(10), U32), ConstU32);
+StaticAssert(IsType(ConstS32(1), S32), ConstS32);
+StaticAssert(IsType(ConstF32(1.0), F32), ConstF32);
+StaticAssert(IsType(ConstU64(10), U64), ConstU64);
+StaticAssert(IsType(ConstS64(-1), S64), ConstS64);
+StaticAssert(IsType(ConstF64(1.0), F64), ConstF64);
+
+// int type conversions
+U8 safe_cast_U8(U16 x);
+U16 safe_cast_U16(U32 x);
+U32 safe_cast_U32(U64 x);
+
+S8 safe_cast_S8(S16 x);
+S16 safe_cast_S16(S32 x);
+S32 safe_cast_S32(S64 x);
+
+
+// constants
+global const U64 max_U64 = ConstU64(0xFFFFFFFFFFFFFFFF);
+global const U64 max_S64 = ConstS64(0x7FFFFFFFFFFFFFFF);
+global const U64 min_U64 = ConstU64(0x0000000000000000);
+global const U64 min_S64 = ConstS64(0x8000000000000000);
+
+global const U32 max_U32 = ConstU32(0xFFFFFFFF);
+global const S32 max_S32 = ConstS32(0x7FFFFFFF);
+global const U32 min_U32 = ConstU32(0x00000000);
+global const S32 min_S32 = ConstS32(0x80000000);
+
+global const U16 max_U16 = 0xFFFF;
+global const S16 max_S16 = 0x7FFF;
+global const U16 min_U16 = 0x0000;
+global const S16 min_S16 = 0x8000;
+
+global const U8 max_U8 = 0xFF;
+global const S8 max_S8 = 0x7F;
+global const U8 min_U8 = 0x00;
+global const S8 min_S8 = 0x80;
+
+global const F32 pi32 = ConstF32(3.1415926535897);
+
 
 // Vector Types
 typedef union{
@@ -568,12 +656,16 @@ typedef struct {
 
 Str8 str8(U8* str, U64 length);
 void str8_printf(FILE* file_ptr, const char* format, ...);
+Str8 str8_pushf(Arena* arena, const char* format, ...);
 inline U8 str8_get(Str8 str, U64 idx);
 U64 cstring_length(char* c);
 Str8 cstring_to_str8(char *c);
 Str8 str8_substr(Str8 s1, Rng1U64 range);
 Str8 str8_concat(Arena* arena, Str8 s1, Str8 s2);
 Str8 str8_copy(Arena* arena, Str8 s1);
+B32 str8_cmp(Str8 s1, Str8 s2);
+
+
 
 // Str8 List
 typedef struct Str8Node Str8Node;
@@ -615,37 +707,25 @@ Str8Array str8_tokenize_array(Arena* arena, Str8 string, Str8 delimiters);
 
 typedef struct{
 	void* data;
+	Str8 key;
 	U64 next_data;
+        B32 has_next_data;
 } HashBucket;
 
 typedef struct{
 	Arena* arena;
+	U64 next_free_collision_bucket;
 	HashBucket data[DEFAULT_HASH_MAP_SIZE];
 	HashBucket collisions[DEFAULT_HASH_COLLISION_SIZE];
 } HashMap;
 
 
-HashMap hash_map_init(Arena* arena);
+HashMap* hash_map_init(Arena* arena);
 void* hash_map_get(HashMap* hash_map, Str8 key);
 void hash_map_put(HashMap* hash_map, Str8 key, void* data);
 
 // Hashing functions
-U64 hash_fnv1a_u64(Str8 str);
-
-U64 hash_fnv1a_u64(Str8 str){
-	Assert(str.size > 0);
-	
-	// two 19 digit prime numbers DO NOT TOUCH
-	U64 fnv_prime  = 6550123626356161697;
-	U64 fnv_hash = 4072063302836454931;
-	
-	for EachIndex(i, str.size){
-		fnv_hash ^= str8_get(str, i);
-		fnv_hash *= fnv_prime;	
-	}
-	return fnv_hash;
-}
-
+U64 hash_fnv1a_u64(const void* in_ptr, U64 num_bytes);
 
 
 ///////////////////////////////////////
@@ -718,6 +798,7 @@ DateTime unixtime_to_datetime(U64 unix_time);
 
 ///////////////////////////////////////
 /// cjk: OS API
+
 typedef U32 OS_AccessFlags;
 enum{
 	OS_AccessFlag_Read 		= (1<<0),
@@ -836,6 +917,37 @@ void csv_row_parse(CSV* csv, Str8 raw_row);
 
 ///////////////////////////////////////
 /// cjk: Math Functions 
+U8 safe_cast_U8(U16 x){
+	Assert(x < max_U8);
+	return (U8) x;
+}
+
+U16 safe_cast_U16(U32 x){
+	Assert(x < max_U16);
+	return (U16) x;
+}
+U32 safe_cast_U32(U64 x){
+	Assert(x < max_U32);
+	return (U32) x;
+}
+
+S8 safe_cast_S8(S16 x){
+	Assert(x < max_S8);
+	Assert(x > min_S8);
+	return (S8) x;
+
+}
+S16 safe_cast_S16(S32 x){
+	Assert(x < max_S16);
+	Assert(x > min_S16);
+	return (S16) x;
+}
+S32 safe_cast_S32(S64 x){
+	Assert(x < max_S32);
+	Assert(x > min_S32);
+	return (S32) x;
+}
+
 
 Rng1U32 rng_1u32(U32 min, U32 max){
 	Assert(min < max);
@@ -890,12 +1002,12 @@ Arena* arena_alloc(){
 
 Arena* arena_alloc_with_capacity(U64 size){
 	Arena* arena = (Arena*) malloc(sizeof(Arena));
-	Assert(arena != NULL);
+	Assert(arena);
 
 	arena->capacity = size;
 
 	arena->mem_ptr = (U8*) malloc(arena->capacity);
-	Assert(arena->mem_ptr != NULL);
+	Assert(arena->mem_ptr);
 	AsanPoisonMemoryRegion(arena->mem_ptr, size);
 
 	arena->next_free = 0;
@@ -939,16 +1051,21 @@ void* arena_push_zero(Arena* arena, U64 size){
 void arena_pop(Arena* arena, U64 size){
 	Assert(arena != NULL);
 	U64 pos = arena->next_free - size;
-	void* ptr = arena->mem_ptr + pos;
-	AsanPoisonMemoryRegion(ptr, size);
 	arena_pop_to(arena, pos);
 }
 
-void arena_pop_to(Arena* arena, U64 pos){
+void arena_pop_to(Arena* arena, U64 new_pos){
 	Assert(arena != NULL);
-	Assert(pos < arena_get_position(arena));
 
-	arena->next_free = pos;
+	U64 current_pos = arena_get_position(arena);
+
+	Assert(new_pos <= current_pos);
+
+	U64 asan_poison_size = current_pos - new_pos;
+	void* asan_poison_ptr = arena->mem_ptr + new_pos;
+	AsanPoisonMemoryRegion(asan_poison_ptr, asan_poison_size);
+
+	arena->next_free = new_pos;
 }
 
 ScratchArena scratch_arena_begin(Arena* arena){
@@ -981,6 +1098,26 @@ void str8_printf(FILE* file_ptr, const char* format, ...){
 	va_start(args, format);
 	vfprintf(file_ptr, format, args);
 	va_end(args);
+}
+
+Str8 str8_pushf(Arena* arena, const char* format, ...){
+	Assert(arena);
+	Assert(format);
+
+	va_list args;
+	va_start(args, format);
+
+	va_list copy;
+	va_copy(copy, args);
+
+	U64 len = vsnprintf(NULL, 0, format, copy);
+
+	U8* ptr = ArenaPushArray(arena, U8, len + 1);
+	vsnprintf((char*)ptr, len + 1, format,  args);
+	arena_pop(arena, 1);
+	
+	va_end(args);
+	return (Str8){ptr, len};
 }
 
 U8 str8_get(Str8 string, U64 idx){
@@ -1045,6 +1182,16 @@ Str8 str8_substr(Str8 s1, Rng1U64 range){
 	s1.str += range.min;
 	s1.size = dim_r1u64(range);
 	return s1;
+}
+
+B32 str8_cmp(Str8 s1, Str8 s2){
+	Assert(s1.size > 0);
+	Assert(s2.size > 0);
+	Assert(s1.str);
+	Assert(s2.str);
+
+	if(s1.size != s2.size) return false;
+	return MemoryMatch(s1.str, s2.str, s1.size);
 }
 
 Str8List str8_list(){
@@ -1144,6 +1291,108 @@ Str8List* str8_tokenize_list(Arena* arena, Str8 string, Str8 delimiters){
 	return list;
 }
 
+///////////////////////////////////////
+/// cjk: Profiling 
+
+HashMap* hash_map_init(Arena* arena){
+        HashMap* hashmap = ArenaPushStructZero(arena, HashMap);
+	hashmap->arena = arena;
+	hashmap->next_free_collision_bucket = ConstU64(0);
+	return hashmap;
+}
+
+void* hash_map_get(HashMap* hash_map, Str8 key){
+	Assert(hash_map);
+	Assert(key.size > 0);
+	Assert(key.str);
+
+	U64 hash = hash_fnv1a_u64(key.str, key.size);
+	hash = hash % DEFAULT_HASH_MAP_SIZE;
+
+	HashBucket bucket = hash_map->data[hash];
+
+	if(str8_cmp(key, bucket.key)) return bucket.data;
+	
+	while(bucket.has_next_data){
+		if(str8_cmp(key, bucket.key)) return bucket.data;
+		bucket = hash_map->data[bucket.next_data];
+	}
+	return NULL;
+}
+
+void hash_map_put(HashMap* hash_map, Str8 key, void* data){
+	Assert(hash_map);
+	Assert(data);
+	Assert(key.size > 0);
+	Assert(key.str);
+
+	local_persist U64 collisions = 0;
+	U64 hash = hash_fnv1a_u64(key.str, key.size);
+	hash = hash % DEFAULT_HASH_MAP_SIZE;
+
+	HashBucket* bucket = &hash_map->data[hash];
+
+	// if bucket is empty 
+	if(bucket->data == NULL){
+		bucket->data = data;
+		bucket->key = str8_copy(hash_map->arena, key);
+		bucket->has_next_data = false;
+		bucket->next_data = 0;
+		return;
+	} 
+
+	printf("Collisions: %lu\n", collisions);
+	//
+	// if this assert goes off consider increasing the size of the hashmap
+	// or changing hash function / choosing a different seed
+	Assert(collisions < 1000); 
+	collisions += 1;
+
+	// traverse collision array until empty bucket is found
+	HashBucket* prev = NULL;
+	while(bucket->data != NULL){
+		prev = bucket;
+		if(bucket->has_next_data) {
+			bucket = &hash_map->collisions[bucket->next_data];
+			continue;
+		}
+		break;	
+	}
+	
+	// set previous buckets next data to the current bucket
+	prev->has_next_data = true;
+	prev->next_data = hash_map->next_free_collision_bucket;
+	
+	// insert data
+	bucket = &hash_map->collisions[hash_map->next_free_collision_bucket];
+	bucket->data = data;
+	bucket->key = str8_copy(hash_map->arena, key);
+	bucket->has_next_data = false;
+	bucket->next_data = 0;
+		
+	hash_map->next_free_collision_bucket += 1;
+	Assert(hash_map->next_free_collision_bucket <= DEFAULT_HASH_COLLISION_SIZE);
+}
+
+
+// Hashing functions
+U64 hash_fnv1a_u64(const void* in_ptr, U64 num_bytes){
+	Assert(num_bytes > 0);
+        Assert(in_ptr);
+
+        const U8* byte_arr = (const U8*) in_ptr;
+
+	// seeds for FNV-1a hashing do not touch 
+	U64 fnv_prime = ConstU64(0x00000100000001b3);
+	U64 fnv_hash = ConstU64(0xcbf29ce484222325);
+	
+	for EachIndex(i, num_bytes){
+		fnv_hash ^= byte_arr[i];
+		fnv_hash *= fnv_prime;	
+	}
+
+	return fnv_hash;
+}
 
 
 ///////////////////////////////////////
@@ -1226,7 +1475,7 @@ DateTime unixtime_to_datetime(U64 unix_time){
 				case Month_Oct: c = 31; break;
 				case Month_Nov: c = 31; break;
 				case Month_Dec: c = 31; break;
-				default: InvalidPath
+				default: InvalidPath;
 			}
 
 			if(result.day <= c){
@@ -1246,9 +1495,8 @@ DateTime unixtime_to_datetime(U64 unix_time){
 /// cjk: CSV Parser Implementation
 
 CSV csv_init(Arena* arena, CSV_Config config, char* file_path){
-	Assert(arena != NULL);
-	Assert(file_path != NULL);
-
+	Assert(arena);
+	Assert(file_path);
 	CSV csv_parser = {
 		.file_ptr = fopen(file_path, "rb"),
 		.config = config,
@@ -1259,7 +1507,7 @@ CSV csv_init(Arena* arena, CSV_Config config, char* file_path){
 		.columns = 0
 	};
 
-	Assert(csv_parser.file_ptr != NULL);
+	Assert(csv_parser.file_ptr);
 
 	return csv_parser;
 }
@@ -1328,6 +1576,13 @@ void csv_row_parse(CSV* csv, Str8 raw_row){
 		}	
 	}
 }
+
+///////////////////////////////////////
+/// cjk: OS API
+
+
+
+
 
 #ifdef BASE_ENABLE_WINDOW
 	

@@ -6,14 +6,17 @@ cd "$(dirname "$0")"
 # --- Unpack Arguments
 for arg in "$@"; do declare $arg='1'; done
 if 	[ ! -v release ];		then debug=1; fi
-if 	[ ! -v clang ];			then gcc=1; fi
-if 	[ -v asan ];			then asan=1; fi
+if 	[ ! -v gcc ];			then clang=1; fi
+if      [[ -v gdb && -v run  ]];        then echo "[gdb and run are mutually exclusive]"; exit 1
+elif 	[[ -v gdb && ! -v asan  && ! -v run ]];      then echo "[gdb]"; fi
 if 	[ -v debug ];			then echo "[debug mode]"; fi
 if 	[[ -v asan && ! -v clang ]]; 	then echo "[asan requires clang]"; exit 1
-else					asan_flags="-fsanitize=address -fno-omit-frame-pointer"; echo "[asan enabled]"; fi
+elif    [[ -v asan && -v clang ]];      then asan_flags="-fsanitize=address -fno-omit-frame-pointer"; echo "[asan enabled]";
+else 					asan_flags="";fi
 if 	[ -v release ];			then echo "[release mode]"; fi
 if 	[ -v clang ];			then compiler="${CC=clang}"; echo "[clang compile]"; fi
 if 	[ -v gcc ];			then compiler="${CC=gcc}"; echo "[gcc compile]"; fi
+
 
 # --- Unpack Command Line Build Arguments
 auto_compile_flags=''
@@ -27,7 +30,7 @@ git_hash_full=$(git rev-parse HEAD)
 
 clang_common="-I../src -I../include -std=c99 -rdynamic -DBUILD_GIT_HASH=\"$git_hash\" 
 		-DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -Wall -Wextra -Wno-unused-function 
-		-Wno-unused-value -Wno-unused-variable -Wno-compare-distinct-pointer-types"
+		-Wno-unused-value -Wno-unused-variable"
 
 clang_debug="$compiler ${asan_flags} -g -O0 ${clang_common} ${auto_compile_flags}"
 clang_release="$compiler ${asan_flags} -g -O3 -DBUILD_DEBUG=0 ${clang_common} ${auto_compile_flags}"
@@ -36,7 +39,7 @@ clang_out="-o"
 
 gcc_common="-I../src -I../include -std=c99 -rdynamic -DBUILD_GIT_HASH=\"$git_hash\" 
 		-DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -Wall -Wextra -Wno-unused-function 
-		-Wno-unused-value -Wno-unused-variable -Wno-compare-distinct-pointer-types"
+		-Wno-unused-value -Wno-unused-variable "
 
 gcc_debug="$compiler -g -O0 ${gcc_common} ${auto_compile_flags}"
 gcc_release="$compiler -g -O3 -DBUILD_DEBUG=0 ${gcc_common} ${auto_compile_flags}"
@@ -80,4 +83,8 @@ if [ -v didbuild ] && [ -v run ]; then
 	echo "[running build]"; 
 	echo "";
 	./build/app; 
+elif [ -v didbuild ] && [ -v gdb ]; then
+	echo "[running gdb]"
+	echo "";
+	gdb -q -x env/debug_setup.gdb --args ./build/app 
 fi
