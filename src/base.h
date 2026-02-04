@@ -1101,6 +1101,7 @@ typedef struct{
 	Arena*		arena;
 	Window		window;	
 	RectU16		size;
+	RectU16		over_size;
 	Str8		name;
 	GC		graphics_ctx;
 	XGCValues	graphics_ctx_values;
@@ -1113,15 +1114,19 @@ typedef struct{
 
 
 WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 border_width, ColorRGBA border_color,  ColorRGBA background_color){
-	WM_Context result = {0};
+	Assert(arena);	
 
 	// default values
 	U16 default_boarder = 10;
 
-	result.display = XOpenDisplay(NULL);
-	result.screen = XDefaultScreenOfDisplay(result.display);
+	WM_Context result = {0};
+
+	result.arena = arena;
 	result.size = win_rect;
 	result.name = window_name;
+
+	result.display = XOpenDisplay(NULL);
+	result.screen = XDefaultScreenOfDisplay(result.display);
 	result.window = XCreateSimpleWindow(result.display, 
 			       XDefaultRootWindow(result.display), 
 			       win_rect.x, win_rect.y, 
@@ -1129,7 +1134,22 @@ WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 
 			       (border_width == 0)? default_boarder : border_width,
 			       border_color.c,
 			       background_color.c);
-	result.arena = arena;
+
+	XSetWindowAttributes attr;
+	attr.background_pixmap = None;
+	attr.bit_gravity = NorthWestGravity;
+	XChangeWindowAttributes(result.display, result.window, CWBackPixmap, &attr);
+
+
+	U32 screen = DefaultScreen(result.display);
+
+	result.over_size = (RectU16){.x=0 , .y=0, 
+		.width=DisplayWidth(result.display, screen), 
+		.height=DisplayHeight(result.display, screen)};
+
+	Assert(result.display);
+	Assert(result.screen);
+	Assert(result.window);
 
 #if HAS_SYS_SHM
 	printf("[MIT-SHM supported by X11]\n");	
@@ -1141,7 +1161,7 @@ WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 
 				ZPixmap,
 				NULL,
 				&result.shm_info,
-				result.size.width, result.size.height);
+				result.over_size.width, result.over_size.height);
 
 	Assert(result.image);
 
@@ -1153,10 +1173,9 @@ WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 
 
 	Status status = XShmAttach(result.display, &result.shm_info);
 	XSync(result.display, False);
-	Assert(status != 0);
-	
 	shmctl(result.shm_info.shmid, IPC_RMID, 0);
 
+	Assert(status);
 
 # else
 	printf("[MIT-SHM unsupported by X11 Falling back]\n");
@@ -1171,9 +1190,11 @@ WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 
 				win_rect.width, win_rect.height, 
 				BitsFromBytes(sizeof(ColorRGBA)), 0); 
 
-}
+	Assert(result.image);
+
 #endif
 	result.graphics_ctx = XCreateGC(result.display, result.window, 0, &result.graphics_ctx_values);
+
 	XStoreName(result.display, result.window, str8_to_cstring(arena, window_name));
 
 	XMapWindow(result.display, result.window);
@@ -1207,13 +1228,7 @@ void wm_draw_window(WM_Context* ctx){
 	Assert(ctx->window);
 	Assert(ctx->image);
 
-#if HAS_SYS_SHM
-	struct shmid_ds ds;
-	if(shmctl(ctx->shm_info.shmid, IPC_STAT, &ds) == -1){
-		fprintf(stderr, "[Error: SHM segment was freed by the os before put image]\n");	
-		InvalidPath;
-	}
-
+#if HAS_SYS_SHM	
 	XShmPutImage(ctx->display, ctx->window, ctx->graphics_ctx, ctx->image, 0, 0, 0, 0, ctx->size.width, ctx->size.height, False);
 	XSync(ctx->display, False);
 #else

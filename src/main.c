@@ -1,4 +1,3 @@
-#include <X11/X.h>
 #define BASE_IMPLEMENTATION
 #define BASE_ENABLE_WINDOW 
 #include "base.h"
@@ -49,9 +48,14 @@ void x11_graphics(){
 				 (ColorRGBA){0, 0, 0, 0},
 				 (ColorRGBA){0, 0, 0, 0});
 
-	wm_register_input_events(&ctx, WM_Event_Keyboard_KeyPress|WM_Event_Keyboard_KeyRelease);
+	wm_register_input_events(&ctx, WM_Event_Keyboard_KeyPress
+			  |WM_Event_Keyboard_KeyRelease
+			  |WM_Event_WindowState_ConfigureNotify);
 
 	volatile B32 quit = false;
+	
+
+
 
 	while(!quit){
 		Profile("Frame"){
@@ -62,8 +66,14 @@ void x11_graphics(){
 				if(event.type == KeyPress){
 					wm_resize_window(&ctx, 100, 100);
 					quit = true;
+				}else if(event.type == ConfigureNotify){
+					XConfigureEvent xce = event.xconfigure;
+					ctx.size.width = (U16) xce.width;
+					ctx.size.height = (U16) xce.height;
 				}
 			}	
+			
+			wm_draw_rect(&ctx, (RectU16){0, 0, ctx.size.width, ctx.size.height}, (ColorRGBA){0, 0, 0, 0});
 			wm_draw_rect(&ctx, (RectU16){100, 100, 700, 500}, (ColorRGBA){0, 100, 0, 0});
 			wm_draw_rect(&ctx, (RectU16){200, 200, 300, 500}, (ColorRGBA){0, 0, 100, 0});
 			wm_draw_window(&ctx);
