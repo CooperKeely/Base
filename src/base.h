@@ -404,6 +404,7 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 ///////////////////////////////////////
 /// cjk: Math Functions
 
+#define BitsFromBytes(x) (8 * (x)) 
 #define Min(A, B) (((A) < (B)) ? (A) : (B))
 #define Max(A, B) (((A) > (B)) ? (A) : (B))
 
@@ -583,7 +584,7 @@ typedef union{
 		U8 b;
 		U8 a;
 	};
-	U8 v[4];
+	U32 c;
 }ColorRGBA;
 
 
@@ -638,6 +639,7 @@ Rng1F64 rng_1f64(F64 min, F64 max);
 #define ArenaPushArrayZero(arena, type, count)	(type *)arena_push_zero((arena), sizeof(type) * (count))
 #define ArenaPushStruct(arena, type) 		ArenaPushArray(arena, type, (1))
 #define ArenaPushStructZero(arena, type) 	ArenaPushArrayZero(arena, type, (1))
+
 
 #define ScratchArenaScope(arena_ptr)					       \
   for (ScratchArena _scratch_ = scratch_arena_begin(arena_ptr);		       \
@@ -989,7 +991,8 @@ void csv_row_parse(CSV *csv, Str8 raw_row);
 ///////////////////////////////////////
 /// cjk: Window Functions
 #ifdef BASE_ENABLE_WINDOW
-#include <X11/Xlib.h>
+
+# include <X11/Xlib.h>
 # if defined(_POSIX_SHARED_MEMORY_OBJECTS) && (_POSIX_SHARED_MEMORY_OBJECTS >0)
 #  define HAS_SYS_SHM 1
 #  include <sys/ipc.h>
@@ -1000,20 +1003,20 @@ void csv_row_parse(CSV *csv, Str8 raw_row);
 # endif
 
 
-typedef enum{
-	WM_WindowType_X11Image,
-	WM_WindowType_SHM,
-	WM_WindowType_GC
-}WM_WindowType;
-
 typedef struct{
 	Display*	display;
 	Screen*		screen;
+	GC		graphics_ctx;
+	XGCValues	graphics_ctx_values;
 	Arena*		arena;
 	Window		window;	
 	RectU16		size;
 	Str8		name;
-	WM_WindowType	window_type;
+#if HAS_SYS_SHM
+	XShmSegmentInfo* shm_info;
+#endif
+	XImage* image;	
+	U8* image_buffer;
 }WM_Context;
 
 
@@ -1108,43 +1111,55 @@ global WM_EventMaskMap wm_event_mask_map[] = {
 	{WM_Event_ClientComm_SelectionRequest	,NoEventMask},
 };
 
-typedef struct{
-	WM_EventFlag enabled_events;
-
-} WM_EventHandler;
-
-void check_shm_support(Display* disp){
+B32 check_shm_support(Display* disp){
+	B32 result = 0;
 #if HAS_SYS_SHM
-	if(XShmQueryExtension(disp)){
-		printf("[MIT-SHM supported by X11]\n");	
-	}
+
 #else
 	printf("[MIT-SHM unsupported by X11 Falling back]\n");
 #endif
+	return result;
 }
 
-WM_Context wm_open_window(WM_WindowType window_type, RectU16 win_rect, Str8 window_name, U16 border_width, ColorRGBA border_color,  ColorRGBA background_color){
+WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 border_width, ColorRGBA border_color,  ColorRGBA background_color){
 	WM_Context result = {0};
 
 	// default values
 	U16 default_boarder = 10;
 
-	Arena* arena = arena_alloc_with_capacity(TEMP_ARENA_SIZE);
-	ScratchArenaScope(arena){
-		result.display = XOpenDisplay(NULL);
-		result.screen = XDefaultScreenOfDisplay(result.display);
-		result.size = win_rect;
-		result.name = window_name;
-		result.window = XCreateSimpleWindow(result.display, 
-				       XDefaultRootWindow(result.display), 
-				       win_rect.x, win_rect.y, 
-				       win_rect.width, win_rect.height,
-				       (border_width == 0)? default_boarder : border_width,
-				       border_color.v[0],
-				       background_color.v[0]);
+	result.display = XOpenDisplay(NULL);
+	result.screen = XDefaultScreenOfDisplay(result.display);
+	result.size = win_rect;
+	result.name = window_name;
+	result.window = XCreateSimpleWindow(result.display, 
+			       XDefaultRootWindow(result.display), 
+			       win_rect.x, win_rect.y, 
+			       win_rect.width, win_rect.height,
+			       (border_width == 0)? default_boarder : border_width,
+			       border_color.c,
+			       background_color.c);
+	/*
+	if(XShmQueryExtension(result.display)){
+		printf("[MIT-SHM supported by X11]\n");	
 
-		XStoreName(result.display, result.window, str8_to_cstring(arena, window_name));
+
 	}
+	else{*/
+	printf("[MIT-SHM unsupported by X11 Falling back]\n");
+
+	result.image_buffer = ArenaPushArray(arena, U8, sizeof(ColorRGBA) * win_rect.width * win_rect.height);
+	result.image = XCreateImage(result.display, 
+				DefaultVisualOfScreen(result.screen),
+				DefaultDepthOfScreen(result.screen), 
+				ZPixmap, 
+				0, 
+				(char*) result.image_buffer, 
+				win_rect.width, win_rect.height, 
+				BitsFromBytes(sizeof(ColorRGBA)), 0); 
+
+	result.graphics_ctx = XCreateGC(result.display, result.window, 0, &result.graphics_ctx_values);
+
+	XStoreName(result.display, result.window, str8_to_cstring(arena, window_name));
 
 	XMapWindow(result.display, result.window);
 	return result;	
@@ -1171,15 +1186,24 @@ void wm_resize_and_move_window(WM_Context* ctx, RectU16 new_size){
 }
 
 
+void wm_draw_window(WM_Context* ctx){
+	Assert(ctx);
+	Assert(ctx->display);
+	Assert(ctx->window);
+	Assert(ctx->image);
+	XPutImage(ctx->display, ctx->window, ctx->graphics_ctx, ctx->image, 0, 0, 0, 0, ctx->size.width, ctx->size.height);
+	XFlush(ctx->display);
+}
+
 void wm_close_window(WM_Context* ctx){
 	XUnmapWindow(ctx->display, ctx->window);
 	XDestroyWindow(ctx->display, ctx->window);
+	XFreeGC(ctx->display, ctx->graphics_ctx);
 	XCloseDisplay(ctx->display);
 }
 
-void wm_register_input_events(WM_Context* ctx, WM_EventHandler* event_handler){
-	WM_EventFlag flags = event_handler->enabled_events;
-	long event_mask;	
+void wm_register_input_events(WM_Context* ctx, WM_EventFlag flags){
+	long event_mask = 0;	
 
 	for EachIndex(i, ArrayCount(wm_event_mask_map)){
 		if(flags & wm_event_mask_map[i].flag){
@@ -1440,7 +1464,7 @@ char* str8_to_cstring(Arena* arena, Str8 str){
 
 	char* cstring = ArenaPushArray(arena, char,str.size + 1);
 	MemoryCopy(cstring, str.str, str.size);
-	cstring[str.size + 1] = '\0';
+	cstring[str.size] = '\0';
 	return cstring;	
 }
 
@@ -1901,6 +1925,9 @@ void csv_row_parse(CSV *csv, Str8 raw_row) {
 void lnx_signal_handler(int sig, siginfo_t *info, void *arg) {
 	local_persist void *bt_buffer[KB(4)];
 	U64 bt_count = backtrace(bt_buffer, ArrayCount(bt_buffer));
+	
+
+	fprintf(stderr, "[Process Recieved Signal: %s (%d)]\n", strsignal(sig), sig);
 
 	for EachIndex(i, bt_count) {
 
