@@ -1003,22 +1003,6 @@ void csv_row_parse(CSV *csv, Str8 raw_row);
 # endif
 
 
-typedef struct{
-	Display*	display;
-	Screen*		screen;
-	GC		graphics_ctx;
-	XGCValues	graphics_ctx_values;
-	Arena*		arena;
-	Window		window;	
-	RectU16		size;
-	Str8		name;
-#if HAS_SYS_SHM
-	XShmSegmentInfo* shm_info;
-#endif
-	XImage* image;	
-	U8* image_buffer;
-}WM_Context;
-
 
 typedef U32 WM_WindowCfgUpdate;
 enum{
@@ -1111,15 +1095,22 @@ global WM_EventMaskMap wm_event_mask_map[] = {
 	{WM_Event_ClientComm_SelectionRequest	,NoEventMask},
 };
 
-B32 check_shm_support(Display* disp){
-	B32 result = 0;
+typedef struct{
+	Display*	display;
+	Screen*		screen;
+	Arena*		arena;
+	Window		window;	
+	RectU16		size;
+	Str8		name;
+	GC		graphics_ctx;
+	XGCValues	graphics_ctx_values;
 #if HAS_SYS_SHM
-
-#else
-	printf("[MIT-SHM unsupported by X11 Falling back]\n");
+	XShmSegmentInfo shm_info;
 #endif
-	return result;
-}
+	XImage* image;	
+
+}WM_Context;
+
 
 WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 border_width, ColorRGBA border_color,  ColorRGBA background_color){
 	WM_Context result = {0};
@@ -1138,13 +1129,36 @@ WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 
 			       (border_width == 0)? default_boarder : border_width,
 			       border_color.c,
 			       background_color.c);
-	/*
-	if(XShmQueryExtension(result.display)){
-		printf("[MIT-SHM supported by X11]\n");	
+	result.arena = arena;
+
+#if HAS_SYS_SHM
+	printf("[MIT-SHM supported by X11]\n");	
 
 
-	}
-	else{*/
+	result.image = XShmCreateImage(result.display,
+				DefaultVisualOfScreen(result.screen),
+				DefaultDepthOfScreen(result.screen),
+				ZPixmap,
+				NULL,
+				&result.shm_info,
+				result.size.width, result.size.height);
+
+	Assert(result.image);
+
+	U64 total_size = result.image->bytes_per_line * result.image->height;
+	result.shm_info.shmid = shmget(IPC_PRIVATE, total_size, IPC_CREAT|0777);
+
+	result.shm_info.shmaddr = result.image->data = shmat(result.shm_info.shmid, 0, 0);
+	result.shm_info.readOnly = False;
+
+	Status status = XShmAttach(result.display, &result.shm_info);
+	XSync(result.display, False);
+	Assert(status != 0);
+	
+	shmctl(result.shm_info.shmid, IPC_RMID, 0);
+
+
+# else
 	printf("[MIT-SHM unsupported by X11 Falling back]\n");
 
 	result.image_buffer = ArenaPushArray(arena, U8, sizeof(ColorRGBA) * win_rect.width * win_rect.height);
@@ -1157,8 +1171,9 @@ WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 
 				win_rect.width, win_rect.height, 
 				BitsFromBytes(sizeof(ColorRGBA)), 0); 
 
+}
+#endif
 	result.graphics_ctx = XCreateGC(result.display, result.window, 0, &result.graphics_ctx_values);
-
 	XStoreName(result.display, result.window, str8_to_cstring(arena, window_name));
 
 	XMapWindow(result.display, result.window);
@@ -1191,8 +1206,38 @@ void wm_draw_window(WM_Context* ctx){
 	Assert(ctx->display);
 	Assert(ctx->window);
 	Assert(ctx->image);
+
+#if HAS_SYS_SHM
+	struct shmid_ds ds;
+	if(shmctl(ctx->shm_info.shmid, IPC_STAT, &ds) == -1){
+		fprintf(stderr, "[Error: SHM segment was freed by the os before put image]\n");	
+		InvalidPath;
+	}
+
+	XShmPutImage(ctx->display, ctx->window, ctx->graphics_ctx, ctx->image, 0, 0, 0, 0, ctx->size.width, ctx->size.height, False);
+	XSync(ctx->display, False);
+#else
 	XPutImage(ctx->display, ctx->window, ctx->graphics_ctx, ctx->image, 0, 0, 0, 0, ctx->size.width, ctx->size.height);
 	XFlush(ctx->display);
+#endif
+}
+
+void wm_draw_rect(WM_Context* ctx, RectU16 rect, ColorRGBA color){
+	Assert(ctx);
+	Assert(ctx->image);
+
+	U32* pixels = (U32*) ctx->image->data;
+
+	for (U16 y1 = rect.y; y1 < rect.y + rect.height; y1++){
+		for (U16 x1 = rect.x; x1 < rect.x + rect.width; x1++){
+			pixels[y1 * ctx->image->width + x1] = color.c;
+		}
+	}
+}
+
+void wm_draw_line(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2){
+	NotImplemented;	
+
 }
 
 void wm_close_window(WM_Context* ctx){

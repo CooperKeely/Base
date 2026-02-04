@@ -41,6 +41,7 @@ void hashtable_main(){
 void x11_graphics(){
 
 	Arena* arena = arena_alloc();
+
 	WM_Context ctx = wm_open_window(arena, 
 				 (RectU16){100,100,800,600}, 
 				 Str8Lit("Demo"),
@@ -50,20 +51,25 @@ void x11_graphics(){
 
 	wm_register_input_events(&ctx, WM_Event_Keyboard_KeyPress|WM_Event_Keyboard_KeyRelease);
 
-	B32 quit = false;
+	volatile B32 quit = false;
+
 	while(!quit){
-		while(wm_num_of_pending_events(&ctx) > 0){
-			XEvent event = {0};
-			XNextEvent(ctx.display, &event);
+		Profile("Frame"){
+			while(wm_num_of_pending_events(&ctx) > 0){
+				XEvent event = {0};
+				XNextEvent(ctx.display, &event);
 
-			if(event.type == KeyPress){
-				wm_resize_window(&ctx, 100, 100);
-				quit = true;
-			}
-		}	
-		wm_draw_window(&ctx);
+				if(event.type == KeyPress){
+					wm_resize_window(&ctx, 100, 100);
+					quit = true;
+				}
+			}	
+			wm_draw_rect(&ctx, (RectU16){100, 100, 700, 500}, (ColorRGBA){0, 100, 0, 0});
+			wm_draw_rect(&ctx, (RectU16){200, 200, 300, 500}, (ColorRGBA){0, 0, 100, 0});
+			wm_draw_window(&ctx);
+		}
+		
 	}
-
 
 	wm_close_window(&ctx);
 	arena_release(arena);
