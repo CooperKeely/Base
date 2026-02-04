@@ -1,4 +1,5 @@
 #define BASE_IMPLEMENTATION
+#define BASE_ENABLE_WINDOW 
 #include "base.h"
 
 
@@ -36,6 +37,14 @@ void hashtable_main(){
 	arena_release(arena);
 }
 
+void x11_graphics(){
+	WM_Display disp = wm_open_window((RectU16){100, 100, 400, 400}, 10);
+	for(;;){
+		wm_draw_window(&disp);
+	}
+	wm_close_window(&disp);
+}
+
 
 void os_main(){
 	os_entry_point(0, NULL);
@@ -45,7 +54,8 @@ void os_main(){
 
 int main(void){
 	os_entry_point(0, NULL);
-	hashtable_main();
+	x11_graphics();
+
         return 0;
 }
 
