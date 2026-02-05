@@ -418,31 +418,19 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #define ClampMax(A, B) Min(A, B)
 #define ClampMin(A, B) Max(A, B)
 
-#define Rect1_U16(x, y, w, h) 	rect_1u16((x), (y), (w), (h))
-#define Rect1_U32(x, y, w, h) 	rect_1u32((x), (y), (w), (h))
-#define Rect1_U64(x, y, w, h) 	rect_1u64((x), (y), (w), (h))
-
-#define Rng1_U32(min, max) 	rng_1u32((min), (max))
-#define Rng1_F32(min, max) 	rng_1f32((min), (max))
-#define Rng1_U64(min, max) 	rng_1u64((min), (max))
-#define Rng1_F64(min, max) 	rng_1f64((min), (max))
-
-#define Vec2_U16(x, y)  	vec_2u16((x), (y))
-#define Vec2_U32(x, y) 		vec_2u32((x), (y)) 
-#define Vec2_F32(x, y)		vec_2f32((x), (y))
-#define Vec3_U32(x, y, z)	vec_3u32((x), (y), (z))
-#define Vec3_F32(x, y, z)	vec_3f32((x), (y), (z))
-
-#define ConstU64(x) Glue(x, UL)
-#define ConstS64(x) Glue(x, L)
-#define ConstF64(x) Glue(x, )
-
-#define ConstU32(x) Glue(x, U)
-#define ConstS32(x) Glue(x, )
-#define ConstF32(x) Glue(x, F)
-
 #define false 0
 #define true 1
+
+///////////////////////////////////////
+/// cjk: Basic Number definitions 
+
+#define U64Lit(x) Glue(x, UL)
+#define S64Lit(x) Glue(x, L)
+#define F64Lit(x) Glue(x, )
+
+#define U32Lit(x) Glue(x, U)
+#define S32Lit(x) Glue(x, )
+#define F32Lit(x) Glue(x, F)
 
 typedef uint8_t U8;
 typedef uint16_t U16;
@@ -486,23 +474,35 @@ typedef union {
   U256 u256[2];
 } U512;
 
-StaticAssert(IsType(ConstU32(10), U32), ConstU32);
-StaticAssert(IsType(ConstS32(1), S32), ConstS32);
-StaticAssert(IsType(ConstF32(1.0), F32), ConstF32);
-StaticAssert(IsType(ConstU64(10), U64), ConstU64);
-StaticAssert(IsType(ConstS64(-1), S64), ConstS64);
-StaticAssert(IsType(ConstF64(1.0), F64), ConstF64);
+// Check literals work
+StaticAssert(IsType(U32Lit(10), U32), U32Lit);
+StaticAssert(IsType(S32Lit(1), S32), S32Lit);
+StaticAssert(IsType(F32Lit(1.0), F32), F32Lit);
+StaticAssert(IsType(U64Lit(10), U64), U64Lit);
+StaticAssert(IsType(S64Lit(-1), S64), S64Lit);
+StaticAssert(IsType(F64Lit(1.0), F64), F64Lit);
+
+
+// int type conversions
+U8 safe_cast_U8(U16 x);
+U16 safe_cast_U16(U32 x);
+U32 safe_cast_U32(U64 x);
+
+S8 safe_cast_S8(S16 x);
+S16 safe_cast_S16(S32 x);
+S32 safe_cast_S32(S64 x);
+
 
 // constants
-global const U64 max_U64 = ConstU64(0xFFFFFFFFFFFFFFFF);
-global const U64 max_S64 = ConstS64(0x7FFFFFFFFFFFFFFF);
-global const U64 min_U64 = ConstU64(0x0000000000000000);
-global const U64 min_S64 = ConstS64(0x8000000000000000);
+global const U64 max_U64 = U64Lit(0xFFFFFFFFFFFFFFFF);
+global const U64 max_S64 = S64Lit(0x7FFFFFFFFFFFFFFF);
+global const U64 min_U64 = U64Lit(0x0000000000000000);
+global const U64 min_S64 = S64Lit(0x8000000000000000);
 
-global const U32 max_U32 = ConstU32(0xFFFFFFFF);
-global const S32 max_S32 = ConstS32(0x7FFFFFFF);
-global const U32 min_U32 = ConstU32(0x00000000);
-global const S32 min_S32 = ConstS32(0x80000000);
+global const U32 max_U32 = U32Lit(0xFFFFFFFF);
+global const S32 max_S32 = S32Lit(0x7FFFFFFF);
+global const U32 min_U32 = U32Lit(0x00000000);
+global const S32 min_S32 = S32Lit(0x80000000);
 
 global const U16 max_U16 = 0xFFFF;
 global const S16 max_S16 = 0x7FFF;
@@ -514,16 +514,19 @@ global const S8 max_S8 = 0x7F;
 global const U8 min_U8 = 0x00;
 global const S8 min_S8 = 0x80;
 
-global const F32 pi32 = ConstF32(3.1415926535897);
+global const F32 pi32 = F32Lit(3.1415926535897);
 
-// Vector Types
+
+///////////////////////////////////////
+/// cjk: Point Types and Functions 
+
 typedef union {
 	struct {
 		U16 x;
 		U16 y;
 	};
 	U16 v[2];
-} Vec2U16;
+} Point2U16;
 
 typedef union {
 	struct {
@@ -531,7 +534,63 @@ typedef union {
 		U32 y;
 	};
 	U32 v[2];
-} Vec2U32;
+} Point2U32;
+
+typedef union {
+	struct {
+		U64 x;
+		U64 y;
+	};
+	U64 v[2];
+} Point2U64;
+
+typedef union {
+	struct {
+		U16 x;
+		U16 y;
+		U16 z;
+	};
+	U16 v[3];
+} Point3U16;
+
+typedef union {
+	struct {
+		U32 x;
+		U32 y;
+		U32 z;
+	};
+	U32 v[3];
+} Point3U32;
+
+typedef union {
+	struct {
+		U64 x;
+		U64 y;
+		U64 z;
+	};
+	U64 v[3];
+} Point3U64;
+
+#define Point2_U16(x, y)  	point_2u16((x), (y))
+#define Point2_U32(x, y) 	point_2u32((x), (y)) 
+#define Point2_U64(x, y) 	point_2u64((x), (y)) 
+
+#define Point3_U16(x, y, z)  	point_3u16((x), (y), (z))
+#define Point3_U32(x, y, z)  	point_3u32((x), (y), (z))
+#define Point3_U64(x, y, z)  	point_3u64((x), (y), (z))
+
+Point2U16 point_2u16(U16 x, U16 y);
+Point2U32 point_2u32(U32 x, U32 y);
+Point2U64 point_2u64(U64 x, U64 y);
+
+Point3U16 point_3u16(U16 x, U16 y, U16 z);
+Point3U32 point_3u32(U32 x, U32 y, U32 z);
+Point3U64 point_3u64(U64 x, U64 y, U64 z);
+
+
+
+///////////////////////////////////////
+/// cjk: Vector Types and Functions 
 
 typedef union {
 	struct {
@@ -543,12 +602,11 @@ typedef union {
 
 typedef union {
 	struct {
-		U32 x;
-		U32 y;
-		U32 z;
+		F64 x;
+		F64 y;
 	};
-	U32 v[2];
-} Vec3U32;
+	F64 v[2];
+} Vec2F64;
 
 typedef union {
 	struct {
@@ -559,7 +617,38 @@ typedef union {
 	F32 v[3];
 } Vec3F32;
 
-// Range Type
+
+typedef union {
+	struct {
+		F64 x;
+		F64 y;
+		F64 z;
+	};
+	F64 v[3];
+} Vec3F64;
+
+#define Vec2_F32(x, y)		vec_2f32((x), (y))
+#define Vec2_F64(x, y)		vec_2f64((x), (y))
+
+#define Vec3_F32(x, y, z)	vec_3f32((x), (y), (z))
+#define Vec3_F64(x, y, z)	vec_3f64((x), (y), (z))
+
+
+Vec2F32 vec_2f32(F32 x, F32 y);
+Vec2F64 vec_2f64(F64 x, F64 y);
+
+Vec3F32 vec_3f32(F32 x, F32 y, F32 z);
+Vec3F64 vec_3f64(F64 x, F64 y, F64 z);
+
+F64 dot_vec2f32(Vec2F32 v1, Vec2F32 v2);
+F64 dot_vec2f64(Vec2F64 v1, Vec2F64 v2);
+
+F64 dot_vec3f32(Vec3F32 v1, Vec3F32 v2);
+F64 dot_vec3f64(Vec3F64 v1, Vec3F64 v2);
+
+///////////////////////////////////////
+/// cjk: Range Definitions 
+
 typedef union {
 	struct {
 		U32 min;
@@ -592,6 +681,26 @@ typedef union {
 	F64 v[2];
 } Rng1F64;
 
+#define Rng1_U32(min, max) 	rng_1u32((min), (max))
+#define Rng1_F32(min, max) 	rng_1f32((min), (max))
+#define Rng1_U64(min, max) 	rng_1u64((min), (max))
+#define Rng1_F64(min, max) 	rng_1f64((min), (max))
+
+Rng1U32 rng_1u32(U32 min, U32 max);
+Rng1F32 rng_1f32(F32 min, F32 max);
+Rng1U64 rng_1u64(U64 min, U64 max);
+Rng1F64 rng_1f64(F64 min, F64 max);
+
+U64 dim_r1u64(Rng1U64 range);
+
+
+///////////////////////////////////////
+/// cjk: Rect Definitions 
+
+#define Rect_U16(x, y, w, h) 	rect_u16((x), (y), (w), (h))
+#define Rect_U32(x, y, w, h) 	rect_u32((x), (y), (w), (h))
+#define Rect_U64(x, y, w, h) 	rect_u64((x), (y), (w), (h))
+
 typedef union{
 	struct{
 		U16 x;
@@ -622,33 +731,9 @@ typedef union{
 	U64 v[4];
 } RectU64;
 
-// int type conversions
-U8 safe_cast_U8(U16 x);
-U16 safe_cast_U16(U32 x);
-U32 safe_cast_U32(U64 x);
-
-S8 safe_cast_S8(S16 x);
-S16 safe_cast_S16(S32 x);
-S32 safe_cast_S32(S64 x);
-
-RectU16 rect_1u16(U16 x, U16 y, U16 width, U16 height);
-RectU32 rect_1u32(U32 x, U32 y, U32 width, U32 height);
-RectU64 rect_1u64(U64 x, U64 y, U64 width, U64 height);
-
-F64 dist_vec2U16(Vec2U16 p1, Vec2U16 p2);
-
-Rng1U32 rng_1u32(U32 min, U32 max);
-Rng1F32 rng_1f32(F32 min, F32 max);
-Rng1U64 rng_1u64(U64 min, U64 max);
-Rng1F64 rng_1f64(F64 min, F64 max);
-
-Vec2U16 vec_2u16(U16 x, U16 y);
-Vec2U32 vec_2u32(U32 x, U32 y);
-Vec2F32 vec_2f32(F32 x, F32 y);
-Vec3U32 vec_3u32(U32 x, U32 y, U32 z);
-Vec3F32 vec_3f32(F32 x, F32 y, F32 z);
-
-U64 dim_r1u64(Rng1U64 range);
+RectU16 rect_u16(U16 x, U16 y, U16 width, U16 height);
+RectU32 rect_u32(U32 x, U32 y, U32 width, U32 height);
+RectU64 rect_u64(U64 x, U64 y, U64 width, U64 height);
 
 ///////////////////////////////////////
 /// cjk: Color Functions 
@@ -1189,11 +1274,11 @@ void wm_draw_window(WM_Context* ctx);
 
 // 2d primitive drawing
 void wm_draw_rect(WM_Context* ctx, RectU32 rect, ColorRGBA color);
-void wm_draw_circle(WM_Context* ctx, Vec2U32 p1, F32 radius, ColorRGBA color) ;
-void wm_draw_line(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, ColorRGBA color);
-void wm_draw_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, ColorRGBA color) ;
-B32 wm_is_point_in_triangle(Vec2U32 point, Vec2U32 a, Vec2U32 b, Vec2U32 c);
-void wm_draw_filled_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, ColorRGBA color);
+void wm_draw_circle(WM_Context* ctx, Point2U32 p1, F32 radius, ColorRGBA color) ;
+void wm_draw_line(WM_Context* ctx, Point2U32 p1, Point2U32 p2, ColorRGBA color);
+void wm_draw_triangle(WM_Context* ctx, Point2U32 p1, Point2U32 p2, Point2U32 p3, ColorRGBA color) ;
+B32 wm_is_point_in_triangle(Point2U32 point, Point2U32 a, Point2U32 b, Point2U32 c);
+void wm_draw_filled_triangle(WM_Context* ctx, Point2U32 p1, Point2U32 p2, Point2U32 p3, ColorRGBA color);
 
 // Event handeling
 void wm_register_input_events(WM_Context* ctx, WM_EventFlag flags);
@@ -1240,15 +1325,9 @@ S32 safe_cast_S32(S64 x) {
 	return (S32)x;
 }
 
-RectU16 rect_1u16(U16 x, U16 y, U16 width, U16 height){ return (RectU16){{x, y, width, height}}; };
-RectU32 rect_1u32(U32 x, U32 y, U32 width, U32 height){ return (RectU32){{x, y, width, height}}; };
-RectU64 rect_1u64(U64 x, U64 y, U64 width, U64 height){ return (RectU64){{x, y, width, height}}; };
-
-F64 dist_vec2U16(Vec2U16 p1, Vec2U16 p2){
-	F64 dx = (F64)p2.x - (F64)p1.x;
-	F64 dy = (F64)p2.y - (F64)p1.y;
-	return sqrtf64(dx*dx + dy*dy);	
-}
+RectU16 rect_u16(U16 x, U16 y, U16 width, U16 height){ return (RectU16){{x, y, width, height}}; };
+RectU32 rect_u32(U32 x, U32 y, U32 width, U32 height){ return (RectU32){{x, y, width, height}}; };
+RectU64 rect_u64(U64 x, U64 y, U64 width, U64 height){ return (RectU64){{x, y, width, height}}; };
 
 Rng1U32 rng_1u32(U32 min, U32 max) {
 	Assert(min < max);
@@ -1270,17 +1349,30 @@ Rng1F64 rng_1f64(F64 min, F64 max) {
 	return (Rng1F64){{.min = min, .max = max}};
 }
 
-Vec2U16 vec_2u16(U16 x, U16 y){ return (Vec2U16){{x, y}};}
-Vec2U32 vec_2u32(U32 x, U32 y){ return (Vec2U32){{x, y}};}
-Vec2F32 vec_2f32(F32 x, F32 y){ return (Vec2F32){{x, y}};}
-Vec3U32 vec_3u32(U32 x, U32 y, U32 z){ return (Vec3U32){{x, y, z}};}
-Vec3F32 vec_3f32(F32 x, F32 y, F32 z){ return (Vec3F32){{x, y, z}};}
+// Point initializers
+Point2U16 point_2u16(U16 x, U16 y){ return (Point2U16){{x, y}};}
+Point2U32 point_2u32(U32 x, U32 y){ return (Point2U32){{x, y}};}
+Point2U64 point_2u64(U64 x, U64 y){ return (Point2U64){{x, y}};}
 
-S32 dot_vec2u16(Vec2U16 v1, Vec2U16 v2){ return (v1.x * v2.x) + (v2.y * v2.y);}
-S32 dot_vec2u32(Vec2U32 v1, Vec2U32 v2){ return (v1.x * v2.x) + (v2.y * v2.y);}
+Point3U16 point_3u16(U16 x, U16 y, U16 z){ return (Point3U16){{x, y, z}};}
+Point3U32 point_3U32(U32 x, U32 y, U32 z){ return (Point3U32){{x, y, z}};}
+Point3U64 point_3U64(U64 x, U64 y, U64 z){ return (Point3U64){{x, y, z}};}
+
+// Vector Functions
+// Initializers
+Vec2F32 vec_2f32(F32 x, F32 y){ return (Vec2F32){{x, y}};}
+Vec2F64 vec_2f64(F64 x, F64 y){ return (Vec2F64){{x, y}};}
+
+Vec3F32 vec_3f32(F32 x, F32 y, F32 z){ return (Vec3F32){{x, y, z}};}
+Vec3F64 vec_3f64(F64 x, F64 y, F64 z){ return (Vec3F64){{x, y, z}};}
+
+// dot products
 F64 dot_vec2f32(Vec2F32 v1, Vec2F32 v2){ return (v1.x * v2.x) + (v2.y * v2.y);}
-S32 dot_vec3u32(Vec3U32 v1, Vec3U32 v2){ return (v1.x * v2.x) + (v2.y * v2.y) + (v1.z * v2.z);}
+F64 dot_vec2f64(Vec2F64 v1, Vec2F64 v2){ return (v1.x * v2.x) + (v2.y * v2.y);}
+
 F64 dot_vec3f32(Vec3F32 v1, Vec3F32 v2){ return (v1.x * v2.x) + (v2.y * v2.y) + (v1.z * v2.z);}
+F64 dot_vec3f64(Vec3F64 v1, Vec3F64 v2){ return (v1.x * v2.x) + (v2.y * v2.y) + (v1.z * v2.z);}
+
 
 U64 dim_r1u64(Rng1U64 r) { 
 	return ((r.max > r.min) ? (r.max - r.min) : 0); 
@@ -1668,7 +1760,7 @@ Str8List *str8_tokenize_list(Arena *arena, Str8 string, Str8 delimiters) {
 HashMap *hash_map_init(Arena *arena) {
 	HashMap *hashmap = ArenaPushStructZero(arena, HashMap);
 	hashmap->arena = arena;
-	hashmap->next_free_collision_bucket = ConstU64(0);
+	hashmap->next_free_collision_bucket = U64Lit(0);
 	return hashmap;
 }
 
@@ -1753,8 +1845,8 @@ U64 hash_fnv1a_u64(const void *in_ptr, U64 num_bytes) {
 	const U8 *byte_arr = (const U8 *)in_ptr;
 
 	// seeds for FNV-1a hashing do not touch
-	U64 fnv_prime = ConstU64(0x00000100000001b3);
-	U64 fnv_hash = ConstU64(0xcbf29ce484222325);
+	U64 fnv_prime = U64Lit(0x00000100000001b3);
+	U64 fnv_hash = U64Lit(0xcbf29ce484222325);
 
 	for EachIndex(i, num_bytes) {
 		fnv_hash ^= byte_arr[i];
@@ -2094,7 +2186,7 @@ WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 
 
 	U32 screen = DefaultScreen(result.display);
 
-	result.over_size = Rect1_U16(0,0, DisplayWidth(result.display, screen), DisplayHeight(result.display, screen));
+	result.over_size = Rect_U16(0,0, DisplayWidth(result.display, screen), DisplayHeight(result.display, screen));
 
 	Assert(result.display);
 	Assert(result.screen);
@@ -2217,7 +2309,7 @@ void wm_draw_rect(WM_Context* ctx, RectU32 rect, ColorRGBA color){
 
 // This method uses Midpoint circle algorithm for quickly drawing a circle
 // https://en.wikipedia.org/wiki/Midpoint_circle_algorithm 
-void wm_draw_circle(WM_Context* ctx, Vec2U32 p1, F32 radius, ColorRGBA color){
+void wm_draw_circle(WM_Context* ctx, Point2U32 p1, F32 radius, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 	Assert(radius > 0.0);
@@ -2267,7 +2359,7 @@ void wm_draw_circle(WM_Context* ctx, Vec2U32 p1, F32 radius, ColorRGBA color){
 // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm  
 // https://groups.csail.mit.edu/graphics/classes/6.837/F02/lectures/6.837-7_Line.pdf
 // https://zingl.github.io/Bresenham.pdf
-void wm_draw_line(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, ColorRGBA color){
+void wm_draw_line(WM_Context* ctx, Point2U32 p1, Point2U32 p2, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 
@@ -2309,19 +2401,19 @@ void wm_draw_line(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, ColorRGBA color){
 	}
 }
 
-void wm_draw_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, ColorRGBA color){
+void wm_draw_triangle(WM_Context* ctx, Point2U32 p1, Point2U32 p2, Point2U32 p3, ColorRGBA color){
 	wm_draw_line(ctx, p1, p2, color);
 	wm_draw_line(ctx, p2, p3, color);
 	wm_draw_line(ctx, p3, p1, color);
 } 
 
-B32 wm_is_point_in_triangle(Vec2U32 point, Vec2U32 a, Vec2U32 b, Vec2U32 c){
+B32 wm_is_point_in_triangle(Point2U32 point, Point2U32 a, Point2U32 b, Point2U32 c){
 	B32 result = false;	
-
+	
 	return result;	
 }
 
-void wm_draw_filled_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, ColorRGBA color){
+void wm_draw_filled_triangle(WM_Context* ctx, Point2U32 p1, Point2U32 p2, Point2U32 p3, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 
@@ -2342,7 +2434,7 @@ void wm_draw_filled_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3
 
 	for EachInRange(y, y_rng){
 		for EachInRange(x, x_rng){
-			if(wm_is_point_in_triangle(Vec2_U32(x, y), p1, p2, p3)){
+			if(wm_is_point_in_triangle(Point2_U32(x, y), p1, p2, p3)){
 				pixels[y * stride + x] = color_const;
 			}
 		}	
