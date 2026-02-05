@@ -73,12 +73,50 @@ void x11_graphics(){
 				}
 			}	
 			
-			wm_draw_rect(&ctx, (RectU16){0, 0, ctx.size.width, ctx.size.height}, (ColorRGBA){0, 0, 0, 0});
-			for EachIndex(i, 1000){
-				wm_draw_rect(&ctx, (RectU16){i, 0, 100, 100}, (ColorRGBA){0, 100+i, 0, 0});
-				wm_draw_rect(&ctx, (RectU16){0, i, 100, 100}, (ColorRGBA){0, 0, 100+i, 0});
-				wm_draw_circle(&ctx, (Vec2U16){i,i}, 100, (ColorRGBA){i, i/2, i/3, 0});
-			}
+			
+			// 2d primitive testing
+			// Background
+			wm_draw_rect(&ctx, (RectU32){0, 0, ctx.size.width, ctx.size.height}, (ColorRGBA){0, 0, 0, 0});
+
+			// Bresenham line test colors
+			#define COLOR_WHITE (ColorRGBA){.r=255, .g=255, .b=255, .a=255}
+			#define COLOR_RED   (ColorRGBA){.r=255, .g=0,   .b=0,   .a=255}
+			#define COLOR_GREEN (ColorRGBA){.r=0,   .g=255, .b=0,   .a=255}
+			#define COLOR_BLUE  (ColorRGBA){.r=0,   .g=0,   .b=255, .a=255}
+			#define COLOR_YELLOW (ColorRGBA){.r=255, .g=255, .b=0,  .a=255}
+
+			// --- Group 1: Orthogonal (Top Left) ---
+			wm_draw_line(&ctx, (Vec2U32){50, 50}, (Vec2U32){150, 50},  COLOR_WHITE); // Horizontal
+			wm_draw_line(&ctx, (Vec2U32){50, 50}, (Vec2U32){50, 150},  COLOR_WHITE); // Vertical
+
+			// --- Group 2: 45 Degree Diagonals (Top Middle) ---
+			wm_draw_line(&ctx, (Vec2U32){300, 50},  (Vec2U32){400, 150}, COLOR_WHITE); // Down-Right
+			wm_draw_line(&ctx, (Vec2U32){450, 150}, (Vec2U32){550, 50},  COLOR_WHITE); // Up-Right
+			wm_draw_line(&ctx, (Vec2U32){700, 150}, (Vec2U32){600, 50},  COLOR_WHITE); // Up-Left
+			wm_draw_line(&ctx, (Vec2U32){850, 50},  (Vec2U32){750, 150}, COLOR_WHITE); // Down-Left
+
+			// --- Group 3: Shallow Lines |dx| > |dy| (Center Row) ---
+			// Rightward shallow
+			wm_draw_line(&ctx, (Vec2U32){50, 300},  (Vec2U32){250, 350}, COLOR_GREEN); // Octant 0
+			wm_draw_line(&ctx, (Vec2U32){250, 370}, (Vec2U32){50, 320},  COLOR_GREEN); // Octant 4 (Reverse)
+			// Leftward shallow
+			wm_draw_line(&ctx, (Vec2U32){550, 300}, (Vec2U32){350, 350}, COLOR_YELLOW); 
+			wm_draw_line(&ctx, (Vec2U32){350, 370}, (Vec2U32){550, 320}, COLOR_YELLOW);
+
+			// --- Group 4: Steep Lines |dy| > |dx| (Bottom Row) ---
+			// Downward steep
+			wm_draw_line(&ctx, (Vec2U32){50,  450}, (Vec2U32){100, 650}, COLOR_RED);   // Octant 1
+			wm_draw_line(&ctx, (Vec2U32){120, 650}, (Vec2U32){70,  450}, COLOR_RED);   // Octant 5 (Reverse)
+			// Upward steep
+			wm_draw_line(&ctx, (Vec2U32){250, 650}, (Vec2U32){300, 450}, COLOR_BLUE);
+			wm_draw_line(&ctx, (Vec2U32){320, 450}, (Vec2U32){270, 650}, COLOR_BLUE);
+
+			// --- Group 5: Boundary/Clipping Test ---
+			// These test if your loop handles coordinates outside [0, 1279] and [0, 719]
+			wm_draw_line(&ctx, (Vec2U32){1200, 10}, (Vec2U32){1300, 100}, COLOR_RED);  // Right edge clip
+			wm_draw_line(&ctx, (Vec2U32){10, 700},  (Vec2U32){100, 800},  COLOR_BLUE); // Bottom edge clip
+			wm_draw_line(&ctx, (Vec2U32){-50, 360}, (Vec2U32){50, 360},   COLOR_GREEN); // Left edge clip
+
 			wm_draw_window(&ctx);
 		}
 		

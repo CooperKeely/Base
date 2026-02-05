@@ -1249,7 +1249,9 @@ void wm_draw_window(WM_Context* ctx){
 }
 
 // 2d primitive drawing
-void wm_draw_rect(WM_Context* ctx, RectU16 rect, ColorRGBA color){
+
+
+void wm_draw_rect(WM_Context* ctx, RectU32 rect, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 
@@ -1276,13 +1278,14 @@ void wm_draw_rect(WM_Context* ctx, RectU16 rect, ColorRGBA color){
 	}
 }
 
-void wm_draw_circle(WM_Context* ctx, Vec2U16 p1, F32 radius, ColorRGBA color){
+
+// This method uses Midpoint circle algorithm for quickly drawing a circle
+// https://en.wikipedia.org/wiki/Midpoint_circle_algorithm 
+void wm_draw_circle(WM_Context* ctx, Vec2U32 p1, F32 radius, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 	Assert(radius > 0.0);
 
-
-	
 	S32 x0 = (S32) p1.x;
 	S32 y0 = (S32) p1.y;
 	S32 r  = (S32) radius;
@@ -1321,48 +1324,47 @@ void wm_draw_circle(WM_Context* ctx, Vec2U16 p1, F32 radius, ColorRGBA color){
 			decision += 2 * (y - x) + 1;
 		}
 	}
+	#undef Local_Macro_DRAWSPAN
+} 
 
+void wm_draw_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, ColorRGBA color){
+	NotImplemented;		
+} 
 
-/*
+// This method uses Bresenham's line algorithm
+// https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm  
+// https://groups.csail.mit.edu/graphics/classes/6.837/F02/lectures/6.837-7_Line.pdf
+void wm_draw_line(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, ColorRGBA color){
+	Assert(ctx);
+	Assert(ctx->image);
+
 	U32* pixels = (U32*) ctx->image->data;
 	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
-
 	U32 window_width = ctx->size.width;
 	U32 window_height = ctx->size.height;
+	U32 color_const = color.c;
 
-	U32 y_start = Max(0, (S32)(p1.y - radius));
-	U32 y_end = Min(window_height-1, (S32)(p1.y + radius));
-	F32 radius_pow2 = radius * radius;
-	
-	if(window_height < y_start) return;
-	
-	for(U32 y = y_start; y < y_end; y ++){	
-		F32 dy = (F32)y - (F32)p1.y; 
-		F32 dx_sq = radius_pow2 - (dy*dy);
-		
-		if(dx_sq < 0) continue;
 
-		U32 dx = (U32) sqrt(dx_sq);
 
-		S32 x_start = Max(p1.x - dx, 0);
-		S32 x_end = Min(p1.x + dx, window_width-1);
-		
-		if(window_width < x_start) break;
+	U32 x0 = Max(0, Min(p1.x, p2.x));
+	U32 y0 = Max(0, Min(p1.y, p2.y));
+	U32 x1 = Min(window_width, Max(p1.x, p2.x));
+	U32 y1 = Min(window_height, Max(p1.y, p2.y));
 
-		for(U32 x = x_start; x < x_end; x++){
-			pixels[(y* stride) + x] = color.c;
+	U32 dx = x1 - x0;
+	U32 dy = y1 - y0;
+	U32 decision = 2*dy - dx;
+	U32 y = y0;
+
+	for(U32 x = x0; x < x1; x++){
+		pixels[y * stride + x] = color_const;
+		if(decision > 0){
+			y = y + 1;
+			decision = decision + (2 * (dy - dx));
+		}else{
+			decision = decision + 2 * dy;
 		}
-	}*/
-} 
-
-void wm_draw_triangle(WM_Context* ctx, Vec2U16 p1, Vec2U16 p2, Vec2U16 p3, ColorRGBA color){
-	NotImplemented;
-} 
-
-void wm_draw_line(WM_Context* ctx, Vec2U16 p1, Vec2U16 p2){
-		
-
-	NotImplemented;	
+	}
 }
 
 void wm_close_window(WM_Context* ctx){
