@@ -592,15 +592,6 @@ typedef union {
 } Rng1F64;
 
 
-typedef union{
-	struct{
-		U8 r;
-		U8 g;
-		U8 b;
-		U8 a;
-	};
-	U32 c;
-}ColorRGBA;
 
 
 typedef union{
@@ -645,6 +636,52 @@ Rng1U64 rng_1u64(U64 min, U64 max);
 U64 dim_r1u64(Rng1U64 range);
 
 Rng1F64 rng_1f64(F64 min, F64 max);
+
+///////////////////////////////////////
+/// cjk: Color Functions 
+
+#define RGB(R,G,B) (ColorRGBA){.r=(R), .g=(G), .b=(B), .a=255)}
+
+#define COLOR_WHITE 	RGB(255,255,255)
+#define COLOR_BLACK 	RGB(0,0,0)
+#define COLOR_RED   	RGB(255,0,0) 
+#define COLOR_GREEN	RGB(0,255,0) 
+#define COLOR_BLUE 	RGB(0, 0, 255) 
+#define COLOR_YELLOW 	RGB(255,255,0)
+#define COLOR_MAGENTA	RGB(255,0,255) 
+#define COLOR_CYAN	RGB(0,255,255) 
+
+
+typedef union{
+	struct{
+		U8 r;
+		U8 g;
+		U8 b;
+		U8 a;
+	};
+	U32 c;
+}ColorRGBA;
+
+typedef union{
+	struct{
+		U8 b;
+		U8 g;
+		U8 r;
+		U8 a;
+	};
+	U32 c;
+}ColorBGRA;
+
+ColorBGRA color_rgba_to_bgra(ColorRGBA color){
+	return (ColorBGRA){
+		.b = color.b,
+		.g = color.g,
+		.r = color.r,
+		.a = color.a
+	};
+}
+
+
 
 ///////////////////////////////////////
 /// cjk: Arena Implementation
@@ -1269,7 +1306,7 @@ void wm_draw_rect(WM_Context* ctx, RectU32 rect, ColorRGBA color){
 	U32* pixels = (U32*) ctx->image->data;
 	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
 	U32 width = x2 - x1;
-	U32 color_const = color.c;
+	U32 color_const = color_rgba_to_bgra(color).c;
 
 	// this points to the first pixel in the rect
 	U32* row_ptr = pixels + (y1 * stride) + x1;
@@ -1298,7 +1335,7 @@ void wm_draw_circle(WM_Context* ctx, Vec2U32 p1, F32 radius, ColorRGBA color){
 	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
 	U32 window_width = ctx->size.width;
 	U32 window_height = ctx->size.height;
-	U32 color_const = color.c;
+	U32 color_const = color_rgba_to_bgra(color).c;
 
 	S32 x = r;
 	S32 y = 0;
@@ -1343,7 +1380,7 @@ void wm_draw_line(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, ColorRGBA color){
 	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
 	U32 window_width = ctx->size.width;
 	U32 window_height = ctx->size.height;
-	U32 color_const = color.c;
+	U32 color_const = color_rgba_to_bgra(color).c;
 
 	S32 x0 = p1.x;
 	S32 y0 = p1.y; 
