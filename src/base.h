@@ -1333,13 +1333,10 @@ void wm_draw_circle(WM_Context* ctx, Vec2U32 p1, F32 radius, ColorRGBA color){
 	#undef Local_Macro_DRAWSPAN
 } 
 
-void wm_draw_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, ColorRGBA color){
-	NotImplemented;		
-} 
-
 // This method uses Bresenham's line algorithm
 // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm  
 // https://groups.csail.mit.edu/graphics/classes/6.837/F02/lectures/6.837-7_Line.pdf
+// https://zingl.github.io/Bresenham.pdf
 void wm_draw_line(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
@@ -1350,39 +1347,43 @@ void wm_draw_line(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, ColorRGBA color){
 	U32 window_height = ctx->size.height;
 	U32 color_const = color.c;
 
-	S32 x0 = (S32)p1.x;
-	S32 y0 = (S32)p1.y; 
-	S32 x1 = (S32)p2.x; 
-	S32 y1 = (S32)p2.y; 
+	S32 x0 = p1.x;
+	S32 y0 = p1.y; 
+	S32 x1 = p2.x; 
+	S32 y1 = p2.y;
 
-	U32 dx = abs(x1 - x0);
-	U32 dy = abs(y1 - y0);
-
+	S32 dx = abs(x1 - x0);
+	S32 dy = -abs(y1 - y0);
 	S32 sx = (x0 < x1)? 1 : -1;
 	S32 sy = (y0 < y1)? 1 : -1;
+	S32 err = dx+dy;
+	S32 err_2;
 
-	U32 y = y0;
-
-	if(dy >= dx){Swap(dy, dx);}
-
-	U32 decision = 2*dy - dx;
-
-	for EachIndex(i, dx){
-		if( 0 <= x0 && x0 < window_width && 0 <= y && y < window_height){
-			pixels[y * stride + x0] = color_const;
+	for(;;){
+		if( 0 <= x0 && x0 < window_width && 0 <= y0 && y0 < window_height){
+			pixels[y0 * stride + x0] = color_const;
 		}
+		
+		err_2 = 2 * err;
 
-		if(decision > 0){
-			y += sy;
-			decision = decision + (2 * (dy - dx));
-		}else{
-			decision = decision + 2 * dy;
+		if(err_2 >= dy){
+			if(x0 == x1) break;
+			err += dy;
+			x0 += sx;
+		}
+		if(err_2 <= dx){
+			if(y0 == y1) break;
+			err += dx;
+			y0 += sy;
 		}
 	}
-
-
-
 }
+
+void wm_draw_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, ColorRGBA color){
+	wm_draw_line(ctx, p1, p2, color);
+	wm_draw_line(ctx, p2, p3, color);
+	wm_draw_line(ctx, p2, p3, color);
+} 
 
 void wm_close_window(WM_Context* ctx){
 	XUnmapWindow(ctx->display, ctx->window);
