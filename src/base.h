@@ -418,17 +418,20 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #define ClampMax(A, B) Min(A, B)
 #define ClampMin(A, B) Max(A, B)
 
-#define RNG1U32(min, max) 	rng_1u32((min), (max))
-#define RNG1F32(min, max) 	rng_1f32((min), (max))
-#define RNG1U64(min, max) 	rng_1u64((min), (max))
-#define RNG1F64(min, max) 	rng_1f64((min), (max))
+#define Rect1_U16(x, y, w, h) 	rect_1u16((x), (y), (w), (h))
+#define Rect1_U32(x, y, w, h) 	rect_1u32((x), (y), (w), (h))
+#define Rect1_U64(x, y, w, h) 	rect_1u64((x), (y), (w), (h))
 
-#define VEC2U16(x, y)  		vec_2u16((x), (y))
-#define VEC2U32(x, y) 		vec_2u32((x), (y)) 
-#define VEC2F32(x, y)		vec_2f32((x), (y))
-#define VEC3U32(x, y, z)	vec_3u32((x), (y), (z))
-#define Vec3F32(x, y, z)	vec_3f32((x), (y), (z))
+#define Rng1_U32(min, max) 	rng_1u32((min), (max))
+#define Rng1_F32(min, max) 	rng_1f32((min), (max))
+#define Rng1_U64(min, max) 	rng_1u64((min), (max))
+#define Rng1_F64(min, max) 	rng_1f64((min), (max))
 
+#define Vec2_U16(x, y)  	vec_2u16((x), (y))
+#define Vec2_U32(x, y) 		vec_2u32((x), (y)) 
+#define Vec2_F32(x, y)		vec_2f32((x), (y))
+#define Vec3_U32(x, y, z)	vec_3u32((x), (y), (z))
+#define Vec3_F32(x, y, z)	vec_3f32((x), (y), (z))
 
 #define ConstU64(x) Glue(x, UL)
 #define ConstS64(x) Glue(x, L)
@@ -489,15 +492,6 @@ StaticAssert(IsType(ConstF32(1.0), F32), ConstF32);
 StaticAssert(IsType(ConstU64(10), U64), ConstU64);
 StaticAssert(IsType(ConstS64(-1), S64), ConstS64);
 StaticAssert(IsType(ConstF64(1.0), F64), ConstF64);
-
-// int type conversions
-U8 safe_cast_U8(U16 x);
-U16 safe_cast_U16(U32 x);
-U32 safe_cast_U32(U64 x);
-
-S8 safe_cast_S8(S16 x);
-S16 safe_cast_S16(S32 x);
-S32 safe_cast_S32(S64 x);
 
 // constants
 global const U64 max_U64 = ConstU64(0xFFFFFFFFFFFFFFFF);
@@ -628,7 +622,18 @@ typedef union{
 	U64 v[4];
 } RectU64;
 
+// int type conversions
+U8 safe_cast_U8(U16 x);
+U16 safe_cast_U16(U32 x);
+U32 safe_cast_U32(U64 x);
 
+S8 safe_cast_S8(S16 x);
+S16 safe_cast_S16(S32 x);
+S32 safe_cast_S32(S64 x);
+
+RectU16 rect_1u16(U16 x, U16 y, U16 width, U16 height);
+RectU32 rect_1u32(U32 x, U32 y, U32 width, U32 height);
+RectU64 rect_1u64(U64 x, U64 y, U64 width, U64 height);
 
 F64 dist_vec2U16(Vec2U16 p1, Vec2U16 p2);
 
@@ -638,7 +643,6 @@ Rng1U64 rng_1u64(U64 min, U64 max);
 Rng1F64 rng_1f64(F64 min, F64 max);
 
 Vec2U16 vec_2u16(U16 x, U16 y);
-
 Vec2U32 vec_2u32(U32 x, U32 y);
 Vec2F32 vec_2f32(F32 x, F32 y);
 Vec3U32 vec_3u32(U32 x, U32 y, U32 z);
@@ -649,8 +653,10 @@ U64 dim_r1u64(Rng1U64 range);
 ///////////////////////////////////////
 /// cjk: Color Functions 
 
-#define RGB(R,G,B) (ColorRGBA){.r=(R), .g=(G), .b=(B), .a=255)}
+#define RGB(R,G,B)	color_rgba((U8)(R), (U8)(G), (U8)(B), (U8)255) 
+#define RGBA(R,G,B,A)	color_rgba((U8)(R), (U8)(G), (U8)(B), (U8)(A))
 
+// Color pallette
 #define COLOR_WHITE 	RGB(255,255,255)
 #define COLOR_BLACK 	RGB(0,0,0)
 #define COLOR_RED   	RGB(255,0,0) 
@@ -681,14 +687,9 @@ typedef union{
 	U32 c;
 }ColorBGRA;
 
-ColorBGRA color_rgba_to_bgra(ColorRGBA color){
-	return (ColorBGRA){
-		.b = color.b,
-		.g = color.g,
-		.r = color.r,
-		.a = color.a
-	};
-}
+
+ColorRGBA color_rgba(U8 r, U8 g, U8 b, U8 a);
+ColorBGRA color_rgba_to_bgra(ColorRGBA color);
 
 
 
@@ -763,8 +764,8 @@ void str8_printf(FILE *file_ptr, const char *format, ...);
 Str8 str8_pushf(Arena *arena, const char *format, ...);
 Str8 str8_skip_last_slash(Str8 str);
 inline U8 str8_get(Str8 str, U64 idx);
-U64 cstring_length(char *c);
-Str8 cstring_to_str8(char *c);
+U64 cstring_length(const char *c);
+Str8 cstring_to_str8(const char *c);
 char* str8_to_cstring(Arena* arena, Str8 str);
 Str8 str8_substr(Str8 s1, Rng1U64 range);
 Str8 str8_concat(Arena *arena, Str8 s1, Str8 s2);
@@ -1176,320 +1177,27 @@ typedef struct{
 }WM_Context;
 
 
-WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 border_width, ColorRGBA border_color,  ColorRGBA background_color){
-	Assert(arena);	
+// Open and closing window
+WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 border_width, ColorRGBA border_color,  ColorRGBA background_color);
+void wm_close_window(WM_Context* ctx);
 
-	// default values
-	U16 default_boarder = 10;
-
-	WM_Context result = {0};
-
-	result.arena = arena;
-	result.size = win_rect;
-	result.name = window_name;
-
-	result.display = XOpenDisplay(NULL);
-	result.screen = XDefaultScreenOfDisplay(result.display);
-	result.window = XCreateSimpleWindow(result.display, 
-			       XDefaultRootWindow(result.display), 
-			       win_rect.x, win_rect.y, 
-			       win_rect.width, win_rect.height,
-			       (border_width == 0)? default_boarder : border_width,
-			       border_color.c,
-			       background_color.c);
-
-	XSetWindowAttributes attr;
-	attr.background_pixmap = None;
-	attr.bit_gravity = NorthWestGravity;
-	XChangeWindowAttributes(result.display, result.window, CWBackPixmap, &attr);
-
-
-	U32 screen = DefaultScreen(result.display);
-
-	result.over_size = (RectU16){.x=0 , .y=0, 
-		.width=DisplayWidth(result.display, screen), 
-		.height=DisplayHeight(result.display, screen)};
-
-	Assert(result.display);
-	Assert(result.screen);
-	Assert(result.window);
-
-#if HAS_SYS_SHM
-	printf("[MIT-SHM supported by X11]\n");	
-
-
-	result.image = XShmCreateImage(result.display,
-				DefaultVisualOfScreen(result.screen),
-				DefaultDepthOfScreen(result.screen),
-				ZPixmap,
-				NULL,
-				&result.shm_info,
-				result.over_size.width, result.over_size.height);
-
-	Assert(result.image);
-
-	U64 total_size = result.image->bytes_per_line * result.image->height;
-	result.shm_info.shmid = shmget(IPC_PRIVATE, total_size, IPC_CREAT|0777);
-
-	result.shm_info.shmaddr = result.image->data = shmat(result.shm_info.shmid, 0, 0);
-	result.shm_info.readOnly = False;
-
-	Status status = XShmAttach(result.display, &result.shm_info);
-	XSync(result.display, False);
-	shmctl(result.shm_info.shmid, IPC_RMID, 0);
-
-	Assert(status);
-
-# else
-	printf("[MIT-SHM unsupported by X11 Falling back]\n");
-
-	result.image_buffer = ArenaPushArray(arena, U8, sizeof(ColorRGBA) * win_rect.width * win_rect.height);
-	result.image = XCreateImage(result.display, 
-				DefaultVisualOfScreen(result.screen),
-				DefaultDepthOfScreen(result.screen), 
-				ZPixmap, 
-				0, 
-				(char*) result.image_buffer, 
-				win_rect.width, win_rect.height, 
-				BitsFromBytes(sizeof(ColorRGBA)), 0); 
-
-	Assert(result.image);
-
-#endif
-	result.graphics_ctx = XCreateGC(result.display, result.window, 0, &result.graphics_ctx_values);
-
-	XStoreName(result.display, result.window, str8_to_cstring(arena, window_name));
-
-	XMapWindow(result.display, result.window);
-	return result;	
-}
-
-void wm_resize_window(WM_Context* ctx, U16 width, U16 height){
-	XResizeWindow(ctx->display, ctx->window, width, height);
-}
-
-void wm_move_window(WM_Context* ctx, U16 x, U16 y){
-	XMoveWindow(ctx->display, ctx->window, x, y);
-}
-
-
-void wm_resize_and_move_window(WM_Context* ctx, RectU16 new_size){
-	U32 change_mask = WM_WindowCfgUpdate_X | WM_WindowCfgUpdate_Y | WM_WindowCfgUpdate_Width | WM_WindowCfgUpdate_Height;
-	XWindowChanges changes = {
-		.x = new_size.x,
-		.y = new_size.y,
-		.width = new_size.width,
-		.height = new_size.height
-	};
-	XConfigureWindow(ctx->display, ctx->window, change_mask, &changes);
-}
-
-
-void wm_draw_window(WM_Context* ctx){
-	Assert(ctx);
-	Assert(ctx->display);
-	Assert(ctx->window);
-	Assert(ctx->image);
-
-#if HAS_SYS_SHM	
-	XShmPutImage(ctx->display, ctx->window, ctx->graphics_ctx, ctx->image, 0, 0, 0, 0, ctx->size.width, ctx->size.height, False);
-	XSync(ctx->display, False);
-#else
-	XPutImage(ctx->display, ctx->window, ctx->graphics_ctx, ctx->image, 0, 0, 0, 0, ctx->size.width, ctx->size.height);
-	XFlush(ctx->display);
-#endif
-}
+// Resizing the window
+void wm_resize_window(WM_Context* ctx, U16 width, U16 height);
+void wm_move_window(WM_Context* ctx, U16 x, U16 y);
+void wm_resize_and_move_window(WM_Context* ctx, RectU16 new_size);
+void wm_draw_window(WM_Context* ctx);
 
 // 2d primitive drawing
-void wm_draw_rect(WM_Context* ctx, RectU32 rect, ColorRGBA color){
-	Assert(ctx);
-	Assert(ctx->image);
+void wm_draw_rect(WM_Context* ctx, RectU32 rect, ColorRGBA color);
+void wm_draw_circle(WM_Context* ctx, Vec2U32 p1, F32 radius, ColorRGBA color) ;
+void wm_draw_line(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, ColorRGBA color);
+void wm_draw_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, ColorRGBA color) ;
+B32 wm_is_point_in_triangle(Vec2U32 point, Vec2U32 a, Vec2U32 b, Vec2U32 c);
+void wm_draw_filled_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, ColorRGBA color);
 
-	U32 x1 = Max(0, rect.x);
-	U32 y1 = Max(0, rect.y);
-	U32 x2 = Min(ctx->size.width, (rect.x + rect.width));
-	U32 y2 = Min(ctx->size.height, (rect.y + rect.height));
-
-	if( x1 >= x2 || y1 >= y2 ) return;
-
-	U32* pixels = (U32*) ctx->image->data;
-	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
-	U32 width = x2 - x1;
-	U32 color_const = color_rgba_to_bgra(color).c;
-
-	// this points to the first pixel in the rect
-	U32* row_ptr = pixels + (y1 * stride) + x1;
-
-	for (U32 y = y1; y < y2; y++){
-		for (U32 x = 0; x < width; x++){
-			row_ptr[x] = color_const; 
-		}
-		row_ptr += stride;
-	}
-}
-
-
-// This method uses Midpoint circle algorithm for quickly drawing a circle
-// https://en.wikipedia.org/wiki/Midpoint_circle_algorithm 
-void wm_draw_circle(WM_Context* ctx, Vec2U32 p1, F32 radius, ColorRGBA color){
-	Assert(ctx);
-	Assert(ctx->image);
-	Assert(radius > 0.0);
-
-	S32 x0 = (S32) p1.x;
-	S32 y0 = (S32) p1.y;
-	S32 r  = (S32) radius;
-
-	U32* pixels = (U32*) ctx->image->data;
-	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
-	U32 window_width = ctx->size.width;
-	U32 window_height = ctx->size.height;
-	U32 color_const = color_rgba_to_bgra(color).c;
-
-	S32 x = r;
-	S32 y = 0;
-	S32 decision = 1 - r;
-
-	#define Local_Macro_DRAWSPAN(py, x_start, x_end) do{				\
-			if((py) >= (0) && (py) <= (window_height)) {			\
-      				S32 left = Max(0, (x_start));				\
-				S32 right = Min((window_width-1),(x_end));		\ 
-				for(S32 px = left; px < right; px ++){			\
-					pixels[(py) * stride + px] = color_const;	\
-				}							\
-			}								\
-		}while(0)
-
-	while(x >= y){
-		Local_Macro_DRAWSPAN(y0+y, x0-x, x0+x);
-		Local_Macro_DRAWSPAN(y0-y, x0-x, x0+x);
-		Local_Macro_DRAWSPAN(y0+x, x0-y, x0+y);
-		Local_Macro_DRAWSPAN(y0-x, x0-y, x0+y);
-
-		y++;
-		if(decision <= 0){
-			decision += 2 * y + 1;
-		}else{
-			x--;
-			decision += 2 * (y - x) + 1;
-		}
-	}
-	#undef Local_Macro_DRAWSPAN
-} 
-
-// This method uses Bresenham's line algorithm
-// https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm  
-// https://groups.csail.mit.edu/graphics/classes/6.837/F02/lectures/6.837-7_Line.pdf
-// https://zingl.github.io/Bresenham.pdf
-void wm_draw_line(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, ColorRGBA color){
-	Assert(ctx);
-	Assert(ctx->image);
-
-	U32* pixels = (U32*) ctx->image->data;
-	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
-	U32 window_width = ctx->size.width;
-	U32 window_height = ctx->size.height;
-	U32 color_const = color_rgba_to_bgra(color).c;
-
-	S32 x0 = p1.x;
-	S32 y0 = p1.y; 
-	S32 x1 = p2.x; 
-	S32 y1 = p2.y;
-
-	S32 dx = abs(x1 - x0);
-	S32 dy = -abs(y1 - y0);
-	S32 sx = (x0 < x1)? 1 : -1;
-	S32 sy = (y0 < y1)? 1 : -1;
-	S32 err = dx+dy;
-	S32 err_2;
-
-	for(;;){
-		if( 0 <= x0 && x0 < window_width && 0 <= y0 && y0 < window_height){
-			pixels[y0 * stride + x0] = color_const;
-		}
-		
-		err_2 = 2 * err;
-
-		if(err_2 >= dy){
-			if(x0 == x1) break;
-			err += dy;
-			x0 += sx;
-		}
-		if(err_2 <= dx){
-			if(y0 == y1) break;
-			err += dx;
-			y0 += sy;
-		}
-	}
-}
-
-void wm_draw_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, ColorRGBA color){
-	wm_draw_line(ctx, p1, p2, color);
-	wm_draw_line(ctx, p2, p3, color);
-	wm_draw_line(ctx, p3, p1, color);
-	
-} 
-
-B32 wm_is_point_in_triangle(Vec2U32 point, Vec2U32 a, Vec2U32 b, Vec2U32 c){
-	B32 result = false;	
-			
-
-
-
-	return result;	
-}
-
-void wm_draw_filled_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, ColorRGBA color){
-	Assert(ctx);
-	Assert(ctx->image);
-
-	U32* pixels = (U32*) ctx->image->data;
-	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
-	U32 window_width = ctx->size.width;
-	U32 window_height = ctx->size.height;
-	U32 color_const = color_rgba_to_bgra(color).c;
-
-	// get bounding box
-	U32 x_min = Min(0, Min(p1.x, Min(p2.x, p3.x)));
-	U32 y_min = Min(0, Min(p1.y, Min(p2.y, p3.y)));
-	U32 x_max = Min(window_width, Max(p1.x, Max(p2.x, p3.x)));
-	U32 y_max = Min(window_height, Max(p1.y, Max(p2.y, p3.y)));
-
-	Rng1U32 x_rng = RNG1U32(x_min, x_max);
-	Rng1U32 y_rng = RNG1U32(y_min, y_max);
-
-	for EachInRange(y, y_rng){
-		for EachInRange(x, x_rng){
-			if(wm_is_point_in_triangle(VEC2U32(x, y), p1, p2, p3)){
-				pixels[y * stride + x] = color_const;
-			}
-		}	
-	}
-}
-
-
-void wm_close_window(WM_Context* ctx){
-	XUnmapWindow(ctx->display, ctx->window);
-	XDestroyWindow(ctx->display, ctx->window);
-	XFreeGC(ctx->display, ctx->graphics_ctx);
-	XCloseDisplay(ctx->display);
-}
-
-void wm_register_input_events(WM_Context* ctx, WM_EventFlag flags){
-	long event_mask = 0;	
-
-	for EachIndex(i, ArrayCount(wm_event_mask_map)){
-		if(flags & wm_event_mask_map[i].flag){
-			event_mask |= wm_event_mask_map[i].event_mask;
-		}
-	}
-	
-	XSelectInput(ctx->display, ctx->window, event_mask);
-}
-
-U32 wm_num_of_pending_events(WM_Context* ctx){
-	return XPending(ctx->display);
-}
+// Event handeling
+void wm_register_input_events(WM_Context* ctx, WM_EventFlag flags);
+U32 wm_num_of_pending_events(WM_Context* ctx);
 
 
 
@@ -1532,6 +1240,10 @@ S32 safe_cast_S32(S64 x) {
 	return (S32)x;
 }
 
+RectU16 rect_1u16(U16 x, U16 y, U16 width, U16 height){ return (RectU16){{x, y, width, height}}; };
+RectU32 rect_1u32(U32 x, U32 y, U32 width, U32 height){ return (RectU32){{x, y, width, height}}; };
+RectU64 rect_1u64(U64 x, U64 y, U64 width, U64 height){ return (RectU64){{x, y, width, height}}; };
+
 F64 dist_vec2U16(Vec2U16 p1, Vec2U16 p2){
 	F64 dx = (F64)p2.x - (F64)p1.x;
 	F64 dy = (F64)p2.y - (F64)p1.y;
@@ -1540,34 +1252,61 @@ F64 dist_vec2U16(Vec2U16 p1, Vec2U16 p2){
 
 Rng1U32 rng_1u32(U32 min, U32 max) {
 	Assert(min < max);
-	return (Rng1U32){.min = min, .max = max};
+	return (Rng1U32){{.min = min, .max = max}};
 }
 
 Rng1F32 rng_1f32(F32 min, F32 max) {
 	Assert(min < max);
-	return (Rng1F32){.min = min, .max = max};
+	return (Rng1F32){{.min = min, .max = max}};
 }
 
 Rng1U64 rng_1u64(U64 min, U64 max) {
 	Assert(min < max);
-	return (Rng1U64){.min = min, .max = max};
+	return (Rng1U64){{.min = min, .max = max}};
 }
 
 Rng1F64 rng_1f64(F64 min, F64 max) {
 	Assert(min < max);
-	return (Rng1F64){.min = min, .max = max};
+	return (Rng1F64){{.min = min, .max = max}};
 }
 
-Vec2U16 vec_2u16(U16 x, U16 y){ return (Vec2U16){x, y};}
-Vec2U32 vec_2u32(U32 x, U32 y){ return (Vec2U32){x, y};}
-Vec2F32 vec_2f32(F32 x, F32 y){ return (Vec2F32){x, y};}
-Vec3U32 vec_3u32(U32 x, U32 y, U32 z){ return (Vec3U32){x, y, z};}
-Vec3F32 vec_3f32(F32 x, F32 y, F32 z){ return (Vec3F32){x, y, z};}
+Vec2U16 vec_2u16(U16 x, U16 y){ return (Vec2U16){{x, y}};}
+Vec2U32 vec_2u32(U32 x, U32 y){ return (Vec2U32){{x, y}};}
+Vec2F32 vec_2f32(F32 x, F32 y){ return (Vec2F32){{x, y}};}
+Vec3U32 vec_3u32(U32 x, U32 y, U32 z){ return (Vec3U32){{x, y, z}};}
+Vec3F32 vec_3f32(F32 x, F32 y, F32 z){ return (Vec3F32){{x, y, z}};}
 
+S32 dot_vec2u16(Vec2U16 v1, Vec2U16 v2){ return (v1.x * v2.x) + (v2.y * v2.y);}
+S32 dot_vec2u32(Vec2U32 v1, Vec2U32 v2){ return (v1.x * v2.x) + (v2.y * v2.y);}
+F64 dot_vec2f32(Vec2F32 v1, Vec2F32 v2){ return (v1.x * v2.x) + (v2.y * v2.y);}
+S32 dot_vec3u32(Vec3U32 v1, Vec3U32 v2){ return (v1.x * v2.x) + (v2.y * v2.y) + (v1.z * v2.z);}
+F64 dot_vec3f32(Vec3F32 v1, Vec3F32 v2){ return (v1.x * v2.x) + (v2.y * v2.y) + (v1.z * v2.z);}
 
 U64 dim_r1u64(Rng1U64 r) { 
 	return ((r.max > r.min) ? (r.max - r.min) : 0); 
 }
+
+///////////////////////////////////////
+/// cjk: Color Functions 
+
+ColorRGBA color_rgba(U8 r, U8 g, U8 b, U8 a){
+	return (ColorRGBA){{
+		.r = r,
+		.g = g,
+		.b = b,
+		.a = a
+	}};
+}
+
+ColorBGRA color_rgba_to_bgra(ColorRGBA color){
+	return (ColorBGRA){
+		.b = color.b,
+		.g = color.g,
+		.r = color.r,
+		.a = color.a
+	};
+}
+
 
 ///////////////////////////////////////
 /// cjk: arena implementation
@@ -1727,7 +1466,7 @@ U8 str8_get(Str8 string, U64 idx) {
 	return '\0';
 }
 
-U64 cstring_length(char *c) {
+U64 cstring_length(const char *c) {
 	Assert(c != NULL);
 	U64 length = 0;
 	if (c) {
@@ -1738,7 +1477,7 @@ U64 cstring_length(char *c) {
 	return length;
 }
 
-Str8 cstring_to_str8(char *c) {
+Str8 cstring_to_str8(const char *c) {
 	Assert(c != NULL);
 	return (Str8){(U8 *)c, cstring_length(c)};
 }
@@ -1909,14 +1648,14 @@ Str8List *str8_tokenize_list(Arena *arena, Str8 string, Str8 delimiters) {
 		}
 
 		if (is_delimiter) {
-			Str8 token = str8_substr(string, RNG1U64(start_idx, i));
+			Str8 token = str8_substr(string, Rng1_U64(start_idx, i));
 			start_idx = i + 1;
 			str8_list_push(arena, list, token);
 		}
 	}
 
 	if (start_idx <= string.size) { // Push final token
-		Str8 token = str8_substr(string, RNG1U64(start_idx, string.size));
+		Str8 token = str8_substr(string, Rng1_U64(start_idx, string.size));
 		str8_list_push(arena, list, token);
 	}
 
@@ -2191,14 +1930,14 @@ void csv_row_parse(CSV *csv, Str8 raw_row) {
 			}
 
 			if (is_delimiter) {
-				Str8 token = str8_substr(raw_row, R1U64(start_idx, i));
+				Str8 token = str8_substr(raw_row, Rng1_U64(start_idx, i));
 				str8_list_push(csv->arena, csv->current_row.list, token);
 				start_idx = i + 1;
 			}
 		}
 
 		if (start_idx <= raw_row.size) { // Push final token
-			Str8 token = str8_substr(raw_row, R1U64(start_idx, raw_row.size));
+			Str8 token = str8_substr(raw_row, Rng1_U64(start_idx, raw_row.size));
 			str8_list_push(csv->arena, csv->current_row.list, token);
 		}
 	}
@@ -2324,6 +2063,320 @@ void os_sleep_milliseconds(U64 msec) { NotImplemented; }
 #endif
 
 #ifdef BASE_ENABLE_WINDOW
+
+WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 border_width, ColorRGBA border_color,  ColorRGBA background_color){
+	Assert(arena);	
+
+	// default values
+	U16 default_boarder = 10;
+
+	WM_Context result = {0};
+
+	result.arena = arena;
+	result.size = win_rect;
+	result.name = window_name;
+
+	result.display = XOpenDisplay(NULL);
+	result.screen = XDefaultScreenOfDisplay(result.display);
+	result.window = XCreateSimpleWindow(result.display, 
+			       XDefaultRootWindow(result.display), 
+			       win_rect.x, win_rect.y, 
+			       win_rect.width, win_rect.height,
+			       (border_width == 0)? default_boarder : border_width,
+			       border_color.c,
+			       background_color.c);
+
+	XSetWindowAttributes attr;
+	attr.background_pixmap = None;
+	attr.bit_gravity = NorthWestGravity;
+	XChangeWindowAttributes(result.display, result.window, CWBackPixmap, &attr);
+
+
+	U32 screen = DefaultScreen(result.display);
+
+	result.over_size = Rect1_U16(0,0, DisplayWidth(result.display, screen), DisplayHeight(result.display, screen));
+
+	Assert(result.display);
+	Assert(result.screen);
+	Assert(result.window);
+
+#if HAS_SYS_SHM
+	printf("[MIT-SHM supported by X11]\n");	
+
+
+	result.image = XShmCreateImage(result.display,
+				DefaultVisualOfScreen(result.screen),
+				DefaultDepthOfScreen(result.screen),
+				ZPixmap,
+				NULL,
+				&result.shm_info,
+				result.over_size.width, result.over_size.height);
+
+	Assert(result.image);
+
+	U64 total_size = result.image->bytes_per_line * result.image->height;
+	result.shm_info.shmid = shmget(IPC_PRIVATE, total_size, IPC_CREAT|0777);
+
+	result.shm_info.shmaddr = result.image->data = shmat(result.shm_info.shmid, 0, 0);
+	result.shm_info.readOnly = False;
+
+	Status status = XShmAttach(result.display, &result.shm_info);
+	XSync(result.display, False);
+	shmctl(result.shm_info.shmid, IPC_RMID, 0);
+
+	Assert(status);
+
+# else
+	printf("[MIT-SHM unsupported by X11 Falling back]\n");
+
+	result.image_buffer = ArenaPushArray(arena, U8, sizeof(ColorRGBA) * win_rect.width * win_rect.height);
+	result.image = XCreateImage(result.display, 
+				DefaultVisualOfScreen(result.screen),
+				DefaultDepthOfScreen(result.screen), 
+				ZPixmap, 
+				0, 
+				(char*) result.image_buffer, 
+				win_rect.width, win_rect.height, 
+				BitsFromBytes(sizeof(ColorRGBA)), 0); 
+
+	Assert(result.image);
+
+#endif
+	result.graphics_ctx = XCreateGC(result.display, result.window, 0, &result.graphics_ctx_values);
+
+	XStoreName(result.display, result.window, str8_to_cstring(arena, window_name));
+
+	XMapWindow(result.display, result.window);
+	return result;	
+}
+
+void wm_resize_window(WM_Context* ctx, U16 width, U16 height){
+	XResizeWindow(ctx->display, ctx->window, width, height);
+}
+
+void wm_move_window(WM_Context* ctx, U16 x, U16 y){
+	XMoveWindow(ctx->display, ctx->window, x, y);
+}
+
+
+void wm_resize_and_move_window(WM_Context* ctx, RectU16 new_size){
+	U32 change_mask = WM_WindowCfgUpdate_X | WM_WindowCfgUpdate_Y | WM_WindowCfgUpdate_Width | WM_WindowCfgUpdate_Height;
+	XWindowChanges changes = {
+		.x = new_size.x,
+		.y = new_size.y,
+		.width = new_size.width,
+		.height = new_size.height
+	};
+	XConfigureWindow(ctx->display, ctx->window, change_mask, &changes);
+}
+
+
+void wm_draw_window(WM_Context* ctx){
+	Assert(ctx);
+	Assert(ctx->display);
+	Assert(ctx->window);
+	Assert(ctx->image);
+
+#if HAS_SYS_SHM	
+	XShmPutImage(ctx->display, ctx->window, ctx->graphics_ctx, ctx->image, 0, 0, 0, 0, ctx->size.width, ctx->size.height, False);
+	XSync(ctx->display, False);
+#else
+	XPutImage(ctx->display, ctx->window, ctx->graphics_ctx, ctx->image, 0, 0, 0, 0, ctx->size.width, ctx->size.height);
+	XFlush(ctx->display);
+#endif
+}
+
+// 2d primitive drawing
+void wm_draw_rect(WM_Context* ctx, RectU32 rect, ColorRGBA color){
+	Assert(ctx);
+	Assert(ctx->image);
+
+	U32 x1 = Max(0, rect.x);
+	U32 y1 = Max(0, rect.y);
+	U32 x2 = Min(ctx->size.width, (rect.x + rect.width));
+	U32 y2 = Min(ctx->size.height, (rect.y + rect.height));
+
+	if( x1 >= x2 || y1 >= y2 ) return;
+
+	U32* pixels = (U32*) ctx->image->data;
+	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
+	U32 width = x2 - x1;
+	U32 color_const = color_rgba_to_bgra(color).c;
+
+	// this points to the first pixel in the rect
+	U32* row_ptr = pixels + (y1 * stride) + x1;
+
+	for (U32 y = y1; y < y2; y++){
+		for (U32 x = 0; x < width; x++){
+			row_ptr[x] = color_const; 
+		}
+		row_ptr += stride;
+	}
+}
+
+
+// This method uses Midpoint circle algorithm for quickly drawing a circle
+// https://en.wikipedia.org/wiki/Midpoint_circle_algorithm 
+void wm_draw_circle(WM_Context* ctx, Vec2U32 p1, F32 radius, ColorRGBA color){
+	Assert(ctx);
+	Assert(ctx->image);
+	Assert(radius > 0.0);
+
+	S32 x0 = (S32) p1.x;
+	S32 y0 = (S32) p1.y;
+	S32 r  = (S32) radius;
+
+	U32* pixels = (U32*) ctx->image->data;
+	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
+	S32 window_width = (S32)ctx->size.width;
+	S32 window_height = (S32)ctx->size.height;
+	U32 color_const = color_rgba_to_bgra(color).c;
+
+	S32 x = r;
+	S32 y = 0;
+	S32 decision = 1 - r;
+
+	#define LOCAL_MACRO_DRAWSPAN(py, x_start, x_end) do{\
+			if((py) >= (0) && (py) <= (window_height)) {\
+      				S32 left = Max(0, (x_start));\
+				S32 right = Min((window_width-1),(x_end));\
+				for(S32 px = left; px < right; px ++){\
+					pixels[(py) * stride + px] = color_const;\
+				}\
+			}\
+		}while(0)
+
+	while(x >= y){
+		LOCAL_MACRO_DRAWSPAN(y0+y, x0-x, x0+x);
+		LOCAL_MACRO_DRAWSPAN(y0-y, x0-x, x0+x);
+		LOCAL_MACRO_DRAWSPAN(y0+x, x0-y, x0+y);
+		LOCAL_MACRO_DRAWSPAN(y0-x, x0-y, x0+y);
+
+		y++;
+		if(decision <= 0){
+			decision += 2 * y + 1;
+		}else{
+			x--;
+			decision += 2 * (y - x) + 1;
+		}
+	}
+	#undef Local_Macro_DRAWSPAN
+} 
+
+// This method uses Bresenham's line algorithm
+// https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm  
+// https://groups.csail.mit.edu/graphics/classes/6.837/F02/lectures/6.837-7_Line.pdf
+// https://zingl.github.io/Bresenham.pdf
+void wm_draw_line(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, ColorRGBA color){
+	Assert(ctx);
+	Assert(ctx->image);
+
+	U32* pixels = (U32*) ctx->image->data;
+	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
+	S32 window_width = ctx->size.width;
+	S32 window_height = ctx->size.height;
+	U32 color_const = color_rgba_to_bgra(color).c;
+
+	S32 x0 = p1.x;
+	S32 y0 = p1.y; 
+	S32 x1 = p2.x; 
+	S32 y1 = p2.y;
+
+	S32 dx = abs(x1 - x0);
+	S32 dy = -abs(y1 - y0);
+	S32 sx = (x0 < x1)? 1 : -1;
+	S32 sy = (y0 < y1)? 1 : -1;
+	S32 err = dx+dy;
+	S32 err_2;
+
+	for(;;){
+		if( 0 <= x0 && x0 < window_width && 0 <= y0 && y0 < window_height){
+			pixels[y0 * stride + x0] = color_const;
+		}
+		
+		err_2 = 2 * err;
+
+		if(err_2 >= dy){
+			if(x0 == x1) break;
+			err += dy;
+			x0 += sx;
+		}
+		if(err_2 <= dx){
+			if(y0 == y1) break;
+			err += dx;
+			y0 += sy;
+		}
+	}
+}
+
+void wm_draw_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, ColorRGBA color){
+	wm_draw_line(ctx, p1, p2, color);
+	wm_draw_line(ctx, p2, p3, color);
+	wm_draw_line(ctx, p3, p1, color);
+	
+} 
+
+B32 wm_is_point_in_triangle(Vec2U32 point, Vec2U32 a, Vec2U32 b, Vec2U32 c){
+	B32 result = false;	
+			
+
+
+
+	return result;	
+}
+
+void wm_draw_filled_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, ColorRGBA color){
+	Assert(ctx);
+	Assert(ctx->image);
+
+	U32* pixels = (U32*) ctx->image->data;
+	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
+	U32 window_width = ctx->size.width;
+	U32 window_height = ctx->size.height;
+	U32 color_const = color_rgba_to_bgra(color).c;
+
+	// get bounding box
+	U32 x_min = Min(0, Min(p1.x, Min(p2.x, p3.x)));
+	U32 y_min = Min(0, Min(p1.y, Min(p2.y, p3.y)));
+	U32 x_max = Min(window_width, Max(p1.x, Max(p2.x, p3.x)));
+	U32 y_max = Min(window_height, Max(p1.y, Max(p2.y, p3.y)));
+
+	Rng1U32 x_rng = Rng1_U32(x_min, x_max);
+	Rng1U32 y_rng = Rng1_U32(y_min, y_max);
+
+	for EachInRange(y, y_rng){
+		for EachInRange(x, x_rng){
+			if(wm_is_point_in_triangle(Vec2_U32(x, y), p1, p2, p3)){
+				pixels[y * stride + x] = color_const;
+			}
+		}	
+	}
+}
+
+
+void wm_close_window(WM_Context* ctx){
+	XUnmapWindow(ctx->display, ctx->window);
+	XDestroyWindow(ctx->display, ctx->window);
+	XFreeGC(ctx->display, ctx->graphics_ctx);
+	XCloseDisplay(ctx->display);
+}
+
+void wm_register_input_events(WM_Context* ctx, WM_EventFlag flags){
+	long event_mask = 0;	
+
+	for EachIndex(i, ArrayCount(wm_event_mask_map)){
+		if(flags & wm_event_mask_map[i].flag){
+			event_mask |= wm_event_mask_map[i].event_mask;
+		}
+	}
+	
+	XSelectInput(ctx->display, ctx->window, event_mask);
+}
+
+U32 wm_num_of_pending_events(WM_Context* ctx){
+	return XPending(ctx->display);
+}
+
 
 #endif
 
