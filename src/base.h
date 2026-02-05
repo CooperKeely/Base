@@ -184,7 +184,6 @@
 # include <stdlib.h>
 # include <string.h>
 # include <time.h>
-# include <math.h>
 #endif
 
 ///////////////////////////////////////
@@ -403,7 +402,7 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #define MemoryMatchArray(a, b) MemoryMatch((a), (b), sizeof((a)))
 
 ///////////////////////////////////////
-/// cjk: Math Functions
+/// cjk: Math Helper Functions
 
 #define BitsFromBytes(x) (8 * (x)) 
 #define Min(A, B) (((A) < (B)) ? (A) : (B))
@@ -697,10 +696,6 @@ U64 dim_r1u64(Rng1U64 range);
 ///////////////////////////////////////
 /// cjk: Rect Definitions 
 
-#define Rect_U16(x, y, w, h) 	rect_u16((x), (y), (w), (h))
-#define Rect_U32(x, y, w, h) 	rect_u32((x), (y), (w), (h))
-#define Rect_U64(x, y, w, h) 	rect_u64((x), (y), (w), (h))
-
 typedef union{
 	struct{
 		U16 x;
@@ -731,26 +726,16 @@ typedef union{
 	U64 v[4];
 } RectU64;
 
+#define Rect_U16(x, y, w, h) 	rect_u16((x), (y), (w), (h))
+#define Rect_U32(x, y, w, h) 	rect_u32((x), (y), (w), (h))
+#define Rect_U64(x, y, w, h) 	rect_u64((x), (y), (w), (h))
+
 RectU16 rect_u16(U16 x, U16 y, U16 width, U16 height);
 RectU32 rect_u32(U32 x, U32 y, U32 width, U32 height);
 RectU64 rect_u64(U64 x, U64 y, U64 width, U64 height);
 
 ///////////////////////////////////////
 /// cjk: Color Functions 
-
-#define RGB(R,G,B)	color_rgba((U8)(R), (U8)(G), (U8)(B), (U8)255) 
-#define RGBA(R,G,B,A)	color_rgba((U8)(R), (U8)(G), (U8)(B), (U8)(A))
-
-// Color pallette
-#define COLOR_WHITE 	RGB(255,255,255)
-#define COLOR_BLACK 	RGB(0,0,0)
-#define COLOR_RED   	RGB(255,0,0) 
-#define COLOR_GREEN	RGB(0,255,0) 
-#define COLOR_BLUE 	RGB(0, 0, 255) 
-#define COLOR_YELLOW 	RGB(255,255,0)
-#define COLOR_MAGENTA	RGB(255,0,255) 
-#define COLOR_CYAN	RGB(0,255,255) 
-
 
 typedef union{
 	struct{
@@ -772,14 +757,36 @@ typedef union{
 	U32 c;
 }ColorBGRA;
 
+#define RGB(R,G,B)	color_rgba((U8)(R), (U8)(G), (U8)(B), (U8)255) 
+#define RGBA(R,G,B,A)	color_rgba((U8)(R), (U8)(G), (U8)(B), (U8)(A))
+
+// Color pallette
+#define COLOR_WHITE 	RGB(255,255,255)
+#define COLOR_BLACK 	RGB(0,0,0)
+#define COLOR_RED   	RGB(255,0,0) 
+#define COLOR_GREEN	RGB(0,255,0) 
+#define COLOR_BLUE 	RGB(0, 0, 255) 
+#define COLOR_YELLOW 	RGB(255,255,0)
+#define COLOR_MAGENTA	RGB(255,0,255) 
+#define COLOR_CYAN	RGB(0,255,255) 
 
 ColorRGBA color_rgba(U8 r, U8 g, U8 b, U8 a);
 ColorBGRA color_rgba_to_bgra(ColorRGBA color);
 
 
-
 ///////////////////////////////////////
 /// cjk: Arena Implementation
+
+typedef struct {
+	U8 *mem_ptr;
+	U64 next_free;
+	U64 capacity;
+} Arena;
+
+typedef struct {
+	Arena *arena;
+	U64 original_position;
+} ScratchArena;
 
 #define DEFAULT_ARENA_SIZE MB(64)
 #define TEMP_ARENA_SIZE KB(4)
@@ -795,16 +802,6 @@ ColorBGRA color_rgba_to_bgra(ColorRGBA color);
        _scratch_.arena != NULL;						       \
        scratch_arena_end(_scratch_), _scratch_.arena = NULL)
 
-typedef struct {
-	U8 *mem_ptr;
-	U64 next_free;
-	U64 capacity;
-} Arena;
-
-typedef struct {
-	Arena *arena;
-	U64 original_position;
-} ScratchArena;
 
 /* arena helper functions */
 U64 arena_get_position(Arena *arena);
@@ -818,6 +815,9 @@ void arena_pop_to(Arena *arena, U64 pos);
 ScratchArena scratch_arena_begin(Arena *arena);
 void scratch_arena_end(ScratchArena scratch);
 
+///////////////////////////////////////
+/// cjk: Thread Local Arena 
+
 // thread local scratch arenas
 // TODO: (Cooper) add thread local scratch arenas
 thread_static Arena* tl_scratch_arena[2];
@@ -826,11 +826,8 @@ void thread_local_scratch_arena_init(){
 }
 
 
-///////////////////////////////////////
+//////////////////////////////////////
 /// cjk: String Implementation
-
-#define Str8Lit(S) str8((U8 *)(S), sizeof(S) - 1)
-#define Str8VArg(s) (U32)(s).size, (s).str
 
 typedef U32 Str8_MatchFlags;
 enum {
@@ -843,22 +840,34 @@ typedef struct {
 	U64 size;
 } Str8;
 
-U8 upper_from_char(U8 chr);
-Str8 str8(U8 *str, U64 length);
-void str8_printf(FILE *file_ptr, const char *format, ...);
-Str8 str8_pushf(Arena *arena, const char *format, ...);
-Str8 str8_skip_last_slash(Str8 str);
-inline U8 str8_get(Str8 str, U64 idx);
+#define Str8Lit(S) str8((U8 *)(S), sizeof(S) - 1)
+#define Str8VArg(s) (U32)(s).size, (s).str
+
+// C string helpers
 U64 cstring_length(const char *c);
 Str8 cstring_to_str8(const char *c);
 char* str8_to_cstring(Arena* arena, Str8 str);
+
+// String helpers
+U8 upper_from_char(U8 chr);
+Str8 str8_skip_last_slash(Str8 str);
+inline U8 str8_get(Str8 str, U64 idx);
+
+// Str8 output
+void str8_printf(FILE *file_ptr, const char *format, ...);
+Str8 str8_pushf(Arena *arena, const char *format, ...);
+
+// String functions
+Str8 str8(U8 *str, U64 length);
 Str8 str8_substr(Str8 s1, Rng1U64 range);
 Str8 str8_concat(Arena *arena, Str8 s1, Str8 s2);
 Str8 str8_copy(Arena *arena, Str8 s1);
 B32 str8_cmp(Str8 s1, Str8 s2);
 B32 str8_match(Str8 s1, Str8 s2, Str8_MatchFlags flags);
 
-// Str8 List
+//////////////////////////////////////
+/// cjk: String List Implementation
+
 typedef struct Str8Node Str8Node;
 struct Str8Node {
 	Str8Node *next;
@@ -878,7 +887,8 @@ Str8Node *str8_list_push_node_front(Str8List *list, Str8Node *node);
 Str8Node *str8_list_push(Arena *arena, Str8List *list, Str8 string);
 Str8Node *str8_list_push_front(Arena *arena, Str8List *list, Str8 string);
 
-// Str8 array
+//////////////////////////////////////
+/// cjk: String Array Implementation
 typedef struct {
 	Str8 *array;
 	U64 count;
@@ -914,6 +924,7 @@ void hash_map_put(HashMap *hash_map, Str8 key, void *data);
 
 // Hashing functions
 U64 hash_fnv1a_u64(const void *in_ptr, U64 num_bytes);
+
 
 ///////////////////////////////////////
 /// cjk: Profiling
@@ -1106,10 +1117,9 @@ DateTime os_universal_time_from_local(DateTime *local_time);
 DateTime os_local_time_from_universal(DateTime *universal_time);
 void os_sleep_milliseconds(U64 msec);
 
+
 ///////////////////////////////////////
 /// cjk: CSV Parser Implementation
-
-#define EachCSVRow(csv_ptr, row_ptr) 	(CSV_Row *row_ptr = csv_next_row(csv_ptr); row_ptr != NULL; row_ptr = csv_next_row(csv_ptr))
 
 typedef struct {
 	Str8 delimiters;
@@ -1133,9 +1143,12 @@ typedef struct {
 	U64 columns;
 } CSV;
 
+#define EachCSVRow(csv_ptr, row_ptr) 	(CSV_Row *row_ptr = csv_next_row(csv_ptr); row_ptr != NULL; row_ptr = csv_next_row(csv_ptr))
+
 CSV csv_init(Arena *arena, CSV_Config config, char *file_path);
 CSV_Row *csv_next_row(CSV *csv);
 void csv_row_parse(CSV *csv, Str8 raw_row);
+
 
 ///////////////////////////////////////
 /// cjk: Window Functions
@@ -1150,7 +1163,6 @@ void csv_row_parse(CSV *csv, Str8 raw_row);
 # else
 #  define HAS_SYS_SHM 0
 # endif
-
 
 
 typedef U32 WM_WindowCfgUpdate;
@@ -1202,7 +1214,7 @@ enum{
 	WM_Event_ClientComm_SelectionRequest	= (1ULL<<32),
 };
 
-// Maps our window manager to x11 event request
+// Maps our window manager events to x11 event request
 typedef struct{
 	WM_EventFlag flag;	
 	long event_mask;
@@ -1284,8 +1296,6 @@ void wm_draw_filled_triangle(WM_Context* ctx, Point2U32 p1, Point2U32 p2, Point2
 void wm_register_input_events(WM_Context* ctx, WM_EventFlag flags);
 U32 wm_num_of_pending_events(WM_Context* ctx);
 
-
-
 #endif // BASE_ENABLE_WINDOW
 
 #endif // BASE_H
@@ -1294,7 +1304,8 @@ U32 wm_num_of_pending_events(WM_Context* ctx);
 #ifdef BASE_IMPLEMENTATION
 
 ///////////////////////////////////////
-/// cjk: Math Functions
+/// cjk: Base Integer Functions 
+
 U8 safe_cast_U8(U16 x) {
 	Assert(x < max_U8);
 	return (U8)x;
@@ -1325,9 +1336,15 @@ S32 safe_cast_S32(S64 x) {
 	return (S32)x;
 }
 
+///////////////////////////////////////
+/// cjk:  Rect Functions 
+
 RectU16 rect_u16(U16 x, U16 y, U16 width, U16 height){ return (RectU16){{x, y, width, height}}; };
 RectU32 rect_u32(U32 x, U32 y, U32 width, U32 height){ return (RectU32){{x, y, width, height}}; };
 RectU64 rect_u64(U64 x, U64 y, U64 width, U64 height){ return (RectU64){{x, y, width, height}}; };
+
+///////////////////////////////////////
+/// cjk:  Range Functions 
 
 Rng1U32 rng_1u32(U32 min, U32 max) {
 	Assert(min < max);
@@ -1349,7 +1366,13 @@ Rng1F64 rng_1f64(F64 min, F64 max) {
 	return (Rng1F64){{.min = min, .max = max}};
 }
 
-// Point initializers
+U64 dim_r1u64(Rng1U64 r) { 
+	return ((r.max > r.min) ? (r.max - r.min) : 0); 
+}
+
+///////////////////////////////////////
+/// cjk:  Point Functions 
+
 Point2U16 point_2u16(U16 x, U16 y){ return (Point2U16){{x, y}};}
 Point2U32 point_2u32(U32 x, U32 y){ return (Point2U32){{x, y}};}
 Point2U64 point_2u64(U64 x, U64 y){ return (Point2U64){{x, y}};}
@@ -1358,7 +1381,9 @@ Point3U16 point_3u16(U16 x, U16 y, U16 z){ return (Point3U16){{x, y, z}};}
 Point3U32 point_3U32(U32 x, U32 y, U32 z){ return (Point3U32){{x, y, z}};}
 Point3U64 point_3U64(U64 x, U64 y, U64 z){ return (Point3U64){{x, y, z}};}
 
-// Vector Functions
+///////////////////////////////////////
+/// cjk:  Vector Functions 
+
 // Initializers
 Vec2F32 vec_2f32(F32 x, F32 y){ return (Vec2F32){{x, y}};}
 Vec2F64 vec_2f64(F64 x, F64 y){ return (Vec2F64){{x, y}};}
@@ -1373,10 +1398,6 @@ F64 dot_vec2f64(Vec2F64 v1, Vec2F64 v2){ return (v1.x * v2.x) + (v2.y * v2.y);}
 F64 dot_vec3f32(Vec3F32 v1, Vec3F32 v2){ return (v1.x * v2.x) + (v2.y * v2.y) + (v1.z * v2.z);}
 F64 dot_vec3f64(Vec3F64 v1, Vec3F64 v2){ return (v1.x * v2.x) + (v2.y * v2.y) + (v1.z * v2.z);}
 
-
-U64 dim_r1u64(Rng1U64 r) { 
-	return ((r.max > r.min) ? (r.max - r.min) : 0); 
-}
 
 ///////////////////////////////////////
 /// cjk: Color Functions 
@@ -1401,7 +1422,7 @@ ColorBGRA color_rgba_to_bgra(ColorRGBA color){
 
 
 ///////////////////////////////////////
-/// cjk: arena implementation
+/// cjk: Arena Functions
 
 U64 arena_get_position(Arena *arena) {
 	Assert(arena != NULL);
@@ -1490,7 +1511,7 @@ void scratch_arena_end(ScratchArena scratch) {
 }
 
 ///////////////////////////////////////
-/// cjk: String Implementation
+/// cjk: String Functions 
 
 U8 upper_from_char(U8 chr) {
 	if (chr > 'A') {
@@ -1658,6 +1679,9 @@ B32 str8_match(Str8 s1, Str8 s2, Str8_MatchFlags flags) {
 	return result;
 }
 
+///////////////////////////////////////
+/// cjk: String List Functions 
+
 Str8List str8_list() {
 	return (Str8List){
 		.first = NULL,
@@ -1755,7 +1779,17 @@ Str8List *str8_tokenize_list(Arena *arena, Str8 string, Str8 delimiters) {
 }
 
 ///////////////////////////////////////
-/// cjk: Profiling
+/// cjk: String Array Functions 
+
+Str8Array str8_array_reserve(Arena *arena, U64 capacity){
+	NotImplemented;
+}
+Str8Array str8_tokenize_array(Arena *arena, Str8 string, Str8 delimiters){
+	NotImplemented;
+}
+
+///////////////////////////////////////
+/// cjk: HashMap Functions 
 
 HashMap *hash_map_init(Arena *arena) {
 	HashMap *hashmap = ArenaPushStructZero(arena, HashMap);
@@ -1857,7 +1891,7 @@ U64 hash_fnv1a_u64(const void *in_ptr, U64 num_bytes) {
 }
 
 ///////////////////////////////////////
-/// cjk: Profiling
+/// cjk: Profiling Functions
 
 void profile_begin() { 
 	global_profiling_begin = clock(); 
@@ -1870,7 +1904,7 @@ void profile_end(Str8 message) {
 }
 
 ///////////////////////////////////////
-/// cjk: Time functions
+/// cjk: Time Functions
 
 DenseTime datetime_to_densetime(DateTime time) {
 	DenseTime result = 0;
@@ -1951,7 +1985,7 @@ DateTime unixtime_to_datetime(U64 unix_time) {
 }
 
 ///////////////////////////////////////
-/// cjk: CSV Parser Implementation
+/// cjk: CSV Functions
 
 CSV csv_init(Arena *arena, CSV_Config config, char *file_path) {
 	Assert(arena);
@@ -2036,7 +2070,8 @@ void csv_row_parse(CSV *csv, Str8 raw_row) {
 }
 
 ///////////////////////////////////////
-/// cjk: OS API
+/// cjk: OS API Functions 
+
 #if OS_LINUX
 
 void lnx_signal_handler(int sig, siginfo_t *info, void *arg) {
@@ -2153,6 +2188,9 @@ void os_sleep_milliseconds(U64 msec) { NotImplemented; }
 #else
 #error "Unknown OS error"
 #endif
+
+///////////////////////////////////////
+/// cjk: Window API Functions 
 
 #ifdef BASE_ENABLE_WINDOW
 
