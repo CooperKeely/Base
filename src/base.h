@@ -418,10 +418,17 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #define ClampMax(A, B) Min(A, B)
 #define ClampMin(A, B) Max(A, B)
 
-#define R1U32(min, max) rng_1u32((min), (max))
-#define R1F32(min, max) rng_1f32((min), (max))
-#define R1U64(min, max) rng_1u64((min), (max))
-#define R1F64(min, max) rng_1f64((min), (max))
+#define RNG1U32(min, max) 	rng_1u32((min), (max))
+#define RNG1F32(min, max) 	rng_1f32((min), (max))
+#define RNG1U64(min, max) 	rng_1u64((min), (max))
+#define RNG1F64(min, max) 	rng_1f64((min), (max))
+
+#define VEC2U16(x, y)  		vec_2u16((x), (y))
+#define VEC2U32(x, y) 		vec_2u32((x), (y)) 
+#define VEC2F32(x, y)		vec_2f32((x), (y))
+#define VEC3U32(x, y, z)	vec_3u32((x), (y), (z))
+#define Vec3F32(x, y, z)	vec_3f32((x), (y), (z))
+
 
 #define ConstU64(x) Glue(x, UL)
 #define ConstS64(x) Glue(x, L)
@@ -591,9 +598,6 @@ typedef union {
 	F64 v[2];
 } Rng1F64;
 
-
-
-
 typedef union{
 	struct{
 		U16 x;
@@ -629,13 +633,18 @@ typedef union{
 F64 dist_vec2U16(Vec2U16 p1, Vec2U16 p2);
 
 Rng1U32 rng_1u32(U32 min, U32 max);
-
 Rng1F32 rng_1f32(F32 min, F32 max);
-
 Rng1U64 rng_1u64(U64 min, U64 max);
-U64 dim_r1u64(Rng1U64 range);
-
 Rng1F64 rng_1f64(F64 min, F64 max);
+
+Vec2U16 vec_2u16(U16 x, U16 y);
+
+Vec2U32 vec_2u32(U32 x, U32 y);
+Vec2F32 vec_2f32(F32 x, F32 y);
+Vec3U32 vec_3u32(U32 x, U32 y, U32 z);
+Vec3F32 vec_3f32(F32 x, F32 y, F32 z);
+
+U64 dim_r1u64(Rng1U64 range);
 
 ///////////////////////////////////////
 /// cjk: Color Functions 
@@ -1418,7 +1427,46 @@ void wm_draw_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, Color
 	wm_draw_line(ctx, p1, p2, color);
 	wm_draw_line(ctx, p2, p3, color);
 	wm_draw_line(ctx, p3, p1, color);
+	
 } 
+
+B32 wm_is_point_in_triangle(Vec2U32 point, Vec2U32 a, Vec2U32 b, Vec2U32 c){
+	B32 result = false;	
+			
+
+
+
+	return result;	
+}
+
+void wm_draw_filled_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, ColorRGBA color){
+	Assert(ctx);
+	Assert(ctx->image);
+
+	U32* pixels = (U32*) ctx->image->data;
+	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
+	U32 window_width = ctx->size.width;
+	U32 window_height = ctx->size.height;
+	U32 color_const = color_rgba_to_bgra(color).c;
+
+	// get bounding box
+	U32 x_min = Min(0, Min(p1.x, Min(p2.x, p3.x)));
+	U32 y_min = Min(0, Min(p1.y, Min(p2.y, p3.y)));
+	U32 x_max = Min(window_width, Max(p1.x, Max(p2.x, p3.x)));
+	U32 y_max = Min(window_height, Max(p1.y, Max(p2.y, p3.y)));
+
+	Rng1U32 x_rng = RNG1U32(x_min, x_max);
+	Rng1U32 y_rng = RNG1U32(y_min, y_max);
+
+	for EachInRange(y, y_rng){
+		for EachInRange(x, x_rng){
+			if(wm_is_point_in_triangle(VEC2U32(x, y), p1, p2, p3)){
+				pixels[y * stride + x] = color_const;
+			}
+		}	
+	}
+}
+
 
 void wm_close_window(WM_Context* ctx){
 	XUnmapWindow(ctx->display, ctx->window);
@@ -1509,6 +1557,13 @@ Rng1F64 rng_1f64(F64 min, F64 max) {
 	Assert(min < max);
 	return (Rng1F64){.min = min, .max = max};
 }
+
+Vec2U16 vec_2u16(U16 x, U16 y){ return (Vec2U16){x, y};}
+Vec2U32 vec_2u32(U32 x, U32 y){ return (Vec2U32){x, y};}
+Vec2F32 vec_2f32(F32 x, F32 y){ return (Vec2F32){x, y};}
+Vec3U32 vec_3u32(U32 x, U32 y, U32 z){ return (Vec3U32){x, y, z};}
+Vec3F32 vec_3f32(F32 x, F32 y, F32 z){ return (Vec3F32){x, y, z};}
+
 
 U64 dim_r1u64(Rng1U64 r) { 
 	return ((r.max > r.min) ? (r.max - r.min) : 0); 
@@ -1854,14 +1909,14 @@ Str8List *str8_tokenize_list(Arena *arena, Str8 string, Str8 delimiters) {
 		}
 
 		if (is_delimiter) {
-			Str8 token = str8_substr(string, R1U64(start_idx, i));
+			Str8 token = str8_substr(string, RNG1U64(start_idx, i));
 			start_idx = i + 1;
 			str8_list_push(arena, list, token);
 		}
 	}
 
 	if (start_idx <= string.size) { // Push final token
-		Str8 token = str8_substr(string, R1U64(start_idx, string.size));
+		Str8 token = str8_substr(string, RNG1U64(start_idx, string.size));
 		str8_list_push(arena, list, token);
 	}
 
