@@ -1255,8 +1255,6 @@ void wm_draw_window(WM_Context* ctx){
 }
 
 // 2d primitive drawing
-
-
 void wm_draw_rect(WM_Context* ctx, RectU32 rect, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
@@ -1382,7 +1380,7 @@ void wm_draw_line(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, ColorRGBA color){
 void wm_draw_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, ColorRGBA color){
 	wm_draw_line(ctx, p1, p2, color);
 	wm_draw_line(ctx, p2, p3, color);
-	wm_draw_line(ctx, p2, p3, color);
+	wm_draw_line(ctx, p3, p1, color);
 } 
 
 void wm_close_window(WM_Context* ctx){
