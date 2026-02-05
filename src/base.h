@@ -2318,9 +2318,6 @@ void wm_draw_triangle(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, Vec2U32 p3, Color
 
 B32 wm_is_point_in_triangle(Vec2U32 point, Vec2U32 a, Vec2U32 b, Vec2U32 c){
 	B32 result = false;	
-			
-
-
 
 	return result;	
 }
