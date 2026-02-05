@@ -1,4 +1,5 @@
 /build
 /resources
 /env
+gmon.out
 compile_flags.txt
