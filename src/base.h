@@ -409,6 +409,12 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #define Min(A, B) (((A) < (B)) ? (A) : (B))
 #define Max(A, B) (((A) > (B)) ? (A) : (B))
 
+#define Swap(A, B) do{					\
+		__typeof__(A) __temp__ = (A);		\
+		(A)= (B); 				\
+		(B) = __temp__;				\
+	}while(0)
+
 #define ClampMax(A, B) Min(A, B)
 #define ClampMin(A, B) Max(A, B)
 
@@ -1344,27 +1350,38 @@ void wm_draw_line(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2, ColorRGBA color){
 	U32 window_height = ctx->size.height;
 	U32 color_const = color.c;
 
+	S32 x0 = (S32)p1.x;
+	S32 y0 = (S32)p1.y; 
+	S32 x1 = (S32)p2.x; 
+	S32 y1 = (S32)p2.y; 
 
+	U32 dx = abs(x1 - x0);
+	U32 dy = abs(y1 - y0);
 
-	U32 x0 = Max(0, Min(p1.x, p2.x));
-	U32 y0 = Max(0, Min(p1.y, p2.y));
-	U32 x1 = Min(window_width, Max(p1.x, p2.x));
-	U32 y1 = Min(window_height, Max(p1.y, p2.y));
+	S32 sx = (x0 < x1)? 1 : -1;
+	S32 sy = (y0 < y1)? 1 : -1;
 
-	U32 dx = x1 - x0;
-	U32 dy = y1 - y0;
-	U32 decision = 2*dy - dx;
 	U32 y = y0;
 
-	for(U32 x = x0; x < x1; x++){
-		pixels[y * stride + x] = color_const;
+	if(dy >= dx){Swap(dy, dx);}
+
+	U32 decision = 2*dy - dx;
+
+	for EachIndex(i, dx){
+		if( 0 <= x0 && x0 < window_width && 0 <= y && y < window_height){
+			pixels[y * stride + x0] = color_const;
+		}
+
 		if(decision > 0){
-			y = y + 1;
+			y += sy;
 			decision = decision + (2 * (dy - dx));
 		}else{
 			decision = decision + 2 * dy;
 		}
 	}
+
+
+
 }
 
 void wm_close_window(WM_Context* ctx){
