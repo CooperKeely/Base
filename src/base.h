@@ -184,6 +184,7 @@
 # include <stdlib.h>
 # include <string.h>
 # include <time.h>
+# include <math.h>
 #endif
 
 ///////////////////////////////////////
@@ -511,6 +512,14 @@ global const F32 pi32 = ConstF32(3.1415926535897);
 // Vector Types
 typedef union {
 	struct {
+		U16 x;
+		U16 y;
+	};
+	U16 v[2];
+} Vec2U16;
+
+typedef union {
+	struct {
 		U32 x;
 		U32 y;
 	};
@@ -619,6 +628,8 @@ typedef union{
 } RectU64;
 
 
+
+F64 dist_vec2U16(Vec2U16 p1, Vec2U16 p2);
 
 Rng1U32 rng_1u32(U32 min, U32 max);
 
@@ -1237,22 +1248,121 @@ void wm_draw_window(WM_Context* ctx){
 #endif
 }
 
+// 2d primitive drawing
 void wm_draw_rect(WM_Context* ctx, RectU16 rect, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 
-	U32* pixels = (U32*) ctx->image->data;
+	U32 x1 = Max(0, rect.x);
+	U32 y1 = Max(0, rect.y);
+	U32 x2 = Min(ctx->size.width, (rect.x + rect.width));
+	U32 y2 = Min(ctx->size.height, (rect.y + rect.height));
 
-	for (U16 y1 = rect.y; y1 < rect.y + rect.height; y1++){
-		for (U16 x1 = rect.x; x1 < rect.x + rect.width; x1++){
-			pixels[y1 * ctx->image->width + x1] = color.c;
+	if( x1 >= x2 || y1 >= y2 ) return;
+
+	U32* pixels = (U32*) ctx->image->data;
+	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
+	U32 width = x2 - x1;
+	U32 color_const = color.c;
+
+	// this points to the first pixel in the rect
+	U32* row_ptr = pixels + (y1 * stride) + x1;
+
+	for (U32 y = y1; y < y2; y++){
+		for (U32 x = 0; x < width; x++){
+			row_ptr[x] = color_const; 
 		}
+		row_ptr += stride;
 	}
 }
 
-void wm_draw_line(WM_Context* ctx, Vec2U32 p1, Vec2U32 p2){
-	NotImplemented;	
+void wm_draw_circle(WM_Context* ctx, Vec2U16 p1, F32 radius, ColorRGBA color){
+	Assert(ctx);
+	Assert(ctx->image);
+	Assert(radius > 0.0);
 
+
+	
+	S32 x0 = (S32) p1.x;
+	S32 y0 = (S32) p1.y;
+	S32 r  = (S32) radius;
+
+	U32* pixels = (U32*) ctx->image->data;
+	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
+	U32 window_width = ctx->size.width;
+	U32 window_height = ctx->size.height;
+	U32 color_const = color.c;
+
+	S32 x = r;
+	S32 y = 0;
+	S32 decision = 1 - r;
+
+	#define Local_Macro_DRAWSPAN(py, x_start, x_end) do{				\
+			if((py) >= (0) && (py) <= (window_height)) {			\
+      				S32 left = Max(0, (x_start));				\
+				S32 right = Min((window_width-1),(x_end));		\ 
+				for(S32 px = left; px < right; px ++){			\
+					pixels[(py) * stride + px] = color_const;	\
+				}							\
+			}								\
+		}while(0)
+
+	while(x >= y){
+		Local_Macro_DRAWSPAN(y0+y, x0-x, x0+x);
+		Local_Macro_DRAWSPAN(y0-y, x0-x, x0+x);
+		Local_Macro_DRAWSPAN(y0+x, x0-y, x0+y);
+		Local_Macro_DRAWSPAN(y0-x, x0-y, x0+y);
+
+		y++;
+		if(decision <= 0){
+			decision += 2 * y + 1;
+		}else{
+			x--;
+			decision += 2 * (y - x) + 1;
+		}
+	}
+
+
+/*
+	U32* pixels = (U32*) ctx->image->data;
+	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
+
+	U32 window_width = ctx->size.width;
+	U32 window_height = ctx->size.height;
+
+	U32 y_start = Max(0, (S32)(p1.y - radius));
+	U32 y_end = Min(window_height-1, (S32)(p1.y + radius));
+	F32 radius_pow2 = radius * radius;
+	
+	if(window_height < y_start) return;
+	
+	for(U32 y = y_start; y < y_end; y ++){	
+		F32 dy = (F32)y - (F32)p1.y; 
+		F32 dx_sq = radius_pow2 - (dy*dy);
+		
+		if(dx_sq < 0) continue;
+
+		U32 dx = (U32) sqrt(dx_sq);
+
+		S32 x_start = Max(p1.x - dx, 0);
+		S32 x_end = Min(p1.x + dx, window_width-1);
+		
+		if(window_width < x_start) break;
+
+		for(U32 x = x_start; x < x_end; x++){
+			pixels[(y* stride) + x] = color.c;
+		}
+	}*/
+} 
+
+void wm_draw_triangle(WM_Context* ctx, Vec2U16 p1, Vec2U16 p2, Vec2U16 p3, ColorRGBA color){
+	NotImplemented;
+} 
+
+void wm_draw_line(WM_Context* ctx, Vec2U16 p1, Vec2U16 p2){
+		
+
+	NotImplemented;	
 }
 
 void wm_close_window(WM_Context* ctx){
@@ -1317,6 +1427,12 @@ S32 safe_cast_S32(S64 x) {
 	Assert(x < max_S32);
 	Assert(x > min_S32);
 	return (S32)x;
+}
+
+F64 dist_vec2U16(Vec2U16 p1, Vec2U16 p2){
+	F64 dx = (F64)p2.x - (F64)p1.x;
+	F64 dy = (F64)p2.y - (F64)p1.y;
+	return sqrtf64(dx*dx + dy*dy);	
 }
 
 Rng1U32 rng_1u32(U32 min, U32 max) {
@@ -2031,6 +2147,8 @@ void os_entry_point(U32 argc, U8 **argv) {
 	(void)argc;
 	(void)argv;
 
+	U32 pid = (U32)getpid();
+	fprintf(stderr, "[Process started with pid: %d]\n", pid);
 	struct sigaction handler = {.sa_sigaction = &lnx_signal_handler,
 			      .sa_flags = SA_SIGINFO};
 	sigfillset(&handler.sa_mask);

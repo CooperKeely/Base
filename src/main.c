@@ -42,7 +42,7 @@ void x11_graphics(){
 	Arena* arena = arena_alloc();
 
 	WM_Context ctx = wm_open_window(arena, 
-				 (RectU16){100,100,800,600}, 
+				 (RectU16){100,100,1280,720}, 
 				 Str8Lit("Demo"),
 				 0,
 				 (ColorRGBA){0, 0, 0, 0},
@@ -74,8 +74,11 @@ void x11_graphics(){
 			}	
 			
 			wm_draw_rect(&ctx, (RectU16){0, 0, ctx.size.width, ctx.size.height}, (ColorRGBA){0, 0, 0, 0});
-			wm_draw_rect(&ctx, (RectU16){100, 100, 700, 500}, (ColorRGBA){0, 100, 0, 0});
-			wm_draw_rect(&ctx, (RectU16){200, 200, 300, 500}, (ColorRGBA){0, 0, 100, 0});
+			for EachIndex(i, 1000){
+				wm_draw_rect(&ctx, (RectU16){i, 0, 100, 100}, (ColorRGBA){0, 100+i, 0, 0});
+				wm_draw_rect(&ctx, (RectU16){0, i, 100, 100}, (ColorRGBA){0, 0, 100+i, 0});
+				wm_draw_circle(&ctx, (Vec2U16){i,i}, 100, (ColorRGBA){i, i/2, i/3, 0});
+			}
 			wm_draw_window(&ctx);
 		}
 		
