@@ -1153,8 +1153,8 @@ void os_release_memory(void *ptr, U64 size);
 
 // OS time
 U64 os_now_microseconds();
-U32 os_now_unix();
 DateTime os_now_universal_time();
+DateTime os_now_local_time();
 DateTime os_universal_time_from_local(DateTime *local_time);
 DateTime os_local_time_from_universal(DateTime *universal_time);
 void os_sleep_milliseconds(U64 msec);
@@ -2158,11 +2158,7 @@ void csv_row_parse(CSV *csv, Str8 raw_row) {
 ///////////////////////////////////////
 /// cjk: Linux API Helper Functions 
 
-DateTime os_lnx_datetime_from_timespec(struct timespec time){
-	struct tm tm_time;
-	void* err = localtime_r(&time.tv_sec, &tm_time);
-	Assert(err != NULL);
-
+DateTime os_lnx_datetime_from_tm(struct tm tm_time){
 	DateTime result = (DateTime){
 		.sec = tm_time.tm_sec,
 		.min = tm_time.tm_min,
@@ -2171,9 +2167,19 @@ DateTime os_lnx_datetime_from_timespec(struct timespec time){
 		.month_num = tm_time.tm_mon,
 		.year = tm_time.tm_year + 1900,
 		.week_day = tm_time.tm_wday,
-		.micro_sec = (time.tv_nsec / Thousand(1)),
-		.mil_sec = (time.tv_nsec / Million(1))
 	};
+	return result;
+}
+
+
+DateTime os_lnx_datetime_from_timespec(struct timespec time){
+	struct tm tm_time;
+	void* err = localtime_r(&time.tv_sec, &tm_time);
+	Assert(err != NULL);
+
+	DateTime result = os_lnx_datetime_from_tm(tm_time);
+	result.micro_sec = (time.tv_nsec / Thousand(1));
+	result.mil_sec = (time.tv_nsec / Million(1));
 
 	return result;
 }
@@ -2404,12 +2410,52 @@ void os_decommit_memory(void *ptr, U64 size) { NotImplemented; }
 void os_release_memory(void *ptr, U64 size) { NotImplemented; }
 
 // OS time
-U64 os_now_microseconds() { NotImplemented; }
-U32 os_now_unix() { NotImplemented; }
-DateTime os_now_universal_time() { NotImplemented; }
+U64 os_now_microseconds() {
+	struct timespec time_spec;
+	S32 err = clock_gettime(CLOCK_REALTIME, &time_spec);
+
+	return time_spec.tv_nsec/ Thousand(1);
+}
+
+DateTime os_now_universal_time() {
+	DateTime now_UTC;
+	struct tm tm_time;
+	time_t current_time;
+
+	time(&current_time);
+	void* err = gmtime_r(&current_time, &tm_time);
+	Assert(err);
+
+	now_UTC = os_lnx_datetime_from_tm(tm_time);
+	return now_UTC;
+}
+
+DateTime os_now_local_time(){
+	DateTime now_UTC;
+	struct tm tm_time;
+	time_t current_time;
+
+	time(&current_time);
+	void* err = localtime_r(&current_time, &tm_time);
+	Assert(err);
+
+	now_UTC = os_lnx_datetime_from_tm(tm_time);
+	return now_UTC;
+}
+
 DateTime os_universal_time_from_local(DateTime *local_time) { NotImplemented; }
+
 DateTime os_local_time_from_universal(DateTime *universal_time) {NotImplemented;}
-void os_sleep_milliseconds(U64 msec) { NotImplemented; }
+
+void os_sleep_milliseconds(U64 msec) {
+	U64 nano_sec = msec * Million(1);
+	
+	struct timespec sleep_time;
+	sleep_time.tv_nsec = nano_sec;
+	struct timespec remaining;
+	S32 err = clock_nanosleep(CLOCK_MONOTONIC, 0, &sleep_time, &remaining);
+	Assert(err == 0);
+}
 
 # elif OS_WINDOWS
 #  error "Windows is currently unsupporrted"
