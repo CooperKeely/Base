@@ -273,7 +273,7 @@
 #endif
 
 ///////////////////////////////////////
-/// cjk: Error Handeling
+/// cjk: Error Handeling Definitions
 
 #if COMPILER_MSVC
 # define Trap() __debugbreak()
@@ -313,7 +313,7 @@
 #define StaticAssert(c, label) global U8 Glue(label, __LINE__)[(c) ? 1 : -1]
 
 ///////////////////////////////////////
-/// cjk: Asan
+/// cjk: Asan Definitions
 
 #if COMPILER_MSVC
 # if defined(__SANITIZE_ADDRESS__)
@@ -346,7 +346,7 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #endif
 
 ///////////////////////////////////////
-/// cjk: Misc Macro Helpers
+/// cjk: Misc Macro Definitions 
 
 #define Stringify_(S) #S
 #define Stringify(S) Stringify_(S)
@@ -361,7 +361,7 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #define IsPow2(x) ((x) != 0 && ((x) & ((x) - 1)) == 0)
 
 ///////////////////////////////////////
-/// cjk: Loop Helpers
+/// cjk: Loop Helper Definitions
 
 #define DeferLoop(begin, end) for (int _i_ = ((begin), 0); _i_ != 1; _i_ += 1, (end))
 
@@ -371,7 +371,7 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #define EachNode(idx, T, first) (T *idx = first; idx != NULL; idx = idx->next)
 
 ///////////////////////////////////////
-/// cjk: Units
+/// cjk: Units Definitions
 
 #define KB(n) (((U64)(n)) << 10)
 #define MB(n) (((U64)(n)) << 20)
@@ -382,7 +382,7 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #define Billion(n) ((n) * Million(1000))
 
 ///////////////////////////////////////
-/// cjk: Memory Operations Macros
+/// cjk: Memory Macro Definitions
 
 #define MemoryCopy(dest, src, num_bytes) memmove((dest), (src), (num_bytes))
 #define MemorySet(dest, byte, num_bytes) memset((dest), (byte), (num_bytes))
@@ -402,7 +402,7 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #define MemoryMatchArray(a, b) MemoryMatch((a), (b), sizeof((a)))
 
 ///////////////////////////////////////
-/// cjk: Math Helper Functions
+/// cjk: Math Helper Definitions
 
 #define BitsFromBytes(x) (8 * (x)) 
 #define Min(A, B) (((A) < (B)) ? (A) : (B))
@@ -421,7 +421,7 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #define true 1
 
 ///////////////////////////////////////
-/// cjk: Basic Number definitions 
+/// cjk: Basic Number Definitions 
 
 #define U64Lit(x) Glue(x, UL)
 #define S64Lit(x) Glue(x, L)
@@ -517,7 +517,7 @@ global const F32 pi32 = F32Lit(3.1415926535897);
 
 
 ///////////////////////////////////////
-/// cjk: Point Types and Functions 
+/// cjk: Point Type Definitions 
 
 typedef union {
 	struct {
@@ -570,9 +570,9 @@ typedef union {
 	U64 v[3];
 } Point3U64;
 
-#define Point2_U16(x, y)  	point_2u16((x), (y))
-#define Point2_U32(x, y) 	point_2u32((x), (y)) 
-#define Point2_U64(x, y) 	point_2u64((x), (y)) 
+#define p2_U16(x, y)  	point_2u16((x), (y))
+#define p2_U32(x, y) 	point_2u32((x), (y)) 
+#define p2_U64(x, y) 	point_2u64((x), (y)) 
 
 #define Point3_U16(x, y, z)  	point_3u16((x), (y), (z))
 #define Point3_U32(x, y, z)  	point_3u32((x), (y), (z))
@@ -726,16 +726,52 @@ typedef union{
 	U64 v[4];
 } RectU64;
 
+typedef union{
+	struct{
+		F32 x;
+		F32 y;
+		F32 width;
+		F32 height;
+	};
+	F32 v[4];
+} RectF32;
+
+typedef union{
+	struct{
+		F64 x;
+		F64 y;
+		F64 width;
+		F64 height;
+	};
+	F64 v[4];
+} RectF64;
+
+
+
 #define Rect_U16(x, y, w, h) 	rect_u16((x), (y), (w), (h))
 #define Rect_U32(x, y, w, h) 	rect_u32((x), (y), (w), (h))
 #define Rect_U64(x, y, w, h) 	rect_u64((x), (y), (w), (h))
+
+#define Rect_F32(x, y, w, h) 	rect_f32((x), (y), (w), (h))
+#define Rect_F64(x, y, w, h) 	rect_f64((x), (y), (w), (h))
 
 RectU16 rect_u16(U16 x, U16 y, U16 width, U16 height);
 RectU32 rect_u32(U32 x, U32 y, U32 width, U32 height);
 RectU64 rect_u64(U64 x, U64 y, U64 width, U64 height);
 
+RectF32 rect_f32(F32 x, F32 y, F32 width, F32 height);
+RectF64 rect_f64(F64 x, F64 y, F64 width, F64 height);
+
+
 ///////////////////////////////////////
-/// cjk: Color Functions 
+/// cjk: PRNG Definitions 
+/// https://en.wikipedia.org/wiki/Mersenne_Twister
+
+// TODO: (cjk) implement Mersenne Twiser psuedo random number generation
+
+
+///////////////////////////////////////
+/// cjk: Color Definitions 
 
 typedef union{
 	struct{
@@ -775,7 +811,7 @@ ColorBGRA color_rgba_to_bgra(ColorRGBA color);
 
 
 ///////////////////////////////////////
-/// cjk: Arena Implementation
+/// cjk: Arena Definitions 
 
 typedef struct {
 	U8 *mem_ptr;
@@ -816,9 +852,8 @@ ScratchArena scratch_arena_begin(Arena *arena);
 void scratch_arena_end(ScratchArena scratch);
 
 ///////////////////////////////////////
-/// cjk: Thread Local Arena 
+/// cjk: Thread Local Arena Definition
 
-// thread local scratch arenas
 // TODO: (Cooper) add thread local scratch arenas
 thread_static Arena* tl_scratch_arena[2];
 void thread_local_scratch_arena_init(){
@@ -827,7 +862,7 @@ void thread_local_scratch_arena_init(){
 
 
 //////////////////////////////////////
-/// cjk: String Implementation
+/// cjk: String Definition
 
 typedef U32 Str8_MatchFlags;
 enum {
@@ -866,7 +901,7 @@ B32 str8_cmp(Str8 s1, Str8 s2);
 B32 str8_match(Str8 s1, Str8 s2, Str8_MatchFlags flags);
 
 //////////////////////////////////////
-/// cjk: String List Implementation
+/// cjk: String List Definitions
 
 typedef struct Str8Node Str8Node;
 struct Str8Node {
@@ -888,7 +923,7 @@ Str8Node *str8_list_push(Arena *arena, Str8List *list, Str8 string);
 Str8Node *str8_list_push_front(Arena *arena, Str8List *list, Str8 string);
 
 //////////////////////////////////////
-/// cjk: String Array Implementation
+/// cjk: String Array Definitions 
 typedef struct {
 	Str8 *array;
 	U64 count;
@@ -899,7 +934,7 @@ Str8Array str8_array_reserve(Arena *arena, U64 capacity);
 Str8Array str8_tokenize_array(Arena *arena, Str8 string, Str8 delimiters);
 
 ///////////////////////////////////////
-/// cjk: Hashing
+/// cjk: Hashing Definitions
 
 #define DEFAULT_HASH_MAP_SIZE KB(4)
 #define DEFAULT_HASH_COLLISION_SIZE KB(1)
@@ -927,7 +962,7 @@ U64 hash_fnv1a_u64(const void *in_ptr, U64 num_bytes);
 
 
 ///////////////////////////////////////
-/// cjk: Profiling
+/// cjk: Profiling Definitions
 
 static clock_t global_profiling_begin, global_profiling_end;
 
@@ -938,7 +973,7 @@ void profile_begin();
 void profile_end(Str8 description);
 
 ///////////////////////////////////////
-/// cjk: Time
+/// cjk: Time Definitions
 
 typedef enum {
 	WeekDay_Sun,
@@ -991,8 +1026,13 @@ DenseTime datetime_to_densetime(DateTime time);
 DateTime densetime_to_datetime(DenseTime time);
 DateTime unixtime_to_datetime(U64 unix_time);
 
+
+#ifdef BASE_ENABLE_OS
 ///////////////////////////////////////
-/// cjk: OS API
+/// cjk: OS API Definitions
+
+#include <fcntl.h>
+#include <errno.h>
 
 typedef U32 OS_AccessFlags;
 enum {
@@ -1054,9 +1094,8 @@ typedef struct {
 	OS_FileProperties props;
 } OS_FileInfo;
 
-typedef struct {
-	U64 u64[1];
-} OS_Handle;
+typedef U64 OS_Handle;
+
 
 // TODO: Finish os implementation
 //	1) OS entry point - DONE
@@ -1073,9 +1112,9 @@ typedef struct {
 void os_entry_point(U32 argc, U8 **argv);
 
 // File operations
-OS_Handle os_file_open(Str8 path, OS_FileProperties props);
+OS_Handle os_file_open(Str8 path, OS_AccessFlags props);
 void os_file_close(OS_Handle file_handle);
-U64 os_file_read_data(OS_Handle file_handle, Rng1U64 range, void *out_data);
+S64 os_file_read_data(OS_Handle file_handle, Rng1U64 range, void *out_data);
 OS_FileProperties os_properties_from_file(OS_Handle file_handle);
 B32 os_file_delete_at_path(Str8 path);
 B32 os_copy_file_path(Str8 src, Str8 dest);
@@ -1117,9 +1156,10 @@ DateTime os_universal_time_from_local(DateTime *local_time);
 DateTime os_local_time_from_universal(DateTime *universal_time);
 void os_sleep_milliseconds(U64 msec);
 
+#endif // BASE_ENABLE_OS
 
 ///////////////////////////////////////
-/// cjk: CSV Parser Implementation
+/// cjk: CSV Parser Definitions 
 
 typedef struct {
 	Str8 delimiters;
@@ -1151,10 +1191,12 @@ void csv_row_parse(CSV *csv, Str8 raw_row);
 
 
 ///////////////////////////////////////
-/// cjk: Window Functions
+/// cjk: Window API Definitions 
+
 #ifdef BASE_ENABLE_WINDOW
 
 # include <X11/Xlib.h>
+# include <math.h>
 # if defined(_POSIX_SHARED_MEMORY_OBJECTS) && (_POSIX_SHARED_MEMORY_OBJECTS >0)
 #  define HAS_SYS_SHM 1
 #  include <sys/ipc.h>
@@ -1285,16 +1327,25 @@ void wm_resize_and_move_window(WM_Context* ctx, RectU16 new_size);
 void wm_draw_window(WM_Context* ctx);
 
 // 2d primitive drawing
-void wm_draw_rect(WM_Context* ctx, RectU32 rect, ColorRGBA color);
-void wm_draw_circle(WM_Context* ctx, Point2U32 p1, F32 radius, ColorRGBA color) ;
-void wm_draw_line(WM_Context* ctx, Point2U32 p1, Point2U32 p2, ColorRGBA color);
-void wm_draw_triangle(WM_Context* ctx, Point2U32 p1, Point2U32 p2, Point2U32 p3, ColorRGBA color) ;
-B32 wm_is_point_in_triangle(Point2U32 point, Point2U32 a, Point2U32 b, Point2U32 c);
-void wm_draw_filled_triangle(WM_Context* ctx, Point2U32 p1, Point2U32 p2, Point2U32 p3, ColorRGBA color);
+void wm_draw_rect(WM_Context* ctx, RectF32 rect, ColorRGBA color);
+void wm_draw_circle(WM_Context* ctx, Vec2F32 center, F32 radius, ColorRGBA color) ;
+void wm_draw_line(WM_Context* ctx, Vec2F32 p1, Vec2F32 p2, ColorRGBA color);
+void wm_draw_triangle(WM_Context* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color) ;
+B32 wm_is_point_in_triangle(Vec2F32 point, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3);
+void wm_draw_filled_triangle(WM_Context* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color);
 
 // Event handeling
 void wm_register_input_events(WM_Context* ctx, WM_EventFlag flags);
 U32 wm_num_of_pending_events(WM_Context* ctx);
+
+
+
+//////////////////////////////////////
+/// cjk: .obj reader Definitions 
+
+
+
+
 
 #endif // BASE_ENABLE_WINDOW
 
@@ -1342,6 +1393,10 @@ S32 safe_cast_S32(S64 x) {
 RectU16 rect_u16(U16 x, U16 y, U16 width, U16 height){ return (RectU16){{x, y, width, height}}; };
 RectU32 rect_u32(U32 x, U32 y, U32 width, U32 height){ return (RectU32){{x, y, width, height}}; };
 RectU64 rect_u64(U64 x, U64 y, U64 width, U64 height){ return (RectU64){{x, y, width, height}}; };
+
+RectF32 rect_f32(F32 x, F32 y, F32 width, F32 height){ return (RectF32){{x, y, width, height}}; };
+RectF64 rect_f64(F64 x, F64 y, F64 width, F64 height){ return (RectF64){{x, y, width, height}}; };
+
 
 ///////////////////////////////////////
 /// cjk:  Range Functions 
@@ -2069,17 +2124,24 @@ void csv_row_parse(CSV *csv, Str8 raw_row) {
 	}
 }
 
+#ifdef BASE_ENABLE_OS
 ///////////////////////////////////////
 /// cjk: OS API Functions 
 
-#if OS_LINUX
+# if OS_LINUX
 
 void lnx_signal_handler(int sig, siginfo_t *info, void *arg) {
 	local_persist void *bt_buffer[KB(4)];
 	U64 bt_count = backtrace(bt_buffer, ArrayCount(bt_buffer));
 	
-
 	fprintf(stderr, "[Process Recieved Signal: %s (%d)]\n", strsignal(sig), sig);
+
+	if(errno != 0){
+		int err = errno;
+		const char* error_description = strerrordesc_np(err);
+		const char* error_name = strerrorname_np(err);
+		fprintf(stderr, "[Errno (%d) %s: %s]", err, error_description, error_name);
+	}
 
 	for EachIndex(i, bt_count) {
 
@@ -2138,9 +2200,60 @@ void os_entry_point(U32 argc, U8 **argv) {
 }
 
 // File operations
-OS_Handle os_file_open(Str8 path, OS_FileProperties props) { NotImplemented; }
-void os_file_close(OS_Handle file_handle) { NotImplemented; }
-U64 os_file_read_data(OS_Handle file_handle, Rng1U64 range, void *out_data) {NotImplemented;}
+OS_Handle os_file_open(Str8 path, OS_AccessFlags flags) {
+	Arena* temp = arena_alloc_with_capacity(TEMP_ARENA_SIZE);
+	Assert(temp);
+
+	int open_flags = 0;
+	
+	if(flags & OS_AccessFlag_Read && flags & OS_AccessFlag_Write){
+		open_flags |= O_RDWR;
+	}else if (flags & OS_AccessFlag_Read){
+		open_flags |= O_RDONLY;
+	}else if (flags & OS_AccessFlag_Write){
+		open_flags |= O_WRONLY;
+	}
+	
+	const char* cstr_file_path = str8_to_cstring(temp, path);
+	
+	int fd = open(cstr_file_path, open_flags);
+	Assert(fd != -1);
+
+	OS_Handle handle = fd;
+	arena_release(temp);
+	return handle;
+
+	/* TODO: (cjk): add more open file flags
+	if (flags & OS_AccessFlag_Execute){}
+	if (flags & OS_AccessFlag_Append){}
+	if (flags & OS_AccessFlag_ShareRead){}
+	if (flags & OS_AccessFlag_ShareWrite){}
+	if (flags & OS_AccessFlag_Inherited){}
+	*/
+
+}
+
+void os_file_close(OS_Handle file_handle) {
+	S32 err = close(file_handle);
+	Assert(err != -1);
+}
+
+S64 os_file_read_data(OS_Handle file_handle, Rng1U64 range, void *out_data) {
+	U64 count = dim_r1u64(range);
+	U64 offset = range.min;
+
+	S32 result = 0;
+	Assert(count != 0);
+
+	result = lseek(file_handle, offset, SEEK_SET);
+	Assert(result != -1);
+
+	result = read(file_handle, out_data, count);
+	Assert(result != -1);
+
+	return result;
+}
+
 OS_FileProperties os_properties_from_file(OS_Handle file_handle) {NotImplemented;}
 B32 os_file_delete_at_path(Str8 path) { NotImplemented; }
 B32 os_copy_file_path(Str8 src, Str8 dest) { NotImplemented; }
@@ -2181,13 +2294,15 @@ DateTime os_universal_time_from_local(DateTime *local_time) { NotImplemented; }
 DateTime os_local_time_from_universal(DateTime *universal_time) {NotImplemented;}
 void os_sleep_milliseconds(U64 msec) { NotImplemented; }
 
-#elif OS_WINDOWS
-#error "Windows is currently unsupporrted"
-#elif OS_MAC
-#error "Mac is currently unsupported"
-#else
-#error "Unknown OS error"
-#endif
+# elif OS_WINDOWS
+#  error "Windows is currently unsupporrted"
+# elif OS_MAC
+#  error "Mac is currently unsupported"
+# else
+#  error "Unknown OS error"
+# endif
+#endif // BASE_ENABLE_OS
+
 
 ///////////////////////////////////////
 /// cjk: Window API Functions 
@@ -2317,10 +2432,11 @@ void wm_draw_window(WM_Context* ctx){
 }
 
 // 2d primitive drawing
-void wm_draw_rect(WM_Context* ctx, RectU32 rect, ColorRGBA color){
+void wm_draw_rect(WM_Context* ctx, RectF32 rect, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 
+	
 	U32 x1 = Max(0, rect.x);
 	U32 y1 = Max(0, rect.y);
 	U32 x2 = Min(ctx->size.width, (rect.x + rect.width));
@@ -2347,13 +2463,13 @@ void wm_draw_rect(WM_Context* ctx, RectU32 rect, ColorRGBA color){
 
 // This method uses Midpoint circle algorithm for quickly drawing a circle
 // https://en.wikipedia.org/wiki/Midpoint_circle_algorithm 
-void wm_draw_circle(WM_Context* ctx, Point2U32 p1, F32 radius, ColorRGBA color){
+void wm_draw_circle(WM_Context* ctx, Vec2F32 center, F32 radius, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 	Assert(radius > 0.0);
 
-	S32 x0 = (S32) p1.x;
-	S32 y0 = (S32) p1.y;
+	S32 x0 = (S32) floorf(center.x);
+	S32 y0 = (S32) floorf(center.y);
 	S32 r  = (S32) radius;
 
 	U32* pixels = (U32*) ctx->image->data;
@@ -2397,7 +2513,7 @@ void wm_draw_circle(WM_Context* ctx, Point2U32 p1, F32 radius, ColorRGBA color){
 // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm  
 // https://groups.csail.mit.edu/graphics/classes/6.837/F02/lectures/6.837-7_Line.pdf
 // https://zingl.github.io/Bresenham.pdf
-void wm_draw_line(WM_Context* ctx, Point2U32 p1, Point2U32 p2, ColorRGBA color){
+void wm_draw_line(WM_Context* ctx, Vec2F32 p1, Vec2F32 p2, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 
@@ -2407,10 +2523,11 @@ void wm_draw_line(WM_Context* ctx, Point2U32 p1, Point2U32 p2, ColorRGBA color){
 	S32 window_height = ctx->size.height;
 	U32 color_const = color_rgba_to_bgra(color).c;
 
-	S32 x0 = p1.x;
-	S32 y0 = p1.y; 
-	S32 x1 = p2.x; 
-	S32 y1 = p2.y;
+	S32 x0 = (S32) floorf(p1.x);
+	S32 y0 = (S32) floorf(p1.y); 
+	S32 x1 = (S32) floorf(p2.x); 
+	S32 y1 = (S32) floorf(p2.y);
+
 
 	S32 dx = abs(x1 - x0);
 	S32 dy = -abs(y1 - y0);
@@ -2439,19 +2556,19 @@ void wm_draw_line(WM_Context* ctx, Point2U32 p1, Point2U32 p2, ColorRGBA color){
 	}
 }
 
-void wm_draw_triangle(WM_Context* ctx, Point2U32 p1, Point2U32 p2, Point2U32 p3, ColorRGBA color){
-	wm_draw_line(ctx, p1, p2, color);
-	wm_draw_line(ctx, p2, p3, color);
-	wm_draw_line(ctx, p3, p1, color);
+void wm_draw_triangle(WM_Context* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
+	wm_draw_line(ctx, v1, v2, color);
+	wm_draw_line(ctx, v2, v3, color);
+	wm_draw_line(ctx, v3, v1, color);
 } 
 
-B32 wm_is_point_in_triangle(Point2U32 point, Point2U32 a, Point2U32 b, Point2U32 c){
+B32 wm_is_point_in_triangle(Vec2F32 point, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3){
 	B32 result = false;	
-	
+		 		
 	return result;	
 }
 
-void wm_draw_filled_triangle(WM_Context* ctx, Point2U32 p1, Point2U32 p2, Point2U32 p3, ColorRGBA color){
+void wm_draw_filled_triangle(WM_Context* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 
@@ -2462,17 +2579,17 @@ void wm_draw_filled_triangle(WM_Context* ctx, Point2U32 p1, Point2U32 p2, Point2
 	U32 color_const = color_rgba_to_bgra(color).c;
 
 	// get bounding box
-	U32 x_min = Min(0, Min(p1.x, Min(p2.x, p3.x)));
-	U32 y_min = Min(0, Min(p1.y, Min(p2.y, p3.y)));
-	U32 x_max = Min(window_width, Max(p1.x, Max(p2.x, p3.x)));
-	U32 y_max = Min(window_height, Max(p1.y, Max(p2.y, p3.y)));
+	U32 x_min = Min(0, Min(v1.x, Min(v2.x, v3.x)));
+	U32 y_min = Min(0, Min(v1.y, Min(v2.y, v3.y)));
+	U32 x_max = Min(window_width, Max(v1.x, Max(v2.x, v3.x)));
+	U32 y_max = Min(window_height, Max(v1.y, Max(v2.y, v3.y)));
 
 	Rng1U32 x_rng = Rng1_U32(x_min, x_max);
 	Rng1U32 y_rng = Rng1_U32(y_min, y_max);
 
 	for EachInRange(y, y_rng){
 		for EachInRange(x, x_rng){
-			if(wm_is_point_in_triangle(Point2_U32(x, y), p1, p2, p3)){
+			if(wm_is_point_in_triangle(Vec2_F32(x, y), v1, v2, v3)){
 				pixels[y * stride + x] = color_const;
 			}
 		}	
@@ -2504,6 +2621,6 @@ U32 wm_num_of_pending_events(WM_Context* ctx){
 }
 
 
-#endif
+#endif // BASE_ENABLE_WINDOW
 
 #endif // BASE_IMPLEMENTATION
