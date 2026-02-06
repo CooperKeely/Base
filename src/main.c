@@ -1,6 +1,7 @@
 #define BASE_IMPLEMENTATION
 #define BASE_ENABLE_WINDOW 
 #define BASE_ENABLE_OS
+
 #include "base.h"
 
 
@@ -268,6 +269,15 @@ void os_main(){
 	os_entry_point(0, NULL);
 
 	OS_Handle file_handle = os_file_open(Str8Lit("resources/customers-2000000.csv"), OS_AccessFlag_Read);
+
+	OS_FileProperties props = os_properties_from_file_handle(file_handle);
+	
+	
+	printf("Bytes read: %lu\n", props.name.size);
+	printf("File name: %.*s\n", Str8VArg(props.name));
+	DateTime time = densetime_to_datetime(props.modified);
+	printf("Modified: %d %d %d %d %d\n", time.year, time.month_num , time.day, time.hour, time.min);
+
 	os_file_close(file_handle);	
 
 }
@@ -275,7 +285,12 @@ void os_main(){
 
 
 int main(void){
+
+	Arena* arena = arena_alloc();
+
+	
 	os_main();
+	arena_release(arena);
         return 0;
 }
 

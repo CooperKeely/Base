@@ -176,8 +176,6 @@
 #if OS_LINUX
 # define _GNU_SOURCE
 # include <dlfcn.h>
-//# include <execinfo.h>
-//# include <signal.h>
 # include <stdarg.h>
 # include <stdint.h>
 # include <stdio.h>
@@ -887,6 +885,8 @@ char* str8_to_cstring(Arena* arena, Str8 str);
 U8 upper_from_char(U8 chr);
 Str8 str8_skip_last_slash(Str8 str);
 inline U8 str8_get(Str8 str, U64 idx);
+Str8 integer_to_str8(Arena* arena, S64 integer);
+
 
 // Str8 output
 void str8_printf(FILE *file_ptr, const char *format, ...);
@@ -1022,9 +1022,9 @@ typedef struct {
 
 typedef U64 DenseTime;
 
-DenseTime datetime_to_densetime(DateTime time);
-DateTime densetime_to_datetime(DenseTime time);
-DateTime unixtime_to_datetime(U64 unix_time);
+DenseTime densetime_from_datetime(DateTime time);
+DateTime datetime_from_densetime(DenseTime time);
+DateTime datetime_from_unixtime(U64 unix_time);
 
 
 #ifdef BASE_ENABLE_OS
@@ -1460,14 +1460,7 @@ F64 dot_vec3f64(Vec3F64 v1, Vec3F64 v2){ return (v1.x * v2.x) + (v2.y * v2.y) + 
 ///////////////////////////////////////
 /// cjk: Color Functions 
 
-ColorRGBA color_rgba(U8 r, U8 g, U8 b, U8 a){
-	return (ColorRGBA){{
-		.r = r,
-		.g = g,
-		.b = b,
-		.a = a
-	}};
-}
+ColorRGBA color_rgba(U8 r, U8 g, U8 b, U8 a){ return (ColorRGBA){{ r, g, b,a}};}
 
 ColorBGRA color_rgba_to_bgra(ColorRGBA color){
 	return (ColorBGRA){
@@ -1635,6 +1628,37 @@ U8 str8_get(Str8 string, U64 idx) {
 	}
 	InvalidPath;
 	return '\0';
+}
+
+Str8 integer_to_str8(Arena* arena, S64 integer){
+	if(integer == 0) return Str8Lit("0");
+	B32 is_negative = (integer < 0);
+	
+	U64 abs_val = is_negative ? (U64)(-integer) : (U64)integer;
+
+	U64 digits = 0;
+	U64 divide_by = 1;
+	for(int i = abs_val; i > 0; i /= 10) {
+		digits++; 
+		if(i >= 10) divide_by *= 10;
+	}
+
+	if(is_negative) digits ++;
+	Str8 result = (Str8){
+		.str = ArenaPushArray(arena, U8, digits),
+		.size = digits 
+	};
+
+	if(is_negative) result.str[0] = '-';
+
+	for EachIndex(i, result.size){
+		if(is_negative && i == 0) continue;
+		U64 digit = (abs_val/divide_by) % 10;
+		result.str[i] = (char)(digit + 48);
+		divide_by /= 10;
+	}	
+
+	return result;
 }
 
 U64 cstring_length(const char *c) {
@@ -1964,7 +1988,7 @@ void profile_end(Str8 message) {
 ///////////////////////////////////////
 /// cjk: Time Functions
 
-DenseTime datetime_to_densetime(DateTime time) {
+DenseTime densetime_from_datetime(DateTime time) {
 	DenseTime result = 0;
 	result += time.year;
 	result *= 12;
@@ -1979,14 +2003,11 @@ DenseTime datetime_to_densetime(DateTime time) {
 	result += time.sec;
 	result *= 1000;
 	result += time.mil_sec;
-	result *= 1000;
-	result += time.micro_sec;
 	return result;
 }
-DateTime densetime_to_datetime(DenseTime time) {
+
+DateTime datetime_from_densetime(DenseTime time) {
 	DateTime result = {0};
-	result.micro_sec = time % 1000;
-	time /= 1000;
 	result.mil_sec = time % 1000;
 	time /= 1000;
 	result.sec = time % 61;
@@ -1995,30 +2016,32 @@ DateTime densetime_to_datetime(DenseTime time) {
 	time /= 60;
 	result.hour = time % 24;
 	time /= 24;
-	result.month = time % 31;
+	result.day = time % 31;
 	time /= 31;
+	result.month_num = time % 12;
+	time /= 12;
+	Assert(time < max_U32);
 	result.year = (U32)time;
 	return result;
 }
 
-DateTime unixtime_to_datetime(U64 unix_time) {
-	DateTime result = {0};
-	result.year = 1970;
-	result.day = 1 + (unix_time / 86400);
-	result.min = (U32)unix_time % 60;
-	result.sec = (U32)(unix_time / 60) % 60;
-	result.hour = (U32)(unix_time / 3600) % 24;
+DateTime datetime_from_unixtime(U64 unix_time) {
+	DateTime date 	= {0};
+	date.year 	= 1970;
+	date.day 	= 1 + (unix_time / 86400);
+	date.min 	= (U32)unix_time % 60;
+	date.sec 	= (U32)(unix_time / 60) % 60;
+	date.hour 	= (U32)(unix_time / 3600) % 24;
 
-	while (1) {
-		for (result.month = 0; result.month <= 12; result.month++) {
+	for(;;){
+		for (date.month = 0; date.month <= 12; ++date.month) {
 			U64 c = 0;
-			switch (result.month) {
+			switch (date.month) {
 				case Month_Jan: c = 31; break;
 				case Month_Feb: {
-					if ((result.year % 4 == 0) && ((result.year % 100 != 0) || (result.year % 400 == 0))) c = 29;
+					if ((date.year % 4 == 0) && ((date.year % 100) != 0 || (date.year % 400) == 0)) c = 29;
 					else c = 28;
-					break;
-				}
+				} break;
 				case Month_Mar: c = 31; break;
 				case Month_Apr: c = 30; break;
 				case Month_May: c = 31; break;
@@ -2029,17 +2052,16 @@ DateTime unixtime_to_datetime(U64 unix_time) {
 				case Month_Oct: c = 31; break;
 				case Month_Nov: c = 31; break;
 				case Month_Dec: c = 31; break;
-				default:
-				InvalidPath;
+				default: InvalidPath;
 			}
 
-			if (result.day <= c) goto exit;	
-			result.day -= c;
+			if (date.day <= c) goto exit;	
+			date.day -= c;
 		}
-		++result.year;
+		++date.year;
 	}
 	exit:;
-	return result;
+	return date;
 }
 
 ///////////////////////////////////////
@@ -2133,7 +2155,31 @@ void csv_row_parse(CSV *csv, Str8 raw_row) {
 
 # if OS_LINUX
 
-void lnx_signal_handler(int sig, siginfo_t *info, void *arg) {
+///////////////////////////////////////
+/// cjk: Linux API Helper Functions 
+
+DateTime os_lnx_datetime_from_timespec(struct timespec time){
+	struct tm tm_time;
+	void* err = gmtime_r(&time.tv_sec, &tm_time);
+	Assert(err != NULL);
+
+	DateTime result = (DateTime){
+		.sec = tm_time.tm_sec,
+		.min = tm_time.tm_min,
+		.hour = tm_time.tm_hour,
+		.day = tm_time.tm_mday - 1,
+		.month_num = tm_time.tm_mon,
+		.year = tm_time.tm_year + 1900,
+		.week_day = tm_time.tm_wday,
+		.micro_sec = (time.tv_nsec / Thousand(1)),
+		.mil_sec = (time.tv_nsec / Million(1))
+	};
+
+	return result;
+}
+
+
+void os_lnx_signal_handler(int sig, siginfo_t *info, void *arg) {
 	local_persist void *bt_buffer[KB(4)];
 	U64 bt_count = backtrace(bt_buffer, ArrayCount(bt_buffer));
 	
@@ -2182,14 +2228,16 @@ void lnx_signal_handler(int sig, siginfo_t *info, void *arg) {
 	exit(0);
 }
 
-// OS entry point
+///////////////////////////////////////
+/// cjk: OS Linux API Functions 
+
 void os_entry_point(U32 argc, U8 **argv) {
 	(void)argc;
 	(void)argv;
 
 	U32 pid = (U32)getpid();
 	fprintf(stderr, "[Process started with pid: %d]\n", pid);
-	struct sigaction handler = {.sa_sigaction = &lnx_signal_handler,
+	struct sigaction handler = {.sa_sigaction = &os_lnx_signal_handler,
 			      .sa_flags = SA_SIGINFO};
 	sigfillset(&handler.sa_mask);
 	sigaction(SIGILL, &handler, NULL);
@@ -2259,12 +2307,13 @@ S64 os_file_read_data(OS_Handle file_handle, Rng1U64 range, void *out_data) {
 OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
 	OS_FileProperties props = {0};
 	struct stat statbuf;
+	Arena* temp = arena_alloc_with_capacity(TEMP_ARENA_SIZE);
 
 	S32 err = fstat(file_handle, &statbuf);
 	Assert(err != -1);	
 
-	DateTime last_modified = unixtime_to_datetime(statbuf.st_mtim.tv_sec);
-	props.modified = datetime_to_densetime(last_modified);
+	DateTime last_modified = os_lnx_datetime_from_timespec(statbuf.st_mtim);
+	props.modified = densetime_from_datetime(last_modified);
 
 	if(S_ISREG(statbuf.st_mode)){
 		props.flags = OS_FilePropertyFlag_IsFile;
@@ -2272,14 +2321,27 @@ OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
 		props.flags = OS_FilePropertyFlag_IsFolder;
 	}
 		
-	const char* path = "/proc/self/fd/";
+	Str8 path = Str8Lit("/proc/self/fd/");
+
+	Str8 fd = integer_to_str8(temp, file_handle);
 	
-	//TODO: (cjk): add the read link logic to get the file name
-	// https://man7.org/linux/man-pages/man2/readlink.2.html
-	// https://stackoverflow.com/questions/1188757/retrieve-filename-from-file-descriptor-in-c
-	//readlink();
+	Str8 fd_path = str8_concat(temp, path, fd);
+	const char* cstr_fd_path = str8_to_cstring(temp, fd_path);
 
 
+	Str8 file_name = (Str8){
+		.str=ArenaPushArray(temp, U8, 256),
+		.size = 256,
+	};	
+
+	err = readlink(cstr_fd_path, (char*)file_name.str, file_name.size);
+	Assert(err != -1);	
+	U32 bytes_read = err;
+
+	file_name.size = bytes_read;
+	props.name = file_name;
+
+	arena_release(temp);
 	return props;
 }
 
@@ -2295,8 +2357,8 @@ OS_FileProperties os_properties_from_file_path(Str8 path) {
 	S32 err = stat(cstr_file_path, &statbuf);
 	Assert(err != -1);	
 
-	DateTime last_modified = unixtime_to_datetime(statbuf.st_mtim.tv_sec);
-	props.modified = datetime_to_densetime(last_modified);
+	DateTime last_modified = os_lnx_datetime_from_timespec(statbuf.st_mtim);
+	props.modified = densetime_from_datetime(last_modified);
 
 	if(S_ISREG(statbuf.st_mode)){
 		props.flags = OS_FilePropertyFlag_IsFile;
