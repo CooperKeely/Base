@@ -176,8 +176,8 @@
 #if OS_LINUX
 # define _GNU_SOURCE
 # include <dlfcn.h>
-# include <execinfo.h>
-# include <signal.h>
+//# include <execinfo.h>
+//# include <signal.h>
 # include <stdarg.h>
 # include <stdint.h>
 # include <stdio.h>
@@ -1031,8 +1031,11 @@ DateTime unixtime_to_datetime(U64 unix_time);
 ///////////////////////////////////////
 /// cjk: OS API Definitions
 
-#include <fcntl.h>
-#include <errno.h>
+# include <fcntl.h>
+# include <errno.h>
+# include <sys/stat.h>
+# include <execinfo.h>
+# include <signal.h>
 
 typedef U32 OS_AccessFlags;
 enum {
@@ -1115,7 +1118,7 @@ void os_entry_point(U32 argc, U8 **argv);
 OS_Handle os_file_open(Str8 path, OS_AccessFlags props);
 void os_file_close(OS_Handle file_handle);
 S64 os_file_read_data(OS_Handle file_handle, Rng1U64 range, void *out_data);
-OS_FileProperties os_properties_from_file(OS_Handle file_handle);
+OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle);
 B32 os_file_delete_at_path(Str8 path);
 B32 os_copy_file_path(Str8 src, Str8 dest);
 Str8 os_full_path_from_rel_path(Arena *arena, Str8 rel_path);
@@ -2135,12 +2138,11 @@ void lnx_signal_handler(int sig, siginfo_t *info, void *arg) {
 	U64 bt_count = backtrace(bt_buffer, ArrayCount(bt_buffer));
 	
 	fprintf(stderr, "[Process Recieved Signal: %s (%d)]\n", strsignal(sig), sig);
-
 	if(errno != 0){
 		int err = errno;
 		const char* error_description = strerrordesc_np(err);
 		const char* error_name = strerrorname_np(err);
-		fprintf(stderr, "[Errno (%d) %s: %s]", err, error_description, error_name);
+		fprintf(stderr, "[Errno (%d) %s: %s]", err, error_name, error_description);
 	}
 
 	for EachIndex(i, bt_count) {
@@ -2254,13 +2256,66 @@ S64 os_file_read_data(OS_Handle file_handle, Rng1U64 range, void *out_data) {
 	return result;
 }
 
-OS_FileProperties os_properties_from_file(OS_Handle file_handle) {NotImplemented;}
+OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
+	OS_FileProperties props = {0};
+	struct stat statbuf;
+
+	S32 err = fstat(file_handle, &statbuf);
+	Assert(err != -1);	
+
+	DateTime last_modified = unixtime_to_datetime(statbuf.st_mtim.tv_sec);
+	props.modified = datetime_to_densetime(last_modified);
+
+	if(S_ISREG(statbuf.st_mode)){
+		props.flags = OS_FilePropertyFlag_IsFile;
+	}else if(S_ISDIR(statbuf.st_mode)){
+		props.flags = OS_FilePropertyFlag_IsFolder;
+	}
+		
+	const char* path = "/proc/self/fd/";
+	
+	//TODO: (cjk): add the read link logic to get the file name
+	// https://man7.org/linux/man-pages/man2/readlink.2.html
+	// https://stackoverflow.com/questions/1188757/retrieve-filename-from-file-descriptor-in-c
+	//readlink();
+
+
+	return props;
+}
+
+OS_FileProperties os_properties_from_file_path(Str8 path) {
+	OS_FileProperties props = {0};
+	struct stat statbuf;
+
+	Arena* temp = arena_alloc_with_capacity(TEMP_ARENA_SIZE);
+	Assert(temp != NULL);
+
+	char* cstr_file_path = str8_to_cstring(temp, path);
+
+	S32 err = stat(cstr_file_path, &statbuf);
+	Assert(err != -1);	
+
+	DateTime last_modified = unixtime_to_datetime(statbuf.st_mtim.tv_sec);
+	props.modified = datetime_to_densetime(last_modified);
+
+	if(S_ISREG(statbuf.st_mode)){
+		props.flags = OS_FilePropertyFlag_IsFile;
+	}else if(S_ISDIR(statbuf.st_mode)){
+		props.flags = OS_FilePropertyFlag_IsFolder;
+	}
+
+	props.name = str8_skip_last_slash(path);
+
+	return props;
+
+}
+
 B32 os_file_delete_at_path(Str8 path) { NotImplemented; }
 B32 os_copy_file_path(Str8 src, Str8 dest) { NotImplemented; }
 Str8 os_full_path_from_rel_path(Arena *arena, Str8 rel_path) { NotImplemented; }
 B32 os_file_path_exists(Str8 path) { NotImplemented; }
 B32 os_folder_path_exists(Str8 path) { NotImplemented; }
-OS_FileProperties os_properties_from_file_path(Str8 path) { NotImplemented; }
+
 
 // File map operations
 OS_Handle os_file_map_open(OS_Handle file_handle, OS_AccessFlags flags) {NotImplemented;}
