@@ -2160,7 +2160,7 @@ void csv_row_parse(CSV *csv, Str8 raw_row) {
 
 DateTime os_lnx_datetime_from_timespec(struct timespec time){
 	struct tm tm_time;
-	void* err = gmtime_r(&time.tv_sec, &tm_time);
+	void* err = localtime_r(&time.tv_sec, &tm_time);
 	Assert(err != NULL);
 
 	DateTime result = (DateTime){

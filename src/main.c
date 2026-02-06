@@ -275,7 +275,7 @@ void os_main(){
 	
 	printf("Bytes read: %lu\n", props.name.size);
 	printf("File name: %.*s\n", Str8VArg(props.name));
-	DateTime time = densetime_to_datetime(props.modified);
+	DateTime time = datetime_from_densetime(props.modified);
 	printf("Modified: %d %d %d %d %d\n", time.year, time.month_num , time.day, time.hour, time.min);
 
 	os_file_close(file_handle);	
