@@ -275,8 +275,16 @@ void os_main(){
 	
 	printf("Bytes read: %lu\n", props.name.size);
 	printf("File name: %.*s\n", Str8VArg(props.name));
+
 	DateTime time = datetime_from_densetime(props.modified);
+	time_t linux_time = os_lnx_time_from_datetime(time);
+	DateTime universal_time = os_universal_time_from_local(time);
+	DateTime local_time = os_local_time_from_universal(universal_time);
+
 	printf("Modified: %d %d %d %d %d\n", time.year, time.month_num , time.day, time.hour, time.min);
+	printf("Linux Time: %lu\n", linux_time);
+	printf("Universal Time: %d %d %d %d %d\n", universal_time.year, universal_time.month_num , universal_time.day, universal_time.hour, universal_time.min);
+	printf("Local Time: %d %d %d %d %d\n", local_time.year, local_time.month_num , local_time.day, local_time.hour, local_time.min);
 
 	os_file_close(file_handle);	
 

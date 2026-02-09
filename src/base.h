@@ -1155,8 +1155,8 @@ void os_release_memory(void *ptr, U64 size);
 U64 os_now_microseconds();
 DateTime os_now_universal_time();
 DateTime os_now_local_time();
-DateTime os_universal_time_from_local(DateTime *local_time);
-DateTime os_local_time_from_universal(DateTime *universal_time);
+DateTime os_universal_time_from_local(DateTime local_time);
+DateTime os_local_time_from_universal(DateTime universal_time);
 void os_sleep_milliseconds(U64 msec);
 
 #endif // BASE_ENABLE_OS
@@ -2024,46 +2024,7 @@ DateTime datetime_from_densetime(DenseTime time) {
 	result.year = (U32)time;
 	return result;
 }
-
-DateTime datetime_from_unixtime(U64 unix_time) {
-	DateTime date 	= {0};
-	date.year 	= 1970;
-	date.day 	= 1 + (unix_time / 86400);
-	date.min 	= (U32)unix_time % 60;
-	date.sec 	= (U32)(unix_time / 60) % 60;
-	date.hour 	= (U32)(unix_time / 3600) % 24;
-
-	for(;;){
-		for (date.month = 0; date.month <= 12; ++date.month) {
-			U64 c = 0;
-			switch (date.month) {
-				case Month_Jan: c = 31; break;
-				case Month_Feb: {
-					if ((date.year % 4 == 0) && ((date.year % 100) != 0 || (date.year % 400) == 0)) c = 29;
-					else c = 28;
-				} break;
-				case Month_Mar: c = 31; break;
-				case Month_Apr: c = 30; break;
-				case Month_May: c = 31; break;
-				case Month_Jun: c = 30; break;
-				case Month_Jul: c = 31; break;
-				case Month_Aug: c = 31; break;
-				case Month_Sep: c = 31; break;
-				case Month_Oct: c = 31; break;
-				case Month_Nov: c = 31; break;
-				case Month_Dec: c = 31; break;
-				default: InvalidPath;
-			}
-
-			if (date.day <= c) goto exit;	
-			date.day -= c;
-		}
-		++date.year;
-	}
-	exit:;
-	return date;
-}
-
+///
 ///////////////////////////////////////
 /// cjk: CSV Functions
 
@@ -2163,7 +2124,7 @@ DateTime os_lnx_datetime_from_tm(struct tm tm_time){
 		.sec = tm_time.tm_sec,
 		.min = tm_time.tm_min,
 		.hour = tm_time.tm_hour,
-		.day = tm_time.tm_mday - 1,
+		.day = tm_time.tm_mday,
 		.month_num = tm_time.tm_mon,
 		.year = tm_time.tm_year + 1900,
 		.week_day = tm_time.tm_wday,
@@ -2171,6 +2132,75 @@ DateTime os_lnx_datetime_from_tm(struct tm tm_time){
 	return result;
 }
 
+	
+struct tm os_lnx_tm_from_datetime(DateTime time){
+	struct tm tm_time = (struct tm){
+		.tm_sec = time.sec,
+		.tm_min = time.min,
+		.tm_hour = time.hour,
+		.tm_mday = time.day,
+		.tm_mon = time.month_num,
+		.tm_year = time.year - 1900,
+		.tm_isdst = -1,
+	};
+	return tm_time;
+}
+DateTime os_lnx_datetime_from_unixtime(U64 unix_time) {
+	DateTime date 	= {0};
+	date.year 	= 1970;
+	date.day 	= 1 + (unix_time / 86400);
+	date.min 	= (U32)(unix_time / 60) % 60;
+	date.sec 	= (U32)unix_time % 60;
+	date.hour 	= (U32)(unix_time / 3600) % 24;
+
+	U32 month_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+	for(;;){
+		Bool is_leap = ((date.year % 4 == 0) && ((date.year % 100) != 0 || (date.year % 400) == 0));
+
+		for (date.month = 0; date.month < 12; ++date.month) {
+			U64 c = month_days[date.month];
+			if(date.month == Month_Feb && is_leap) c = 29;	
+
+			if (date.day <= c) {
+				date.month++; // this is needed to be from 1-12
+				goto exit;
+			}
+			date.day -= c;
+		}
+		++date.year;
+	}
+	exit:;
+	return date;
+}
+
+time_t os_lnx_time_from_datetime(DateTime time){
+	time_t lnx_time = {0};
+	U64 seconds_in_a_day = 24 * 60 * 60;
+	U32 month_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+	for(U32 year = 1970; year < time.year; year ++){
+		Bool is_leap = false;
+		if ((year % 4 == 0) && ((year % 100) != 0 || (year % 400) == 0)) is_leap = true;
+		lnx_time += (is_leap ? 366 : 365) * seconds_in_a_day;
+	}
+
+	Bool is_leap = ((time.year % 4 == 0) && ((time.year % 100) != 0 || (time.year % 400) == 0));
+	for (U32 month = 0; month < time.month_num; month++) {
+		U64 c = 0;
+		c = month_days[month];
+
+		if(month == Month_Feb && is_leap) c = 29;
+
+		lnx_time += c * seconds_in_a_day;
+	}
+	
+	lnx_time += (time.day - 1) * seconds_in_a_day;
+	lnx_time += time.hour * 60 * 60;
+	lnx_time += time.min * 60;
+	lnx_time += time.sec;
+
+	return lnx_time;
+}
 
 DateTime os_lnx_datetime_from_timespec(struct timespec time){
 	struct tm tm_time;
@@ -2286,7 +2316,6 @@ OS_Handle os_file_open(Str8 path, OS_AccessFlags flags) {
 	if (flags & OS_AccessFlag_ShareWrite){}
 	if (flags & OS_AccessFlag_Inherited){}
 	*/
-
 }
 
 void os_file_close(OS_Handle file_handle) {
@@ -2318,15 +2347,20 @@ OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
 	S32 err = fstat(file_handle, &statbuf);
 	Assert(err != -1);	
 
+	// time modified and created	
+	DateTime date_created = os_lnx_datetime_from_timespec(statbuf.st_ctim);
 	DateTime last_modified = os_lnx_datetime_from_timespec(statbuf.st_mtim);
+	props.created = densetime_from_datetime(date_created);
 	props.modified = densetime_from_datetime(last_modified);
 
+	// file properties
 	if(S_ISREG(statbuf.st_mode)){
 		props.flags = OS_FilePropertyFlag_IsFile;
 	}else if(S_ISDIR(statbuf.st_mode)){
 		props.flags = OS_FilePropertyFlag_IsFolder;
 	}
-		
+	
+	// file name
 	Str8 path = Str8Lit("/proc/self/fd/");
 
 	Str8 fd = integer_to_str8(temp, file_handle);
@@ -2342,8 +2376,8 @@ OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
 
 	err = readlink(cstr_fd_path, (char*)file_name.str, file_name.size);
 	Assert(err != -1);	
-	U32 bytes_read = err;
 
+	U32 bytes_read = err;
 	file_name.size = bytes_read;
 	props.name = file_name;
 
@@ -2363,19 +2397,24 @@ OS_FileProperties os_properties_from_file_path(Str8 path) {
 	S32 err = stat(cstr_file_path, &statbuf);
 	Assert(err != -1);	
 
+	// time modified and created
+	DateTime date_created = os_lnx_datetime_from_timespec(statbuf.st_ctim);
 	DateTime last_modified = os_lnx_datetime_from_timespec(statbuf.st_mtim);
+	props.created = densetime_from_datetime(date_created);
 	props.modified = densetime_from_datetime(last_modified);
-
+	
+	// file properties
 	if(S_ISREG(statbuf.st_mode)){
 		props.flags = OS_FilePropertyFlag_IsFile;
 	}else if(S_ISDIR(statbuf.st_mode)){
 		props.flags = OS_FilePropertyFlag_IsFolder;
 	}
-
+	
+	// get file name
 	props.name = str8_skip_last_slash(path);
 
+	arena_release(temp);
 	return props;
-
 }
 
 B32 os_file_delete_at_path(Str8 path) { NotImplemented; }
@@ -2431,7 +2470,6 @@ DateTime os_now_universal_time() {
 }
 
 DateTime os_now_local_time(){
-	DateTime now_UTC;
 	struct tm tm_time;
 	time_t current_time;
 
@@ -2439,13 +2477,31 @@ DateTime os_now_local_time(){
 	void* err = localtime_r(&current_time, &tm_time);
 	Assert(err);
 
-	now_UTC = os_lnx_datetime_from_tm(tm_time);
-	return now_UTC;
+	DateTime now_local_time = os_lnx_datetime_from_tm(tm_time);
+	return now_local_time;
 }
 
-DateTime os_universal_time_from_local(DateTime *local_time) { NotImplemented; }
+DateTime os_universal_time_from_local(DateTime local_time) {
+	struct tm local_tm = os_lnx_tm_from_datetime(local_time); 
 
-DateTime os_local_time_from_universal(DateTime *universal_time) {NotImplemented;}
+	time_t utc_time = mktime(&local_tm);
+
+	struct tm tm_utc;
+	void* err = gmtime_r(&utc_time, &tm_utc);
+	Assert(err);
+
+	return os_lnx_datetime_from_tm(tm_utc);
+}
+
+DateTime os_local_time_from_universal(DateTime universal_time) {
+	time_t time = os_lnx_time_from_datetime(universal_time);
+	
+	struct tm tm_local;
+	void* err  = localtime_r(&time, &tm_local);
+	Assert(err);
+
+	return os_lnx_datetime_from_tm(tm_local);
+}
 
 void os_sleep_milliseconds(U64 msec) {
 	U64 nano_sec = msec * Million(1);
