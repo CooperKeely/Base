@@ -905,6 +905,8 @@ inline U8 str8_get(Str8 str, U64 idx);
 Str8 integer_to_str8(Arena* arena, S64 integer);
 
 
+
+
 // Str8 output
 void str8_printf(FILE *file_ptr, const char *format, ...);
 Str8 str8_pushf(Arena *arena, const char *format, ...);
@@ -1055,6 +1057,8 @@ DateTime datetime_from_unixtime(U64 unix_time);
 # include <execinfo.h>
 # include <signal.h>
 
+typedef S32 OS_ApplicationEntryPoint(U64 argc, U8** argv);
+
 typedef U32 OS_AccessFlags;
 enum {
 	OS_AccessFlag_Read 		= (1 << 0),
@@ -1090,12 +1094,9 @@ typedef struct {
 
 typedef struct {
 	U32 pid;
-	B32 large_pages_allowed;
 	Str8 binary_path;
 	Str8 initial_path;
 	Str8 user_program_data_path;
-	Str8List module_load_paths;
-	Str8List environment;
 } OS_ProcessInfo;
 
 typedef struct {
@@ -1117,11 +1118,17 @@ typedef struct {
 
 typedef U64 OS_Handle;
 
+typedef struct{
+	OS_SystemInfo sys_info;
+	OS_ProcessInfo proc_info;
+	Arena* arena;
+} OS_State;
+
 
 // TODO: Finish os implementation
 //	1) OS entry point - DONE
 //	2) Basic File operations - DONE
-//	3) System and process info
+//	3) System and process info - DONE
 //	4) OS time info - DONE
 //	5) Memory Allocation
 //	6) Directory iteration and creation
@@ -1129,20 +1136,22 @@ typedef U64 OS_Handle;
 //	8) Large page allocations
 //	9) DLL support
 
+global OS_State os_state = {0};
+
 // OS entry point
-void os_entry_point(U32 argc, U8 **argv);
+void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app);
 
 // File operations
 OS_Handle os_file_open(Str8 path, OS_AccessFlags props);
 void os_file_close(OS_Handle file_handle);
 S64 os_file_read_data(OS_Handle file_handle, Rng1U64 range, void *out_data);
-OS_FileProperties os_properties_from_file_handle(Arena* arena, OS_Handle file_handle);
+OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle);
 B32 os_file_delete_at_path(Str8 path);
 B32 os_copy_file_path(Str8 src, Str8 dest);
 Str8 os_full_path_from_rel_path(Arena *arena, Str8 rel_path);
 B32 os_file_path_exists(Str8 path);
 B32 os_folder_path_exists(Str8 path);
-OS_FileProperties os_properties_from_file_path(Arena* arena, Str8 path);
+OS_FileProperties os_properties_from_file_path(Str8 path);
 
 // File map operations
 OS_Handle os_file_map_open(OS_Handle file_handle, OS_AccessFlags flags);
@@ -1160,8 +1169,8 @@ void os_file_iter_end(OS_FileIter *iter);
 B32 os_make_directory(Str8 path);
 
 // System and process info
-Str8 os_get_current_path(Arena *arena);
-OS_SystemInfo os_get_system_info(Arena* arena);
+Str8 os_get_current_path(Arena* arena);
+OS_SystemInfo os_get_system_info();
 
 // OS memory allocation
 void *os_reserve_memory(U64 size);
@@ -2223,7 +2232,7 @@ DateTime os_lnx_datetime_from_unixtime(U64 unix_time) {
 	date.sec 	= (U32)unix_time % 60;
 	date.hour 	= (U32)(unix_time / 3600) % 24;
 
-	U32 month_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+	local_persist const U32 month_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	for(;;){
 		Bool is_leap = ((date.year % 4 == 0) && ((date.year % 100) != 0 || (date.year % 400) == 0));
 
@@ -2246,8 +2255,8 @@ DateTime os_lnx_datetime_from_unixtime(U64 unix_time) {
 time_t os_lnx_time_from_datetime(DateTime time){
 	time_t lnx_time = {0};
 	U64 seconds_in_a_day = 24 * 60 * 60;
-	U32 month_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
+	local_persist const U32 month_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	for(U32 year = 1970; year < time.year; year ++){
 		Bool is_leap = false;
 		if ((year % 4 == 0) && ((year % 100) != 0 || (year % 400) == 0)) is_leap = true;
@@ -2337,12 +2346,9 @@ void os_lnx_signal_handler(int sig, siginfo_t *info, void *arg) {
 ///////////////////////////////////////
 /// cjk: OS Linux API Functions 
 
-void os_entry_point(U32 argc, U8 **argv) {
-	(void)argc;
-	(void)argv;
+void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app) {
 
-	U32 pid = (U32)getpid();
-	fprintf(stderr, "[Process started with pid: %d]\n", pid);
+	// signal handeler setup
 	struct sigaction handler = {.sa_sigaction = &os_lnx_signal_handler,
 			      .sa_flags = SA_SIGINFO};
 	sigfillset(&handler.sa_mask);
@@ -2354,9 +2360,59 @@ void os_entry_point(U32 argc, U8 **argv) {
 	sigaction(SIGFPE, &handler, NULL);
 	sigaction(SIGBUS, &handler, NULL);
 
-	local_thread_ctx = ThreadCTXAlloc("main_thread");
+	// setup satically allocated system and proc info
+	os_state.sys_info.logical_processor_count = get_nprocs();
+	os_state.sys_info.page_size = getpagesize();
+	os_state.sys_info.large_page_size = MB(2);
+	os_state.sys_info.allocation_ganularity = os_state.sys_info.page_size;
+
+	// process info setup
+	os_state.proc_info.pid = getpid();
+
+	// allocate os state arena	
+	os_state.arena = arena_alloc();
+	
+	// thread context setup
+	ThreadCTX* tctx = ThreadCTXAlloc("main_thread");
+	thread_ctx_select(tctx);	
 
 
+	// dynamically allocated system info
+	ScratchArenaScope(scratch, 0, 0){
+		OS_SystemInfo* sys_info = &os_state.sys_info;
+		char* char_buf = ArenaPushArray(scratch.arena, char, 256);
+		S32 err = gethostname(char_buf, 256);
+		Assert(err != -1);
+		
+		Str8 host_name = cstring_to_str8(char_buf); 
+		
+		sys_info->machine_name.size = host_name.size;
+		ArenaPushArray(os_state.arena, U8, host_name.size);
+		MemoryCopyStr8(sys_info->machine_name, host_name);	
+	}
+
+	// dynamically allocated process info	
+	ScratchArenaScope(scratch, 0, 0){
+		OS_ProcessInfo* proc_info = &os_state.proc_info;
+		proc_info->initial_path = os_get_current_path(os_state.arena);
+
+		char* home = getenv("HOME");	
+		proc_info->user_program_data_path = cstring_to_str8(home);
+
+	
+		char* char_buff = ArenaPushArray(scratch.arena, char, KB(4));
+		S32 err = readlink("proc/sec/exe", char_buff, KB(4));
+		Assert(err != -1);
+
+		U32 bytes_read = err;
+		proc_info->binary_path.size = bytes_read;	
+		proc_info->binary_path.str = ArenaPushArray(os_state.arena, U8, bytes_read); 
+		MemoryCopy(proc_info, char_buff, bytes_read);
+	}
+
+
+	// call user entry point
+	exit(app(argc, argv));
 }
 
 // File operations
@@ -2413,7 +2469,7 @@ S64 os_file_read_data(OS_Handle file_handle, Rng1U64 range, void *out_data) {
 	return result;
 }
 
-OS_FileProperties os_properties_from_file_handle(Arena* arena, OS_Handle file_handle) {
+OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
 	OS_FileProperties props = {0};
 	struct stat statbuf;
 
@@ -2453,7 +2509,7 @@ OS_FileProperties os_properties_from_file_handle(Arena* arena, OS_Handle file_ha
 
 		U32 bytes_read = err;
 		file_name.size = bytes_read;
-		props.name.str = ArenaPushArray(arena, U8, bytes_read);
+		props.name.str = ArenaPushArray(scratch.arena, U8, bytes_read);
 		props.name.size = bytes_read;
 		MemoryCopyStr8(props.name, file_name);
 	}
@@ -2462,37 +2518,36 @@ OS_FileProperties os_properties_from_file_handle(Arena* arena, OS_Handle file_ha
 	return props;
 }
 
-OS_FileProperties os_properties_from_file_path(Arena* arena, Str8 path) {
+OS_FileProperties os_properties_from_file_path(Str8 path) {
 	OS_FileProperties props = {0};
 	struct stat statbuf;
 
-	TempArena temp = temp_arena_begin(arena);
+	ScratchArenaScope(scratch, 0, 0){
+		char* cstr_file_path = str8_to_cstring(scratch.arena, path);
 
-	char* cstr_file_path = str8_to_cstring(arena, path);
+		S32 err = stat(cstr_file_path, &statbuf);
+		Assert(err != -1);	
 
-	S32 err = stat(cstr_file_path, &statbuf);
-	Assert(err != -1);	
-
-	// time modified and created
-	DateTime date_created = os_lnx_datetime_from_timespec(statbuf.st_ctim);
-	DateTime last_modified = os_lnx_datetime_from_timespec(statbuf.st_mtim);
-	props.created = densetime_from_datetime(date_created);
-	props.modified = densetime_from_datetime(last_modified);
-	
-	// file properties
-	if(S_ISREG(statbuf.st_mode)){
-		props.flags = OS_FilePropertyFlag_IsFile;
-	}else if(S_ISDIR(statbuf.st_mode)){
-		props.flags = OS_FilePropertyFlag_IsFolder;
+		// time modified and created
+		DateTime date_created = os_lnx_datetime_from_timespec(statbuf.st_ctim);
+		DateTime last_modified = os_lnx_datetime_from_timespec(statbuf.st_mtim);
+		props.created = densetime_from_datetime(date_created);
+		props.modified = densetime_from_datetime(last_modified);
+		
+		// file properties
+		if(S_ISREG(statbuf.st_mode)){
+			props.flags = OS_FilePropertyFlag_IsFile;
+		}else if(S_ISDIR(statbuf.st_mode)){
+			props.flags = OS_FilePropertyFlag_IsFolder;
+		}
+		
+		// get file name
+		Str8 file_path = str8_skip_last_slash(path);
+		props.name.str = ArenaPushArray(scratch.arena, U8, file_path.size);
+		props.name.size = file_path.size;	
+		MemoryCopyStr8(props.name, file_path); 
 	}
-	
-	// get file name
-	Str8 file_path = str8_skip_last_slash(path);
-	props.name.str = ArenaPushArray(arena, U8, file_path.size);
-	props.name.size = file_path.size;	
-	MemoryCopyStr8(props.name, file_path); 
 
-	temp_arena_end(temp);
 	return props;
 }
 
@@ -2518,28 +2573,30 @@ void os_file_iter_end(OS_FileIter *iter) { NotImplemented; }
 B32 os_make_directory(Str8 path) { NotImplemented; }
 
 // System and process info
-Str8 os_get_current_path(Arena *arena) { 
-	char* char_buf = ArenaPushArray(arena, char, KB(1));
-	
-	void* err = getcwd(char_buf, KB(1));
-	Assert(err);
+Str8 os_get_current_path(Arena* arena) { 
+		
+	char* char_buf = get_current_dir_name();
 
-	Str8 result = cstring_to_str8(char_buf);
+	Str8 curr_dir = cstring_to_str8(char_buf);
+	
+	Str8 result = (Str8){
+		.size = curr_dir.size,
+		.str = ArenaPushArray(arena, U8, curr_dir.size),
+	};
+	
+	MemoryCopyStr8(result, curr_dir);
+
+	free(char_buf);
+
 	return result;	
 }
 
 
-OS_SystemInfo os_get_system_info(Arena* arena) { 
-	OS_SystemInfo sys_info;
-	sys_info.logical_processor_count = get_nprocs();
+OS_SystemInfo os_get_system_info() { 
 
-	char* hostname = ArenaPushArray(arena, char, 256);	
-	Assert(gethostname(hostname, 256) != -1);
-	sys_info.machine_name = cstring_to_str8(hostname);
+	return os_state.system_info;
+	ScratchArenaScope(scratch, 0, 0){
 	
-	sys_info.page_size = getpagesize();
-	sys_info.large_page_size = MB(2);
-	sys_info.allocation_ganularity = sys_info.page_size;
 
 	return sys_info;
 }
