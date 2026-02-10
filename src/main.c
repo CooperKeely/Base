@@ -268,9 +268,13 @@ void x11_graphics(){
 void os_main(){
 	os_entry_point(0, NULL);
 
-	OS_Handle file_handle = os_file_open(Str8Lit("resources/customers-2000000.csv"), OS_AccessFlag_Read);
 
-	OS_FileProperties props = os_properties_from_file_handle(file_handle);
+	Arena* temp = arena_alloc_with_capacity(TEMP_ARENA_SIZE);
+	OS_SystemInfo info = os_get_system_info(temp);
+	Str8 current_dir = os_get_current_path(temp);
+
+	OS_Handle file_handle = os_file_open(Str8Lit("resources/customers-2000000.csv"), OS_AccessFlag_Read);
+	OS_FileProperties props = os_properties_from_file_handle(temp, file_handle);
 	
 	
 	printf("Bytes read: %lu\n", props.name.size);
@@ -281,6 +285,11 @@ void os_main(){
 	DateTime universal_time = os_universal_time_from_local(time);
 	DateTime local_time = os_local_time_from_universal(universal_time);
 
+	str8_printf(stderr, "Current Dir: %.*s\n", Str8VArg(current_dir));
+	str8_printf(stderr, "Machine name: %.*s\n", Str8VArg(info.machine_name));
+	str8_printf(stderr, "Page Size: %lu\n", info.page_size);
+	str8_printf(stderr, "Large Page Size: %lu\n", info.large_page_size);
+
 	printf("Modified: %d %d %d %d %d\n", time.year, time.month_num , time.day, time.hour, time.min);
 	printf("Linux Time: %lu\n", linux_time);
 	printf("Universal Time: %d %d %d %d %d\n", universal_time.year, universal_time.month_num , universal_time.day, universal_time.hour, universal_time.min);
@@ -288,6 +297,7 @@ void os_main(){
 
 	os_file_close(file_handle);	
 
+	arena_release(temp);
 }
 
 

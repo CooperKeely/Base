@@ -389,7 +389,7 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 
 #define MemoryCopyStruct(dest, src) MemoryCopy((dest), (src), sizeof(*(dest)))
 #define MemoryCopyArray(dest, src) MemoryCopy((dest), (src), sizeof(dest))
-#define MemoryCopyStr8(dest, src) MemoryCopy((dest), (src).str, (src).size))
+#define MemoryCopyStr8(dest, src) MemoryCopy((dest).str, (src).str, (src).size)
 
 #define MemoryZero(dest, num_bytes) memset((dest), 0, (num_bytes))
 #define MemoryZeroStruct(src) MemoryZero((src), sizeof(*(s)))
@@ -412,8 +412,8 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 		(B) = __temp__;				\
 	}while(0)
 
-#define ClampMax(A, B) Min(A, B)
-#define ClampMin(A, B) Max(A, B)
+#define ClampTop(A, B) Min(A, B)
+#define ClampBot(A, B) Max(A, B)
 
 #define false 0
 #define true 1
@@ -820,7 +820,7 @@ typedef struct {
 typedef struct {
 	Arena *arena;
 	U64 original_position;
-} ScratchArena;
+} TempArena;
 
 #define DEFAULT_ARENA_SIZE MB(64)
 #define TEMP_ARENA_SIZE KB(4)
@@ -830,11 +830,10 @@ typedef struct {
 #define ArenaPushStruct(arena, type) 		ArenaPushArray(arena, type, (1))
 #define ArenaPushStructZero(arena, type) 	ArenaPushArrayZero(arena, type, (1))
 
-
-#define ScratchArenaScope(arena_ptr)					       \
-  for (ScratchArena _scratch_ = scratch_arena_begin(arena_ptr);		       \
-       _scratch_.arena != NULL;						       \
-       scratch_arena_end(_scratch_), _scratch_.arena = NULL)
+#define TempArenaScope(temp_name, arena_ptr)\
+  for (TempArena (temp_name) = temp_arena_begin(arena_ptr);\
+       (temp_name).arena != NULL;\
+       temp_arena_end((temp_name)), (temp_name).arena = NULL)
 
 
 /* arena helper functions */
@@ -846,18 +845,36 @@ void *arena_push(Arena *arena, U64 size);
 void *arena_push_zero(Arena *arena, U64 size);
 void arena_pop(Arena *arena, U64 size);
 void arena_pop_to(Arena *arena, U64 pos);
-ScratchArena scratch_arena_begin(Arena *arena);
-void scratch_arena_end(ScratchArena scratch);
+
+TempArena temp_arena_begin(Arena *arena);
+void temp_arena_end(TempArena temp);
 
 ///////////////////////////////////////
 /// cjk: Thread Local Arena Definition
 
-// TODO: (Cooper) add thread local scratch arenas
-thread_static Arena* tl_scratch_arena[2];
-void thread_local_scratch_arena_init(){
-	NotImplemented;
-}
+typedef struct {
+	U8 	thread_name[32];
+	U64 	thread_name_size;
+	Arena* 	arenas[2];
+	char* 	file_name;
+	U64 	line_number;
+} ThreadCTX;
 
+#define ThreadCTXAlloc(thread_name) 		thread_ctx_alloc(__FILE__, __LINE__, (thread_name))
+#define GetScratchArena(conflicts, count) 	temp_arena_begin(thread_ctx_get_scratch((conflicts), (count)))
+#define EndScratchArena(scratch) 		temp_end((scratch))
+
+#define ScratchArenaScope(temp_name, conflicts, count) TempArenaScope(temp_name, thread_ctx_get_scratch((conflicts), (count)))
+
+thread_static ThreadCTX* local_thread_ctx = NULL;
+
+ThreadCTX* thread_ctx_alloc(char* file_name, U64 line_number, char* thread_name);
+void thread_ctx_release(void);
+void thread_ctx_select(ThreadCTX* thread_ctx);
+ThreadCTX* thread_ctx_get_selected(void);
+
+
+Arena* thread_ctx_get_scratch(Arena** conflicts, U64 count);
 
 //////////////////////////////////////
 /// cjk: String Definition
@@ -1034,6 +1051,7 @@ DateTime datetime_from_unixtime(U64 unix_time);
 # include <fcntl.h>
 # include <errno.h>
 # include <sys/stat.h>
+# include <sys/sysinfo.h>
 # include <execinfo.h>
 # include <signal.h>
 
@@ -1102,9 +1120,9 @@ typedef U64 OS_Handle;
 
 // TODO: Finish os implementation
 //	1) OS entry point - DONE
-//	2) File operations
+//	2) Basic File operations - DONE
 //	3) System and process info
-//	4) OS time info
+//	4) OS time info - DONE
 //	5) Memory Allocation
 //	6) Directory iteration and creation
 //	7) file memory maps
@@ -1118,13 +1136,13 @@ void os_entry_point(U32 argc, U8 **argv);
 OS_Handle os_file_open(Str8 path, OS_AccessFlags props);
 void os_file_close(OS_Handle file_handle);
 S64 os_file_read_data(OS_Handle file_handle, Rng1U64 range, void *out_data);
-OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle);
+OS_FileProperties os_properties_from_file_handle(Arena* arena, OS_Handle file_handle);
 B32 os_file_delete_at_path(Str8 path);
 B32 os_copy_file_path(Str8 src, Str8 dest);
 Str8 os_full_path_from_rel_path(Arena *arena, Str8 rel_path);
 B32 os_file_path_exists(Str8 path);
 B32 os_folder_path_exists(Str8 path);
-OS_FileProperties os_properties_from_file_path(Str8 path);
+OS_FileProperties os_properties_from_file_path(Arena* arena, Str8 path);
 
 // File map operations
 OS_Handle os_file_map_open(OS_Handle file_handle, OS_AccessFlags flags);
@@ -1143,7 +1161,7 @@ B32 os_make_directory(Str8 path);
 
 // System and process info
 Str8 os_get_current_path(Arena *arena);
-OS_SystemInfo os_get_system_info();
+OS_SystemInfo os_get_system_info(Arena* arena);
 
 // OS memory allocation
 void *os_reserve_memory(U64 size);
@@ -1180,7 +1198,6 @@ typedef struct {
 	CSV_Config config;
 	HashMap column_hash_map;
 	CSV_Row current_row;
-	ScratchArena row_scratch_arena;
 	U8 row_buffer[KB(16)];
 	U64 rows;
 	U64 columns;
@@ -1551,15 +1568,68 @@ void arena_pop_to(Arena *arena, U64 new_pos) {
 	arena->next_free = new_pos;
 }
 
-ScratchArena scratch_arena_begin(Arena *arena) {
+TempArena temp_arena_begin(Arena *arena) {
 	Assert(arena != NULL);
-	return (ScratchArena){.arena = arena, .original_position = arena_get_position(arena)};
+	return (TempArena){.arena = arena, .original_position = arena_get_position(arena)};
 }
 
-void scratch_arena_end(ScratchArena scratch) {
-	Assert(scratch.arena != NULL);
-	arena_pop_to(scratch.arena, scratch.original_position);
+void temp_arena_end(TempArena temp) {
+	Assert(temp.arena != NULL);
+	arena_pop_to(temp.arena, temp.original_position);
 }
+
+///////////////////////////////////////
+/// cjk: Thread Local Arena Definition
+
+ThreadCTX* thread_ctx_alloc(char* file_name, U64 line_number, char* thread_name){
+	Arena* arena = arena_alloc();
+	ThreadCTX* tctx = ArenaPushStructZero(arena, ThreadCTX);
+	tctx->arenas[0] = arena;
+	tctx->arenas[1] = arena_alloc();
+	tctx->file_name = file_name;
+	tctx->line_number = line_number;
+	tctx->thread_name_size  = ClampTop(cstring_length(thread_name), 32);
+	MemoryCopy(tctx->thread_name, thread_name, tctx->thread_name_size);
+	return tctx;
+}
+
+void thread_ctx_release(void){
+	arena_release(local_thread_ctx->arenas[0]);
+	arena_release(local_thread_ctx->arenas[1]);
+}
+
+void thread_ctx_select(ThreadCTX* thread_ctx){
+	local_thread_ctx = thread_ctx;
+}
+
+ThreadCTX* thread_ctx_get_selected(void){
+	return local_thread_ctx;
+}
+
+
+Arena* thread_ctx_get_scratch(Arena** conflicts, U64 count){
+	ThreadCTX* selected_ctx = thread_ctx_get_selected();
+	Arena* result = 0;
+	Arena** arena_ptr = selected_ctx->arenas;
+	for(U64 i = 0; i < ArrayCount(selected_ctx->arenas); i += 1, arena_ptr += 1){
+		Arena** conflict_ptr = conflicts;	
+		B32 has_conflict = false;
+		for(U64 j = 0; j < count; j += 1, conflict_ptr += 1){
+			if(*arena_ptr == *conflict_ptr){
+				has_conflict = true;
+				break;
+			}
+		}
+		if(!has_conflict){
+			result = *arena_ptr;
+			break;
+		}
+	}
+
+	Assert(result);
+	return result;
+}
+
 
 ///////////////////////////////////////
 /// cjk: String Functions 
@@ -1713,8 +1783,8 @@ Str8 str8_copy(Arena *arena, Str8 s1) {
 }
 
 Str8 str8_substr(Str8 s1, Rng1U64 range) {
-	range.min = ClampMax(range.min, s1.size);
-	range.max = ClampMax(range.max, s1.size);
+	range.min = ClampTop(range.min, s1.size);
+	range.max = ClampTop(range.max, s1.size);
 
 	s1.str += range.min;
 	s1.size = dim_r1u64(range);
@@ -2064,8 +2134,8 @@ void csv_row_parse(CSV *csv, Str8 raw_row) {
 	Str8 delimiters = csv->config.delimiters;
 	Str8 quotes = Str8Lit("\"\'");
 
-	ScratchArenaScope(csv->arena) {
-		csv->current_row.list = ArenaPushStructZero(csv->arena, Str8List);
+	TempArenaScope(temp, csv->arena) {
+		csv->current_row.list = ArenaPushStructZero(temp.arena, Str8List);
 		*csv->current_row.list = str8_list();
 
 		B32 is_quoted = 0;
@@ -2098,14 +2168,14 @@ void csv_row_parse(CSV *csv, Str8 raw_row) {
 
 			if (is_delimiter) {
 				Str8 token = str8_substr(raw_row, Rng1_U64(start_idx, i));
-				str8_list_push(csv->arena, csv->current_row.list, token);
+				str8_list_push(temp.arena, csv->current_row.list, token);
 				start_idx = i + 1;
 			}
 		}
 
 		if (start_idx <= raw_row.size) { // Push final token
 			Str8 token = str8_substr(raw_row, Rng1_U64(start_idx, raw_row.size));
-			str8_list_push(csv->arena, csv->current_row.list, token);
+			str8_list_push(temp.arena, csv->current_row.list, token);
 		}
 	}
 }
@@ -2283,6 +2353,10 @@ void os_entry_point(U32 argc, U8 **argv) {
 	sigaction(SIGSEGV, &handler, NULL);
 	sigaction(SIGFPE, &handler, NULL);
 	sigaction(SIGBUS, &handler, NULL);
+
+	local_thread_ctx = ThreadCTXAlloc("main_thread");
+
+
 }
 
 // File operations
@@ -2339,60 +2413,62 @@ S64 os_file_read_data(OS_Handle file_handle, Rng1U64 range, void *out_data) {
 	return result;
 }
 
-OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
+OS_FileProperties os_properties_from_file_handle(Arena* arena, OS_Handle file_handle) {
 	OS_FileProperties props = {0};
 	struct stat statbuf;
-	Arena* temp = arena_alloc_with_capacity(TEMP_ARENA_SIZE);
 
-	S32 err = fstat(file_handle, &statbuf);
-	Assert(err != -1);	
+	ScratchArenaScope(scratch, 0, 0){
+		S32 err = fstat(file_handle, &statbuf);
+		Assert(err != -1);	
 
-	// time modified and created	
-	DateTime date_created = os_lnx_datetime_from_timespec(statbuf.st_ctim);
-	DateTime last_modified = os_lnx_datetime_from_timespec(statbuf.st_mtim);
-	props.created = densetime_from_datetime(date_created);
-	props.modified = densetime_from_datetime(last_modified);
+		// time modified and created	
+		DateTime date_created = os_lnx_datetime_from_timespec(statbuf.st_ctim);
+		DateTime last_modified = os_lnx_datetime_from_timespec(statbuf.st_mtim);
+		props.created = densetime_from_datetime(date_created);
+		props.modified = densetime_from_datetime(last_modified);
 
-	// file properties
-	if(S_ISREG(statbuf.st_mode)){
-		props.flags = OS_FilePropertyFlag_IsFile;
-	}else if(S_ISDIR(statbuf.st_mode)){
-		props.flags = OS_FilePropertyFlag_IsFolder;
+		// file properties
+		if(S_ISREG(statbuf.st_mode)){
+			props.flags = OS_FilePropertyFlag_IsFile;
+		}else if(S_ISDIR(statbuf.st_mode)){
+			props.flags = OS_FilePropertyFlag_IsFolder;
+		}
+		
+		// file name
+		Str8 path = Str8Lit("/proc/self/fd/");
+
+		Str8 fd = integer_to_str8(scratch.arena, file_handle);
+		
+		Str8 fd_path = str8_concat(scratch.arena, path, fd);
+		const char* cstr_fd_path = str8_to_cstring(scratch.arena, fd_path);
+
+
+		Str8 file_name = (Str8){
+			.str=ArenaPushArray(scratch.arena, U8, 256),
+			.size = 256,
+		};	
+
+		err = readlink(cstr_fd_path, (char*)file_name.str, file_name.size);
+		Assert(err != -1);	
+
+		U32 bytes_read = err;
+		file_name.size = bytes_read;
+		props.name.str = ArenaPushArray(arena, U8, bytes_read);
+		props.name.size = bytes_read;
+		MemoryCopyStr8(props.name, file_name);
 	}
-	
-	// file name
-	Str8 path = Str8Lit("/proc/self/fd/");
-
-	Str8 fd = integer_to_str8(temp, file_handle);
-	
-	Str8 fd_path = str8_concat(temp, path, fd);
-	const char* cstr_fd_path = str8_to_cstring(temp, fd_path);
 
 
-	Str8 file_name = (Str8){
-		.str=ArenaPushArray(temp, U8, 256),
-		.size = 256,
-	};	
-
-	err = readlink(cstr_fd_path, (char*)file_name.str, file_name.size);
-	Assert(err != -1);	
-
-	U32 bytes_read = err;
-	file_name.size = bytes_read;
-	props.name = file_name;
-
-	arena_release(temp);
 	return props;
 }
 
-OS_FileProperties os_properties_from_file_path(Str8 path) {
+OS_FileProperties os_properties_from_file_path(Arena* arena, Str8 path) {
 	OS_FileProperties props = {0};
 	struct stat statbuf;
 
-	Arena* temp = arena_alloc_with_capacity(TEMP_ARENA_SIZE);
-	Assert(temp != NULL);
+	TempArena temp = temp_arena_begin(arena);
 
-	char* cstr_file_path = str8_to_cstring(temp, path);
+	char* cstr_file_path = str8_to_cstring(arena, path);
 
 	S32 err = stat(cstr_file_path, &statbuf);
 	Assert(err != -1);	
@@ -2411,9 +2487,12 @@ OS_FileProperties os_properties_from_file_path(Str8 path) {
 	}
 	
 	// get file name
-	props.name = str8_skip_last_slash(path);
+	Str8 file_path = str8_skip_last_slash(path);
+	props.name.str = ArenaPushArray(arena, U8, file_path.size);
+	props.name.size = file_path.size;	
+	MemoryCopyStr8(props.name, file_path); 
 
-	arena_release(temp);
+	temp_arena_end(temp);
 	return props;
 }
 
@@ -2439,8 +2518,31 @@ void os_file_iter_end(OS_FileIter *iter) { NotImplemented; }
 B32 os_make_directory(Str8 path) { NotImplemented; }
 
 // System and process info
-Str8 os_get_current_path(Arena *arena) { NotImplemented; }
-OS_SystemInfo os_get_system_info() { NotImplemented; }
+Str8 os_get_current_path(Arena *arena) { 
+	char* char_buf = ArenaPushArray(arena, char, KB(1));
+	
+	void* err = getcwd(char_buf, KB(1));
+	Assert(err);
+
+	Str8 result = cstring_to_str8(char_buf);
+	return result;	
+}
+
+
+OS_SystemInfo os_get_system_info(Arena* arena) { 
+	OS_SystemInfo sys_info;
+	sys_info.logical_processor_count = get_nprocs();
+
+	char* hostname = ArenaPushArray(arena, char, 256);	
+	Assert(gethostname(hostname, 256) != -1);
+	sys_info.machine_name = cstring_to_str8(hostname);
+	
+	sys_info.page_size = getpagesize();
+	sys_info.large_page_size = MB(2);
+	sys_info.allocation_ganularity = sys_info.page_size;
+
+	return sys_info;
+}
 
 // OS memory allocation
 void *os_reserve_memory(U64 size) { NotImplemented; }
