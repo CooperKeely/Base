@@ -5,6 +5,7 @@
 /// cjk: Context Cracking
 
 // this is only used for better signalhandeling
+#include <xcb/xproto.h>
 #define _POSIX_C_SOURCE 200809L
 
 #if defined(__STDC_VERSION__)
@@ -1221,18 +1222,14 @@ void csv_row_parse(CSV *csv, Str8 raw_row);
 
 #ifdef BASE_ENABLE_WINDOW
 
-# include <X11/Xlib.h>
 # include <math.h>
-# if defined(_POSIX_SHARED_MEMORY_OBJECTS) && (_POSIX_SHARED_MEMORY_OBJECTS >0)
-#  define HAS_SYS_SHM 1
-#  include <sys/ipc.h>
-#  include <sys/shm.h>
-#  include <X11/extensions/XShm.h>
-# else
-#  define HAS_SYS_SHM 0
-# endif
 
+# include <xcb/xcb.h>
+# include <xcb/shm.h>
+# include <sys/ipc.h>
+# include <sys/shm.h>
 
+/*
 typedef U32 WM_WindowCfgUpdate;
 enum{
 	WM_WindowCfgUpdate_X		= (1<<0),
@@ -1323,22 +1320,19 @@ global WM_EventMaskMap wm_event_mask_map[] = {
 	{WM_Event_ClientComm_SelectionNotify	,NoEventMask},
 	{WM_Event_ClientComm_SelectionRequest	,NoEventMask},
 };
-
+*/
 typedef struct{
-	Display*	display;
-	Screen*		screen;
-	Arena*		arena;
-	Window		window;	
-	RectU16		size;
-	RectU16		over_size;
-	Str8		name;
-	GC		graphics_ctx;
-	XGCValues	graphics_ctx_values;
-#if HAS_SYS_SHM
-	XShmSegmentInfo shm_info;
-#endif
-	XImage* image;	
-
+	xcb_connection_t*	connection;
+	xcb_screen_t*		screen;
+	xcb_window_t		window;	
+	xcb_setup_t* 		setup;
+	xcb_gcontext_t		graphics_ctx;
+	xcb_shm_seg_t		shared_mem_seg;
+	U64			shared_mem_seg_id;
+	Arena*			arena;
+	RectU16			size;
+	RectU16			over_size;
+	Str8			name;
 }WM_Context;
 
 
@@ -1370,7 +1364,6 @@ U32 wm_num_of_pending_events(WM_Context* ctx);
 /// cjk: .obj reader Definitions 
 
 // TODO: (cjk) add a .obj file reader to continue on tiny renderer
-
 
 
 #endif // BASE_ENABLE_WINDOW
@@ -2683,43 +2676,68 @@ void os_sleep_milliseconds(U64 msec) {
 
 WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 border_width, ColorRGBA border_color,  ColorRGBA background_color){
 	Assert(arena);	
-
-	// default values
-	U16 default_boarder = 10;
-
 	WM_Context result = {0};
 
 	result.arena = arena;
 	result.size = win_rect;
 	result.name = window_name;
-
-	result.display = XOpenDisplay(NULL);
-	result.screen = XDefaultScreenOfDisplay(result.display);
-	result.window = XCreateSimpleWindow(result.display, 
-			       XDefaultRootWindow(result.display), 
-			       win_rect.x, win_rect.y, 
-			       win_rect.width, win_rect.height,
-			       (border_width == 0)? default_boarder : border_width,
-			       border_color.c,
-			       background_color.c);
-
-	XSetWindowAttributes attr;
-	attr.background_pixmap = None;
-	attr.bit_gravity = NorthWestGravity;
-	XChangeWindowAttributes(result.display, result.window, CWBackPixmap, &attr);
+	U32 value_mask = 0;
+	U32 value_list[2];
 
 
-	U32 screen = DefaultScreen(result.display);
+	// get connection
+	result.connection = xcb_connect(NULL, NULL);
+	if(xcb_connection_has_error(result.connection)){
+		InvalidPath;
+	}
 
-	result.over_size = Rect_U16(0,0, DisplayWidth(result.display, screen), DisplayHeight(result.display, screen));
+	// get screen
+	result.setup = xcb_get_setup(result.connection);
+	xcb_screen_iterator_t iter = xcb_setup_roots_iterator(result.setup);
+	result.screen = iter.data;
 
-	Assert(result.display);
+	// create graphics context
+	result.graphics_ctx = xcb_generate_id(result.connection);
+	result.window = result.screen->root;
+	
+	value_mask = XCB_GC_FOREGROUND | XCB_GC_GRAPHICS_EXPOSURES;
+	value_list[0] = result.screen->black_pixel;
+	value_list[1] = 0;
+	xcb_create_gc(result.connection, result.graphics_ctx, result.window, value_mask, value_list);
+
+	// create window
+	result.window = xcb_generate_id(result.connection);
+	value_mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
+	value_list[0] = result.screen->white_pixel;
+	value_list[1] = XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_STRUCTURE_NOTIFY
+
+	xcb_create_window(result.connection, 
+		   XCB_COPY_FROM_PARENT,
+		   result.window,
+		   result.screen->root,
+		   win_rect.x,
+		   win_rect.y,
+		   win_rect.width,
+		   win_rect.height,
+		   border_width,
+		   XCB_WINDOW_CLASS_INPUT_OUTPUT,
+		   result.screen->root_visual,
+		   value_mask,
+		   value_list);
+
+	// set window name
+	xcb_change_property(result.connection,
+		     XCB_PROP_MODE_REPLACE,
+		     result.window,
+		     XCB_ATOM_WM_NAME,
+		     XCB_ATOM_STRING, 
+		     8,
+		     window_name.size,
+		     window_name.str);
+
+
+	Assert(result.connection);
 	Assert(result.screen);
-	Assert(result.window);
-
-#if HAS_SYS_SHM
-	printf("[MIT-SHM supported by X11]\n");	
-
 
 	result.image = XShmCreateImage(result.display,
 				DefaultVisualOfScreen(result.screen),
@@ -2731,8 +2749,10 @@ WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 
 
 	Assert(result.image);
 
+	// create shared memory region
 	U64 total_size = result.image->bytes_per_line * result.image->height;
-	result.shm_info.shmid = shmget(IPC_PRIVATE, total_size, IPC_CREAT|0777);
+	result.shared_mem_seg = xcb_generate_id(result.connection);
+	result.shared_mem_id = shmget(IPC_PRIVATE, total_size, IPC_CREAT|0600);
 
 	result.shm_info.shmaddr = result.image->data = shmat(result.shm_info.shmid, 0, 0);
 	result.shm_info.readOnly = False;
@@ -2743,27 +2763,7 @@ WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 
 
 	Assert(status);
 
-# else
-	printf("[MIT-SHM unsupported by X11 Falling back]\n");
-
-	result.image_buffer = ArenaPushArray(arena, U8, sizeof(ColorRGBA) * win_rect.width * win_rect.height);
-	result.image = XCreateImage(result.display, 
-				DefaultVisualOfScreen(result.screen),
-				DefaultDepthOfScreen(result.screen), 
-				ZPixmap, 
-				0, 
-				(char*) result.image_buffer, 
-				win_rect.width, win_rect.height, 
-				BitsFromBytes(sizeof(ColorRGBA)), 0); 
-
-	Assert(result.image);
-
-#endif
-	result.graphics_ctx = XCreateGC(result.display, result.window, 0, &result.graphics_ctx_values);
-
-	XStoreName(result.display, result.window, str8_to_cstring(arena, window_name));
-
-	XMapWindow(result.display, result.window);
+	xcb_map_window(result.connection, result.window);
 	return result;	
 }
 
