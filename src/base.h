@@ -862,7 +862,7 @@ typedef struct {
 
 #define ThreadCTXAlloc(thread_name) 		thread_ctx_alloc(__FILE__, __LINE__, (thread_name))
 #define GetScratchArena(conflicts, count) 	temp_arena_begin(thread_ctx_get_scratch((conflicts), (count)))
-#define EndScratchArena(scratch) 		temp_end((scratch))
+#define EndScratchArena(scratch) 		temp_arena_end((scratch))
 
 #define ScratchArenaScope(temp_name, conflicts, count) TempArenaScope(temp_name, thread_ctx_get_scratch((conflicts), (count)))
 
@@ -1564,7 +1564,8 @@ void arena_pop(Arena *arena, U64 size) {
 }
 
 void arena_pop_to(Arena *arena, U64 new_pos) {
-	Assert(arena != NULL);
+	Assert(arena);
+	Assert(arena->mem_ptr);
 
 	U64 current_pos = arena_get_position(arena);
 
@@ -1579,7 +1580,8 @@ void arena_pop_to(Arena *arena, U64 new_pos) {
 
 TempArena temp_arena_begin(Arena *arena) {
 	Assert(arena != NULL);
-	return (TempArena){.arena = arena, .original_position = arena_get_position(arena)};
+	TempArena temp = {arena, arena_get_position(arena)};
+	return temp; 
 }
 
 void temp_arena_end(TempArena temp) {
@@ -2297,13 +2299,18 @@ DateTime os_lnx_datetime_from_timespec(struct timespec time){
 void os_lnx_signal_handler(int sig, siginfo_t *info, void *arg) {
 	local_persist void *bt_buffer[KB(4)];
 	U64 bt_count = backtrace(bt_buffer, ArrayCount(bt_buffer));
-	
-	fprintf(stderr, "[Process Recieved Signal: %s (%d)]\n", strsignal(sig), sig);
+
+	fprintf(stderr, "\n");
+
+	ThreadCTX* tctx = thread_ctx_get_selected();
+	Str8 thread_str = str8(tctx->thread_name, tctx->thread_name_size);
+	fprintf(stderr, "[Thread %.*s %s:%lu recieved signal: %s (%d)]\n", Str8VArg(thread_str), tctx->file_name, tctx->line_number, strsignal(sig), sig);
+
 	if(errno != 0){
 		int err = errno;
 		const char* error_description = strerrordesc_np(err);
 		const char* error_name = strerrorname_np(err);
-		fprintf(stderr, "[Errno (%d) %s: %s]", err, error_name, error_description);
+		fprintf(stderr, "[Errno (%d) %s: %s]\n", err, error_name, error_description);
 	}
 
 	for EachIndex(i, bt_count) {
@@ -2368,6 +2375,7 @@ void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app) {
 
 	// process info setup
 	os_state.proc_info.pid = getpid();
+	str8_printf(stderr, "[Process started on pid: %d]\n", os_state.proc_info.pid);
 
 	// allocate os state arena	
 	os_state.arena = arena_alloc();
@@ -2375,7 +2383,6 @@ void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app) {
 	// thread context setup
 	ThreadCTX* tctx = ThreadCTXAlloc("main_thread");
 	thread_ctx_select(tctx);	
-
 
 	// dynamically allocated system info
 	ScratchArenaScope(scratch, 0, 0){
@@ -2387,10 +2394,10 @@ void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app) {
 		Str8 host_name = cstring_to_str8(char_buf); 
 		
 		sys_info->machine_name.size = host_name.size;
-		ArenaPushArray(os_state.arena, U8, host_name.size);
+		sys_info->machine_name.str = ArenaPushArray(os_state.arena, U8, host_name.size);
 		MemoryCopyStr8(sys_info->machine_name, host_name);	
 	}
-
+	
 	// dynamically allocated process info	
 	ScratchArenaScope(scratch, 0, 0){
 		OS_ProcessInfo* proc_info = &os_state.proc_info;
@@ -2399,9 +2406,8 @@ void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app) {
 		char* home = getenv("HOME");	
 		proc_info->user_program_data_path = cstring_to_str8(home);
 
-	
 		char* char_buff = ArenaPushArray(scratch.arena, char, KB(4));
-		S32 err = readlink("proc/sec/exe", char_buff, KB(4));
+		S32 err = readlink("/proc/self/exe", char_buff, KB(4));
 		Assert(err != -1);
 
 		U32 bytes_read = err;
@@ -2410,9 +2416,9 @@ void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app) {
 		MemoryCopy(proc_info, char_buff, bytes_read);
 	}
 
-
 	// call user entry point
-	exit(app(argc, argv));
+	S32 exit_code = app(argc, argv);
+	exit(exit_code);
 }
 
 // File operations
@@ -2593,12 +2599,7 @@ Str8 os_get_current_path(Arena* arena) {
 
 
 OS_SystemInfo os_get_system_info() { 
-
-	return os_state.system_info;
-	ScratchArenaScope(scratch, 0, 0){
-	
-
-	return sys_info;
+	return os_state.sys_info;
 }
 
 // OS memory allocation
