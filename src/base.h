@@ -1160,8 +1160,7 @@ void *os_file_map_view_open(OS_Handle map, OS_AccessFlags flags, Rng1U64 range);
 void os_file_map_view_close(OS_Handle map, void *ptr, Rng1U64 range);
 
 // Directory iteration
-OS_FileIter *os_file_iter_begin(Arena *arena, Str8 path,
-				OS_FileIterFlags flags);
+OS_FileIter *os_file_iter_begin(Arena *arena, Str8 path, OS_FileIterFlags flags);
 B32 os_file_iter_next(Arena *arena, OS_FileIter *iter, OS_FileInfo *info_out);
 void os_file_iter_end(OS_FileIter *iter);
 
@@ -1372,7 +1371,7 @@ U32 wm_num_of_pending_events(WM_Context* ctx);
 //////////////////////////////////////
 /// cjk: .obj reader Definitions 
 
-
+// TODO: (cjk) add a .obj file reader to continue on tiny renderer
 
 
 
@@ -1486,7 +1485,7 @@ F64 dot_vec3f64(Vec3F64 v1, Vec3F64 v2){ return (v1.x * v2.x) + (v2.y * v2.y) + 
 ///////////////////////////////////////
 /// cjk: Color Functions 
 
-ColorRGBA color_rgba(U8 r, U8 g, U8 b, U8 a){ return (ColorRGBA){{ r, g, b,a}};}
+ColorRGBA color_rgba(U8 r, U8 g, U8 b, U8 a){ return (ColorRGBA){{r, g, b,a}};}
 
 ColorBGRA color_rgba_to_bgra(ColorRGBA color){
 	return (ColorBGRA){
@@ -2115,7 +2114,7 @@ DateTime datetime_from_densetime(DenseTime time) {
 	result.year = (U32)time;
 	return result;
 }
-///
+
 ///////////////////////////////////////
 /// cjk: CSV Functions
 
@@ -2236,6 +2235,7 @@ struct tm os_lnx_tm_from_datetime(DateTime time){
 	};
 	return tm_time;
 }
+
 DateTime os_lnx_datetime_from_unixtime(U64 unix_time) {
 	DateTime date 	= {0};
 	date.year 	= 1970;
@@ -2432,15 +2432,15 @@ void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app) {
 #ifdef BUILD_DEBUG
 	OS_ProcessInfo* proc_info = &os_state.proc_info;
 	OS_SystemInfo* info = &os_state.sys_info;
-	
+
 	str8_printf(stderr, "[Process Debug Info]\n");
 	str8_printf(stderr, "[Machine name: %.*s]\n", Str8VArg(info->machine_name));
 	str8_printf(stderr, "[Page Size: %lu]\n", info->page_size);
 	str8_printf(stderr, "[Large Page Size: %lu]\n", info->large_page_size);
 	str8_printf(stderr, "[CPU Cores: %d]\n", info->logical_processor_count);
-	str8_printf(stderr, "[Inital Path: %.*s]\n", Str8VArg(proc_info->initial_path));
-	str8_printf(stderr, "[Home Path: %.*s]\n", Str8VArg(proc_info->user_program_data_path));
 	str8_printf(stderr, "[PID: %d]\n", proc_info->pid);
+	str8_printf(stderr, "[Home Path: %.*s]\n", Str8VArg(proc_info->user_program_data_path));
+	str8_printf(stderr, "[Inital Path: %.*s]\n", Str8VArg(proc_info->initial_path));
 	str8_printf(stderr, "[Binary Path: %.*s]\n", Str8VArg(proc_info->binary_path));
 	str8_printf(stderr, "\n"); 
 #endif
@@ -2527,28 +2527,17 @@ OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
 		
 		// file name
 		Str8 path = Str8Lit("/proc/self/fd/");
-
 		Str8 fd = integer_to_str8(scratch.arena, file_handle);
-		
 		Str8 fd_path = str8_concat(scratch.arena, path, fd);
 		const char* cstr_fd_path = str8_to_cstring(scratch.arena, fd_path);
+		
+		char* char_buf = ArenaPushArray(scratch.arena, char, PATH_MAX);
+		S32 bytes_read = readlink(cstr_fd_path, char_buf, PATH_MAX);
+		Assert(bytes_read != -1);	
 
-
-		Str8 file_name = (Str8){
-			.str=ArenaPushArray(scratch.arena, U8, PATH_MAX),
-			.size = PATH_MAX,
-		};	
-
-		err = readlink(cstr_fd_path, (char*)file_name.str, file_name.size);
-		Assert(err != -1);	
-
-		U32 bytes_read = err;
-		file_name.size = bytes_read;
-		props.name.str = ArenaPushArray(scratch.arena, U8, bytes_read);
-		props.name.size = bytes_read;
-		MemoryCopyStr8(props.name, file_name);
+		Str8 file_name = str8((U8*) char_buf, bytes_read);
+		props.name = str8_deep_copy(scratch.arena, file_name);
 	}
-
 
 	return props;
 }
@@ -2578,9 +2567,7 @@ OS_FileProperties os_properties_from_file_path(Str8 path) {
 		
 		// get file name
 		Str8 file_path = str8_skip_last_slash(path);
-		props.name.str = ArenaPushArray(scratch.arena, U8, file_path.size);
-		props.name.size = file_path.size;	
-		MemoryCopyStr8(props.name, file_path); 
+		props.name = str8_deep_copy(scratch.arena, file_path);
 	}
 
 	return props;

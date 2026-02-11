@@ -265,18 +265,8 @@ void x11_graphics(){
 }
 
 
-void os_main(){
-	
-	
 
-
-}
-
-
-S32 entry_point(U64 argc, U8** argv){
-	(void) argc;
-	(void) argv;
-
+void os_file_props_test(){
 	ScratchArenaScope(scratch, 0, 0){
 		Str8 current_dir = os_get_current_path(scratch.arena);
 
@@ -297,6 +287,15 @@ S32 entry_point(U64 argc, U8** argv){
 
 		os_file_close(file_handle);	
 	}
+
+}
+
+
+
+S32 entry_point(U64 argc, U8** argv){
+	(void) argc;
+	(void) argv;
+
 	return 0;
 }
 
