@@ -278,30 +278,22 @@ S32 entry_point(U64 argc, U8** argv){
 	(void) argv;
 
 	ScratchArenaScope(scratch, 0, 0){
-		OS_SystemInfo info = os_get_system_info();
 		Str8 current_dir = os_get_current_path(scratch.arena);
 
 		OS_Handle file_handle = os_file_open(Str8Lit("resources/customers-2000000.csv"), OS_AccessFlag_Read);
 		OS_FileProperties props = os_properties_from_file_handle(file_handle);
-		
-		
-		printf("Bytes read: %lu\n", props.name.size);
-		printf("File name: %.*s\n", Str8VArg(props.name));
 
 		DateTime time = datetime_from_densetime(props.modified);
 		time_t linux_time = os_lnx_time_from_datetime(time);
 		DateTime universal_time = os_universal_time_from_local(time);
 		DateTime local_time = os_local_time_from_universal(universal_time);
-
-		str8_printf(stderr, "Current Dir: %.*s\n", Str8VArg(current_dir));
-		str8_printf(stderr, "Machine name: %.*s\n", Str8VArg(info.machine_name));
-		str8_printf(stderr, "Page Size: %lu\n", info.page_size);
-		str8_printf(stderr, "Large Page Size: %lu\n", info.large_page_size);
-
-		printf("Modified: %d %d %d %d %d\n", time.year, time.month_num , time.day, time.hour, time.min);
-		printf("Linux Time: %lu\n", linux_time);
-		printf("Universal Time: %d %d %d %d %d\n", universal_time.year, universal_time.month_num , universal_time.day, universal_time.hour, universal_time.min);
-		printf("Local Time: %d %d %d %d %d\n", local_time.year, local_time.month_num , local_time.day, local_time.hour, local_time.min);
+		
+		str8_printf(stderr, "File name: %.*s\n", Str8VArg(props.name));
+		str8_printf(stderr, "Bytes read: %lu\n", props.name.size);
+		str8_printf(stderr, "Modified: %d %d %d %d %d\n", time.year, time.month_num , time.day, time.hour, time.min);
+		str8_printf(stderr, "Linux Time: %lu\n", linux_time);
+		str8_printf(stderr, "Universal Time: %d %d %d %d %d\n", universal_time.year, universal_time.month_num , universal_time.day, universal_time.hour, universal_time.min);
+		str8_printf(stderr, "Local Time: %d %d %d %d %d\n", local_time.year, local_time.month_num , local_time.day, local_time.hour, local_time.min);
 
 		os_file_close(file_handle);	
 	}

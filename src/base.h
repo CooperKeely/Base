@@ -903,8 +903,7 @@ U8 upper_from_char(U8 chr);
 Str8 str8_skip_last_slash(Str8 str);
 inline U8 str8_get(Str8 str, U64 idx);
 Str8 integer_to_str8(Arena* arena, S64 integer);
-
-
+Str8 str8_deep_copy(Arena* arena, Str8 str);
 
 
 // Str8 output
@@ -1056,6 +1055,7 @@ DateTime datetime_from_unixtime(U64 unix_time);
 # include <sys/sysinfo.h>
 # include <execinfo.h>
 # include <signal.h>
+# include <linux/limits.h>
 
 typedef S32 OS_ApplicationEntryPoint(U64 argc, U8** argv);
 
@@ -1101,7 +1101,7 @@ typedef struct {
 
 typedef struct {
 	OS_FileIterFlags flags;
-	U8 buf[KB(2)];
+	U8 buf[PATH_MAX];
 } OS_FileIter;
 
 typedef struct {
@@ -1711,6 +1711,15 @@ U8 str8_get(Str8 string, U64 idx) {
 	return '\0';
 }
 
+
+Str8 str8_deep_copy(Arena* arena, Str8 str){
+	Str8 result = {0};
+	result.size = str.size;
+	result.str = ArenaPushArray(arena, U8, str.size);
+	MemoryCopyStr8(result, str);
+	return result;
+}
+
 Str8 integer_to_str8(Arena* arena, S64 integer){
 	if(integer == 0) return Str8Lit("0");
 	B32 is_negative = (integer < 0);
@@ -1743,7 +1752,7 @@ Str8 integer_to_str8(Arena* arena, S64 integer){
 }
 
 U64 cstring_length(const char *c) {
-	Assert(c != NULL);
+	Assert(c);
 	U64 length = 0;
 	if (c) {
 		U8 *p = (U8 *)c;
@@ -1754,8 +1763,9 @@ U64 cstring_length(const char *c) {
 }
 
 Str8 cstring_to_str8(const char *c) {
-	Assert(c != NULL);
-	return (Str8){(U8 *)c, cstring_length(c)};
+	Assert(c);
+	Str8 ret = {(U8*)c, cstring_length(c)};
+	return ret; 
 }
 
 char* str8_to_cstring(Arena* arena, Str8 str){
@@ -2297,7 +2307,7 @@ DateTime os_lnx_datetime_from_timespec(struct timespec time){
 
 
 void os_lnx_signal_handler(int sig, siginfo_t *info, void *arg) {
-	local_persist void *bt_buffer[KB(4)];
+	local_persist void *bt_buffer[PATH_MAX];
 	U64 bt_count = backtrace(bt_buffer, ArrayCount(bt_buffer));
 
 	fprintf(stderr, "\n");
@@ -2318,7 +2328,7 @@ void os_lnx_signal_handler(int sig, siginfo_t *info, void *arg) {
 		Dl_info dl_info = {0};
 		dladdr(bt_buffer[i], &dl_info);
 
-		char cmd[KB(2)];
+		char cmd[PATH_MAX];
 		snprintf(cmd, sizeof(cmd), "llvm-symbolizer --relative-address -f -e %s %lu", dl_info.dli_fname, (unsigned long)bt_buffer[i] - (unsigned long)dl_info.dli_fbase);
 
 		FILE *f = popen(cmd, "r");
@@ -2343,7 +2353,9 @@ void os_lnx_signal_handler(int sig, siginfo_t *info, void *arg) {
 				fprintf(stderr, "%ld. [0x%016lx] %.*s%s%.*s %.*s\n", i + 1, (unsigned long)bt_buffer[i], Str8VArg(module), (!no_file || !no_file) ? ", " : "", Str8VArg(func), Str8VArg(file));
 			}
 			pclose(f);
-		} else {
+		} 
+
+		else {
 			fprintf(stderr, "%ld. [0x%016lx] %s\n", i + 1,(unsigned long)bt_buffer[i], dl_info.dli_fname);
 		}
 	}
@@ -2375,7 +2387,6 @@ void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app) {
 
 	// process info setup
 	os_state.proc_info.pid = getpid();
-	str8_printf(stderr, "[Process started on pid: %d]\n", os_state.proc_info.pid);
 
 	// allocate os state arena	
 	os_state.arena = arena_alloc();
@@ -2387,8 +2398,8 @@ void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app) {
 	// dynamically allocated system info
 	ScratchArenaScope(scratch, 0, 0){
 		OS_SystemInfo* sys_info = &os_state.sys_info;
-		char* char_buf = ArenaPushArray(scratch.arena, char, 256);
-		S32 err = gethostname(char_buf, 256);
+		char* char_buf = ArenaPushArray(scratch.arena, char, PATH_MAX);
+		S32 err = gethostname(char_buf, PATH_MAX);
 		Assert(err != -1);
 		
 		Str8 host_name = cstring_to_str8(char_buf); 
@@ -2404,17 +2415,35 @@ void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app) {
 		proc_info->initial_path = os_get_current_path(os_state.arena);
 
 		char* home = getenv("HOME");	
-		proc_info->user_program_data_path = cstring_to_str8(home);
+		Assert(home);
 
-		char* char_buff = ArenaPushArray(scratch.arena, char, KB(4));
-		S32 err = readlink("/proc/self/exe", char_buff, KB(4));
+		Str8 home_str8 = cstring_to_str8(home);
+		proc_info->user_program_data_path = str8_deep_copy(os_state.arena, home_str8);
+
+		char* char_buff = ArenaPushArray(scratch.arena, char, PATH_MAX);
+		S32 err = readlink("/proc/self/exe", char_buff, PATH_MAX);
 		Assert(err != -1);
 
-		U32 bytes_read = err;
-		proc_info->binary_path.size = bytes_read;	
-		proc_info->binary_path.str = ArenaPushArray(os_state.arena, U8, bytes_read); 
-		MemoryCopy(proc_info, char_buff, bytes_read);
+		Str8 binary_path = str8((U8*) char_buff,(U64) err);
+		proc_info->binary_path = str8_deep_copy(os_state.arena, binary_path);
 	}
+
+
+#ifdef BUILD_DEBUG
+	OS_ProcessInfo* proc_info = &os_state.proc_info;
+	OS_SystemInfo* info = &os_state.sys_info;
+	
+	str8_printf(stderr, "[Process Debug Info]\n");
+	str8_printf(stderr, "[Machine name: %.*s]\n", Str8VArg(info->machine_name));
+	str8_printf(stderr, "[Page Size: %lu]\n", info->page_size);
+	str8_printf(stderr, "[Large Page Size: %lu]\n", info->large_page_size);
+	str8_printf(stderr, "[CPU Cores: %d]\n", info->logical_processor_count);
+	str8_printf(stderr, "[Inital Path: %.*s]\n", Str8VArg(proc_info->initial_path));
+	str8_printf(stderr, "[Home Path: %.*s]\n", Str8VArg(proc_info->user_program_data_path));
+	str8_printf(stderr, "[PID: %d]\n", proc_info->pid);
+	str8_printf(stderr, "[Binary Path: %.*s]\n", Str8VArg(proc_info->binary_path));
+	str8_printf(stderr, "\n"); 
+#endif
 
 	// call user entry point
 	S32 exit_code = app(argc, argv);
@@ -2506,8 +2535,8 @@ OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
 
 
 		Str8 file_name = (Str8){
-			.str=ArenaPushArray(scratch.arena, U8, 256),
-			.size = 256,
+			.str=ArenaPushArray(scratch.arena, U8, PATH_MAX),
+			.size = PATH_MAX,
 		};	
 
 		err = readlink(cstr_fd_path, (char*)file_name.str, file_name.size);
@@ -2580,20 +2609,12 @@ B32 os_make_directory(Str8 path) { NotImplemented; }
 
 // System and process info
 Str8 os_get_current_path(Arena* arena) { 
-		
-	char* char_buf = get_current_dir_name();
-
+	void* char_buf = getcwd(0, 0);
 	Str8 curr_dir = cstring_to_str8(char_buf);
 	
-	Str8 result = (Str8){
-		.size = curr_dir.size,
-		.str = ArenaPushArray(arena, U8, curr_dir.size),
-	};
-	
-	MemoryCopyStr8(result, curr_dir);
+	Str8 result = str8_deep_copy(arena, curr_dir);
 
 	free(char_buf);
-
 	return result;	
 }
 
