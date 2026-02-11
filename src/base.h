@@ -903,8 +903,6 @@ U8 upper_from_char(U8 chr);
 Str8 str8_skip_last_slash(Str8 str);
 inline U8 str8_get(Str8 str, U64 idx);
 Str8 integer_to_str8(Arena* arena, S64 integer);
-Str8 str8_deep_copy(Arena* arena, Str8 str);
-
 
 // Str8 output
 void str8_printf(FILE *file_ptr, const char *format, ...);
@@ -1711,13 +1709,7 @@ U8 str8_get(Str8 string, U64 idx) {
 }
 
 
-Str8 str8_deep_copy(Arena* arena, Str8 str){
-	Str8 result = {0};
-	result.size = str.size;
-	result.str = ArenaPushArray(arena, U8, str.size);
-	MemoryCopyStr8(result, str);
-	return result;
-}
+
 
 Str8 integer_to_str8(Arena* arena, S64 integer){
 	if(integer == 0) return Str8Lit("0");
@@ -1779,7 +1771,7 @@ char* str8_to_cstring(Arena* arena, Str8 str){
 }
 
 Str8 str8_concat(Arena *arena, Str8 s1, Str8 s2) {
-	Assert(arena != NULL);
+	Assert(arena);
 
 	U64 new_size = s1.size + s2.size;
 	U8 *character_buffer = ArenaPushArray(arena, U8, new_size);
@@ -1790,16 +1782,14 @@ Str8 str8_concat(Arena *arena, Str8 s1, Str8 s2) {
 	return (Str8){ .str = character_buffer, .size = new_size};
 }
 
-Str8 str8_copy(Arena *arena, Str8 s1) {
-	Assert(arena != NULL);
+Str8 str8_copy(Arena* arena, Str8 str){
+	Assert(arena);
 
-	Str8 new_string = (Str8){
-		.str = ArenaPushArray(arena, U8, s1.size),
-		.size = s1.size,
-	};
-
-	MemoryCopy(new_string.str, s1.str, s1.size);
-	return new_string;
+	Str8 result = {0};
+	result.size = str.size;
+	result.str = ArenaPushArray(arena, U8, str.size);
+	MemoryCopyStr8(result, str);
+	return result;
 }
 
 Str8 str8_substr(Str8 s1, Rng1U64 range) {
@@ -1855,12 +1845,7 @@ B32 str8_match(Str8 s1, Str8 s2, Str8_MatchFlags flags) {
 /// cjk: String List Functions 
 
 Str8List str8_list() {
-	return (Str8List){
-		.first = NULL,
-		.last = NULL,
-		.count = 0,
-		.total_size = 0,
-	};
+	return (Str8List){0};
 }
 
 Str8Node *str8_list_push_node(Str8List *list, Str8Node *node) {
@@ -2200,11 +2185,11 @@ void csv_row_parse(CSV *csv, Str8 raw_row) {
 	}
 }
 
-#ifdef BASE_ENABLE_OS
+# ifdef BASE_ENABLE_OS
 ///////////////////////////////////////
 /// cjk: OS API Functions 
 
-# if OS_LINUX
+#  if OS_LINUX
 
 ///////////////////////////////////////
 /// cjk: Linux API Helper Functions 
@@ -2418,18 +2403,18 @@ void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app) {
 		Assert(home);
 
 		Str8 home_str8 = cstring_to_str8(home);
-		proc_info->user_program_data_path = str8_deep_copy(os_state.arena, home_str8);
+		proc_info->user_program_data_path = str8_copy(os_state.arena, home_str8);
 
 		char* char_buff = ArenaPushArray(scratch.arena, char, PATH_MAX);
 		S32 err = readlink("/proc/self/exe", char_buff, PATH_MAX);
 		Assert(err != -1);
 
 		Str8 binary_path = str8((U8*) char_buff,(U64) err);
-		proc_info->binary_path = str8_deep_copy(os_state.arena, binary_path);
+		proc_info->binary_path = str8_copy(os_state.arena, binary_path);
 	}
 
 
-#ifdef BUILD_DEBUG
+#   ifdef BUILD_DEBUG
 	OS_ProcessInfo* proc_info = &os_state.proc_info;
 	OS_SystemInfo* info = &os_state.sys_info;
 
@@ -2443,7 +2428,7 @@ void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app) {
 	str8_printf(stderr, "[Inital Path: %.*s]\n", Str8VArg(proc_info->initial_path));
 	str8_printf(stderr, "[Binary Path: %.*s]\n", Str8VArg(proc_info->binary_path));
 	str8_printf(stderr, "\n"); 
-#endif
+#   endif
 
 	// call user entry point
 	S32 exit_code = app(argc, argv);
@@ -2536,7 +2521,7 @@ OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
 		Assert(bytes_read != -1);	
 
 		Str8 file_name = str8((U8*) char_buf, bytes_read);
-		props.name = str8_deep_copy(scratch.arena, file_name);
+		props.name = str8_copy(scratch.arena, file_name);
 	}
 
 	return props;
@@ -2567,7 +2552,7 @@ OS_FileProperties os_properties_from_file_path(Str8 path) {
 		
 		// get file name
 		Str8 file_path = str8_skip_last_slash(path);
-		props.name = str8_deep_copy(scratch.arena, file_path);
+		props.name = str8_copy(scratch.arena, file_path);
 	}
 
 	return props;
@@ -2599,7 +2584,7 @@ Str8 os_get_current_path(Arena* arena) {
 	void* char_buf = getcwd(0, 0);
 	Str8 curr_dir = cstring_to_str8(char_buf);
 	
-	Str8 result = str8_deep_copy(arena, curr_dir);
+	Str8 result = str8_copy(arena, curr_dir);
 
 	free(char_buf);
 	return result;	
@@ -2681,20 +2666,20 @@ void os_sleep_milliseconds(U64 msec) {
 	Assert(err == 0);
 }
 
-# elif OS_WINDOWS
-#  error "Windows is currently unsupporrted"
-# elif OS_MAC
-#  error "Mac is currently unsupported"
-# else
-#  error "Unknown OS error"
-# endif
-#endif // BASE_ENABLE_OS
+#   elif OS_WINDOWS
+#    error "Windows is currently unsupporrted"
+#   elif OS_MAC
+#    error "Mac is currently unsupported"
+#   else
+#    error "Unknown OS error"
+#   endif
+#  endif // BASE_ENABLE_OS
 
 
 ///////////////////////////////////////
 /// cjk: Window API Functions 
 
-#ifdef BASE_ENABLE_WINDOW
+# ifdef BASE_ENABLE_WINDOW
 
 WM_Context wm_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 border_width, ColorRGBA border_color,  ColorRGBA background_color){
 	Assert(arena);	
@@ -3008,6 +2993,5 @@ U32 wm_num_of_pending_events(WM_Context* ctx){
 }
 
 
-#endif // BASE_ENABLE_WINDOW
-
+# endif // BASE_ENABLE_WINDOW
 #endif // BASE_IMPLEMENTATION
