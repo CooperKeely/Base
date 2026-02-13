@@ -1,6 +1,3 @@
-
-#include "base_string.h"
-
 ///////////////////////////////////////
 /// cjk: String Functions 
 

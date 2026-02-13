@@ -1,5 +1,6 @@
 #ifndef BASE_MATH_H
 #define BASE_MATH_H
+
 ///////////////////////////////////////
 /// cjk: Point Type Definitions 
 
@@ -245,5 +246,13 @@ RectU64 rect_u64(U64 x, U64 y, U64 width, U64 height);
 
 RectF32 rect_f32(F32 x, F32 y, F32 width, F32 height);
 RectF64 rect_f64(F64 x, F64 y, F64 width, F64 height);
+
+
+///////////////////////////////////////
+/// cjk: PRNG Definitions 
+/// https://en.wikipedia.org/wiki/Mersenne_Twister
+
+// TODO: (cjk) implement Mersenne Twiser psuedo random number generation
+
 
 #endif //BASE_MATH_H

@@ -1,3 +1,6 @@
+#ifndef BASE_CONTEXT_CRACKING_H
+#define BASE_CONTEXT_CRACKING_H
+
 //////////////////////////////////////
 /// cjk: Context Cracking
 
@@ -168,3 +171,4 @@
 # error "Architecture not supported yet"
 #endif
 
+#endif //BASE_CONTEXT_CRACKING_H

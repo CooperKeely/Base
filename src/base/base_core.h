@@ -397,5 +397,45 @@ DenseTime densetime_from_datetime(DateTime time);
 DateTime datetime_from_densetime(DenseTime time);
 DateTime datetime_from_unixtime(U64 unix_time);
 
+///////////////////////////////////////
+/// cjk: Color Definitions 
+
+typedef union{
+	struct{
+		U8 r;
+		U8 g;
+		U8 b;
+		U8 a;
+	};
+	U32 c;
+}ColorRGBA;
+
+typedef union{
+	struct{
+		U8 b;
+		U8 g;
+		U8 r;
+		U8 a;
+	};
+	U32 c;
+}ColorBGRA;
+
+#define RGB(R,G,B)	color_rgba((U8)(R), (U8)(G), (U8)(B), (U8)255) 
+#define RGBA(R,G,B,A)	color_rgba((U8)(R), (U8)(G), (U8)(B), (U8)(A))
+
+// Color pallette
+#define COLOR_WHITE 	RGB(255,255,255)
+#define COLOR_BLACK 	RGB(0,0,0)
+#define COLOR_RED   	RGB(255,0,0) 
+#define COLOR_GREEN	RGB(0,255,0) 
+#define COLOR_BLUE 	RGB(0, 0, 255) 
+#define COLOR_YELLOW 	RGB(255,255,0)
+#define COLOR_MAGENTA	RGB(255,0,255) 
+#define COLOR_CYAN	RGB(0,255,255) 
+
+ColorRGBA color_rgba(U8 r, U8 g, U8 b, U8 a);
+ColorBGRA color_rgba_to_bgra(ColorRGBA color);
+
+
 
 #endif // BASE_CORE_H

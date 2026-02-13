@@ -49,7 +49,7 @@ gcc_link="-lm -ldl -lrt"
 gcc_out="-o"
 
 # --- Per-Build Settings
-link_os_gfx="-lX11 -lXext"
+link_os_gfx="-lxcb -lxcb-shm"
 
 # --- Choose Compile/Link lines
 if [ -v gcc ];			then compile_debug="$gcc_debug"; fi

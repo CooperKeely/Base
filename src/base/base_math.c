@@ -1,6 +1,3 @@
-
-#include "base_math.h"
-
 ///////////////////////////////////////
 /// cjk:  Rect Functions 
 

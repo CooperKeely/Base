@@ -1,6 +1,4 @@
 
-#include "os_linux.h"
-
 ///////////////////////////////////////
 /// cjk: Linux API Helper Functions 
 
@@ -41,7 +39,7 @@ DateTime os_lnx_datetime_from_unixtime(U64 unix_time) {
 
 	local_persist const U32 month_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	for(;;){
-		Bool is_leap = ((date.year % 4 == 0) && ((date.year % 100) != 0 || (date.year % 400) == 0));
+		B32 is_leap = ((date.year % 4 == 0) && ((date.year % 100) != 0 || (date.year % 400) == 0));
 
 		for (date.month = 0; date.month < 12; ++date.month) {
 			U64 c = month_days[date.month];
@@ -65,12 +63,12 @@ time_t os_lnx_time_from_datetime(DateTime time){
 
 	local_persist const U32 month_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	for(U32 year = 1970; year < time.year; year ++){
-		Bool is_leap = false;
+		B32 is_leap = false;
 		if ((year % 4 == 0) && ((year % 100) != 0 || (year % 400) == 0)) is_leap = true;
 		lnx_time += (is_leap ? 366 : 365) * seconds_in_a_day;
 	}
 
-	Bool is_leap = ((time.year % 4 == 0) && ((time.year % 100) != 0 || (time.year % 400) == 0));
+	B32 is_leap = ((time.year % 4 == 0) && ((time.year % 100) != 0 || (time.year % 400) == 0));
 	for (U32 month = 0; month < time.month_num; month++) {
 		U64 c = 0;
 		c = month_days[month];

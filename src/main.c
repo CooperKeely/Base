@@ -1,9 +1,15 @@
-#define BASE_IMPLEMENTATION
-#define BASE_ENABLE_WINDOW 
-#define BASE_ENABLE_OS
+///////////////////////////////////////
+/// cjk: header files include
 
-#include "base.h"
+#define OS_GFX_ENABLE
 
+#include "base/base_inc.h"
+#include "os/os_inc.h"
+
+#include "base/base_inc.c"
+#include "os/os_inc.c"
+
+/*
 
 void csv_main(){
 	Arena* arena = arena_alloc();
@@ -213,19 +219,20 @@ void wm_line_stress_test(WM_Context ctx) {
         printf("Performance: %.2f Million Lines Per Second (MLPS)\n", mlps);
     }
 }
+*/
 
 void x11_graphics(){
 
 	Arena* arena = arena_alloc();
 
-	WM_Context ctx = wm_open_window(arena, 
-				 Rect_U16(100,100,1000,1000), 
-				 Str8Lit("Demo"),
-				 0,
-				 RGBA(0,0,0,0),
-				 RGBA(0, 0, 0, 0));
+	OS_GFX_WindowContext ctx = os_gfx_open_window(arena, 
+				 			Rect_U16(100,100,1000,1000), 
+				 			Str8Lit("Demo"),
+				 			0,
+				 			RGBA(0,0,0,0),
+				 			RGBA(0, 0, 0, 0));
 
-	wm_register_input_events(&ctx, WM_Event_Keyboard_KeyPress
+	os_gfx_register_input_events(&ctx, WM_Event_Keyboard_KeyPress
 			  |WM_Event_Keyboard_KeyRelease
 			  |WM_Event_WindowState_ConfigureNotify);
 
@@ -233,28 +240,24 @@ void x11_graphics(){
 
 	while(!quit){
 		Profile("Frame"){
-			while(wm_num_of_pending_events(&ctx) > 0){
-				XEvent event = {0};
-				XNextEvent(ctx.display, &event);
+			while(os_gfx_num_of_pending_events(&ctx) > 0){
+				OS_GFX_Event event = {0};
+				os_gfx_get_next_event(&ctx, &event);
 
 				if(event.type == KeyPress){
 					quit = true;
-				}else if(event.type == ConfigureNotify){
-					XConfigureEvent xce = event.xconfigure;
-					ctx.size.width = (U16) xce.width;
-					ctx.size.height = (U16) xce.height;
-				}
+				}			
 			}	
 			
 			// Background
-			wm_draw_rect(&ctx, Rect_F32(0, 0, ctx.size.width, ctx.size.height), RGBA(0,0,0,0));
+			//wm_draw_rect(&ctx, Rect_F32(0, 0, ctx.size.width, ctx.size.height), RGBA(0,0,0,0));
 		
 			// 2d primitive testing -- test cases made by ai
 			//line_draw_test(ctx);
 			//triangle_draw_test(ctx);
 			//circle_draw_test(ctx);	
 			//rect_draw_test(ctx);
-			wm_line_stress_test(ctx);
+			//wm_line_stress_test(ctx);
 			wm_draw_window(&ctx);
 			for(;;);	
 		}
@@ -295,12 +298,16 @@ void os_file_props_test(){
 S32 entry_point(U64 argc, U8** argv){
 	(void) argc;
 	(void) argv;
+	
+	x11_graphics();
 
 	return 0;
 }
 
 
 int main(int argc, char** argv){os_entry_point(argc, (U8**) argv, &entry_point);}
+
+
 
 
 

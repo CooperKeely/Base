@@ -1,4 +1,5 @@
-
+#ifndef BASE_THREAD_CTX_H
+#define BASE_THREAD_CTX_H
 
 ///////////////////////////////////////
 /// cjk: Thread Local Arena Definition
@@ -27,3 +28,4 @@ ThreadCTX* thread_ctx_get_selected(void);
 Arena* thread_ctx_get_scratch(Arena** conflicts, U64 count);
 
 
+#endif //BASE_THREAD_CTX_H

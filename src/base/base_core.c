@@ -1,6 +1,3 @@
-
-#include "base_core.h"
-
 ///////////////////////////////////////
 /// cjk: Base Integer Functions 
 
@@ -13,6 +10,7 @@ U16 safe_cast_U16(U32 x) {
 	Assert(x < max_U16);
 	return (U16)x;
 }
+
 U32 safe_cast_U32(U64 x) {
 	Assert(x < max_U32);
 	return (U32)x;
@@ -23,11 +21,13 @@ S8 safe_cast_S8(S16 x) {
 	Assert(x > min_S8);
 	return (S8)x;
 }
+
 S16 safe_cast_S16(S32 x) {
 	Assert(x < max_S16);
 	Assert(x > min_S16);
 	return (S16)x;
 }
+
 S32 safe_cast_S32(S64 x) {
 	Assert(x < max_S32);
 	Assert(x > min_S32);
@@ -74,4 +74,16 @@ DateTime datetime_from_densetime(DenseTime time) {
 	result.year = (U32)time;
 	return result;
 }
+///////////////////////////////////////
+/// cjk: Color Functions 
 
+ColorRGBA color_rgba(U8 r, U8 g, U8 b, U8 a){ return (ColorRGBA){{r, g, b,a}};}
+
+ColorBGRA color_rgba_to_bgra(ColorRGBA color){
+	return (ColorBGRA){
+		.b = color.b,
+		.g = color.g,
+		.r = color.r,
+		.a = color.a
+	};
+}
