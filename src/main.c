@@ -2,12 +2,15 @@
 /// cjk: header files include
 
 #define OS_GFX_ENABLE
+#define RENDERER_SOFTWARE_ENABLE
 
 #include "base/base_inc.h"
 #include "os/os_inc.h"
+#include "renderer/renderer_inc.h"
 
 #include "base/base_inc.c"
 #include "os/os_inc.c"
+#include "renderer/renderer_inc.c"
 
 /*
 
@@ -178,14 +181,22 @@ void rect_draw_test(WM_Context ctx) {
     wm_draw_rect(&ctx, Rect_F32(500.0f, 500.0f, -100.0f, -50.0f), COLOR_YELLOW);
 }
 
+*/
 
-void wm_line_stress_test(WM_Context ctx) {
+static U32 xorshift_state = 42;
+
+U32 fast_rand(void){
+	xorshift_state ^= xorshift_state << 13;
+	xorshift_state ^= xorshift_state >> 17;
+	xorshift_state ^= xorshift_state << 5;
+	return xorshift_state;
+}
+
+
+void sr_line_stress_test(OS_GFX_WindowContext* ctx) {
     const uint32_t LINE_COUNT = 16000000;
-    uint32_t w = ctx.size.width;
-    uint32_t h = ctx.size.height;
-
-    // Seed the random number generator with the current time
-    srand((unsigned int)time(NULL));
+    uint32_t w = ctx->size.width;
+    uint32_t h = ctx->size.height;
 
     printf("Starting Stress Test: 16 Million Lines (using stdlib rand)...\n");
 
@@ -195,18 +206,18 @@ void wm_line_stress_test(WM_Context ctx) {
         Vec2F32 p1;
         // If your screen is > 32767 pixels, 
         // you'd need (rand() << 15 | rand()) to reach the edges.
-        p1.x = (uint32_t)rand() % w;
-        p1.y = (uint32_t)rand() % h;
+        p1.x = (F32) (fast_rand() % w);
+        p1.y = (F32) (fast_rand() % h);
 
         Vec2F32 p2;
-        p2.x = (uint32_t)rand() % w;
-        p2.y = (uint32_t)rand() % h;
+        p2.x = (F32) (fast_rand() % w);
+        p2.y = (F32) (fast_rand() % h);
         
         ColorRGBA color;
         // Packing random bits into the U32 color
-        color.c = (uint32_t)rand() | 0xFF000000;
+        color.c = (U32)fast_rand() | 0xFF000000;
 
-        wm_draw_line(&ctx, p1, p2, color);
+        wm_draw_line(ctx, p1, p2, color);
     }
 
     clock_t end_time = clock();
@@ -219,24 +230,22 @@ void wm_line_stress_test(WM_Context ctx) {
         printf("Performance: %.2f Million Lines Per Second (MLPS)\n", mlps);
     }
 }
-*/
+
 
 void x11_graphics(){
-
 	Arena* arena = arena_alloc();
 
 	OS_GFX_WindowContext* ctx = os_gfx_open_window(arena, 
-				 			Rect_U16(100,100,500,500), 
+				 			Rect_U16(100,100,256,256), 
 				 			Str8Lit("Demo"),
 				 			0,
 				 			RGBA(0,0,0,0),
-				 			RGBA(0, 0, 0, 0));
+				 			RGBA(0,0,0,0));
 
-	volatile B32 quit = false;
+	sr_line_stress_test(ctx);
+	os_gfx_draw_window(ctx);	
 
-	os_sleep_milliseconds(100);
-
-
+	os_gfx_close_window(ctx);
 	arena_release(arena);
 }
 

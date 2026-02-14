@@ -3,20 +3,20 @@
 // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm  
 // https://groups.csail.mit.edu/graphics/classes/6.837/F02/lectures/6.837-7_Line.pdf
 // https://zingl.github.io/Bresenham.pdf
-void wm_draw_line(WM_Context* ctx, Vec2F32 p1, Vec2F32 p2, ColorRGBA color){
+void wm_draw_line(OS_GFX_WindowContext* ctx, Vec2F32 p1, Vec2F32 p2, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 
 	U32* pixels = (U32*) ctx->image->data;
-	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
+	U32 stride = ctx->image->stride / sizeof(ColorRGBA);
 	S32 window_width = ctx->size.width;
 	S32 window_height = ctx->size.height;
 	U32 color_const = color_rgba_to_bgra(color).c;
 
-	S32 x0 = (S32) floorf(p1.x);
-	S32 y0 = (S32) floorf(p1.y); 
-	S32 x1 = (S32) floorf(p2.x); 
-	S32 y1 = (S32) floorf(p2.y);
+	S32 x0 = (S32) p1.x;
+	S32 y0 = (S32) p1.y; 
+	S32 x1 = (S32) p2.x; 
+	S32 y1 = (S32) p2.y;
 
 
 	S32 dx = abs(x1 - x0);
@@ -46,7 +46,7 @@ void wm_draw_line(WM_Context* ctx, Vec2F32 p1, Vec2F32 p2, ColorRGBA color){
 	}
 }
 
-void wm_draw_triangle(WM_Context* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
+void wm_draw_triangle(OS_GFX_WindowContext* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
 	wm_draw_line(ctx, v1, v2, color);
 	wm_draw_line(ctx, v2, v3, color);
 	wm_draw_line(ctx, v3, v1, color);
@@ -58,12 +58,12 @@ B32 wm_is_point_in_triangle(Vec2F32 point, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3){
 	return result;	
 }
 
-void wm_draw_filled_triangle(WM_Context* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
+void wm_draw_filled_triangle(OS_GFX_WindowContext* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 
 	U32* pixels = (U32*) ctx->image->data;
-	U32 stride = ctx->image->bytes_per_line / sizeof(ColorRGBA);
+	U32 stride = ctx->image->stride / sizeof(ColorRGBA);
 	U32 window_width = ctx->size.width;
 	U32 window_height = ctx->size.height;
 	U32 color_const = color_rgba_to_bgra(color).c;
@@ -87,25 +87,81 @@ void wm_draw_filled_triangle(WM_Context* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3
 }
 
 
-void wm_close_window(WM_Context* ctx){
-	XUnmapWindow(ctx->display, ctx->window);
-	XDestroyWindow(ctx->display, ctx->window);
-	XFreeGC(ctx->display, ctx->graphics_ctx);
-	XCloseDisplay(ctx->display);
+// 2d primitive drawing
+void wm_draw_rect(OS_GFX_WindowContext* ctx, RectF32 rect, ColorRGBA color){
+	Assert(ctx);
+	Assert(ctx->image);
+
+	
+	U32 x1 = Max(0, rect.x);
+	U32 y1 = Max(0, rect.y);
+	U32 x2 = Min(ctx->size.width, (rect.x + rect.width));
+	U32 y2 = Min(ctx->size.height, (rect.y + rect.height));
+
+	if( x1 >= x2 || y1 >= y2 ) return;
+
+	U32* pixels = (U32*) ctx->image->data;
+	U32 stride = ctx->image->stride / sizeof(ColorRGBA);
+	U32 width = x2 - x1;
+	U32 color_const = color_rgba_to_bgra(color).c;
+
+	// this points to the first pixel in the rect
+	U32* row_ptr = pixels + (y1 * stride) + x1;
+
+	for (U32 y = y1; y < y2; y++){
+		for (U32 x = 0; x < width; x++){
+			row_ptr[x] = color_const; 
+		}
+		row_ptr += stride;
+	}
 }
 
-void wm_register_input_events(WM_Context* ctx, WM_EventFlag flags){
-	long event_mask = 0;	
 
-	for EachIndex(i, ArrayCount(wm_event_mask_map)){
-		if(flags & wm_event_mask_map[i].flag){
-			event_mask |= wm_event_mask_map[i].event_mask;
+// This method uses Midpoint circle algorithm for quickly drawing a circle
+// https://en.wikipedia.org/wiki/Midpoint_circle_algorithm 
+void wm_draw_circle(OS_GFX_WindowContext* ctx, Vec2F32 center, F32 radius, ColorRGBA color){
+	Assert(ctx);
+	Assert(ctx->image);
+	Assert(radius > 0.0);
+
+	S32 x0 = (S32) floorf(center.x);
+	S32 y0 = (S32) floorf(center.y);
+	S32 r  = (S32) radius;
+
+	U32* pixels = (U32*) ctx->image->data;
+	U32 stride = ctx->image->stride / sizeof(ColorRGBA);
+	S32 window_width = (S32)ctx->size.width;
+	S32 window_height = (S32)ctx->size.height;
+	U32 color_const = color_rgba_to_bgra(color).c;
+
+	S32 x = r;
+	S32 y = 0;
+	S32 decision = 1 - r;
+
+	#define LOCAL_MACRO_DRAWSPAN(py, x_start, x_end) do{\
+			if((py) >= (0) && (py) <= (window_height)) {\
+      				S32 left = Max(0, (x_start));\
+				S32 right = Min((window_width-1),(x_end));\
+				for(S32 px = left; px < right; px ++){\
+					pixels[(py) * stride + px] = color_const;\
+				}\
+			}\
+		}while(0)
+
+	while(x >= y){
+		LOCAL_MACRO_DRAWSPAN(y0+y, x0-x, x0+x);
+		LOCAL_MACRO_DRAWSPAN(y0-y, x0-x, x0+x);
+		LOCAL_MACRO_DRAWSPAN(y0+x, x0-y, x0+y);
+		LOCAL_MACRO_DRAWSPAN(y0-x, x0-y, x0+y);
+
+		y++;
+		if(decision <= 0){
+			decision += 2 * y + 1;
+		}else{
+			x--;
+			decision += 2 * (y - x) + 1;
 		}
 	}
-	
-	XSelectInput(ctx->display, ctx->window, event_mask);
+	#undef Local_Macro_DRAWSPAN
 }
 
-U32 wm_num_of_pending_events(WM_Context* ctx){
-	return XPending(ctx->display);
-}

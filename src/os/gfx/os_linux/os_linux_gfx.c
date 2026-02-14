@@ -8,6 +8,7 @@ OS_GFX_WindowContext* os_gfx_open_window(Arena* arena, RectU16 win_rect, Str8 wi
 	
 	result->size = win_rect;
 	result->name = window_name;
+
 	U32 value_mask = 0;
 	U32 value_list[2];
 
@@ -40,7 +41,8 @@ OS_GFX_WindowContext* os_gfx_open_window(Arena* arena, RectU16 win_rect, Str8 wi
 		   XCB_WINDOW_CLASS_INPUT_OUTPUT,
 		   result->screen->root_visual,
 		   value_mask,
-		   value_list);
+		   value_list
+		);
 
 	// create graphics context
 	result->graphics_ctx = xcb_generate_id(result->connection);
@@ -63,10 +65,9 @@ OS_GFX_WindowContext* os_gfx_open_window(Arena* arena, RectU16 win_rect, Str8 wi
 	xcb_map_window(result->connection, result->window);
 	xcb_flush(result->connection);
 
-
 	// test if shm is enabled
-	xcb_shm_query_version_reply(result->connection, xcb_shm_query_version(result->connection), NULL);
-
+	xcb_shm_query_version_reply_t* version = xcb_shm_query_version_reply(result->connection, xcb_shm_query_version(result->connection), NULL);
+	free(version);
 
 	// create shared memory region
 	U64 total_size = win_rect.width * win_rect.height * sizeof(ColorBGRA);  
@@ -78,8 +79,7 @@ OS_GFX_WindowContext* os_gfx_open_window(Arena* arena, RectU16 win_rect, Str8 wi
 	xcb_shm_attach(result->connection, result->shm_info.shmseg, result->shm_info.shmid, 0);
 	shmctl(result->shm_info.shmid, IPC_RMID, 0);
 
-
-	xcb_image_create_native(result->connection,
+	result->image = xcb_image_create_native(result->connection,
 			 win_rect.width, 
 			 win_rect.height,
 			 XCB_IMAGE_FORMAT_Z_PIXMAP,
@@ -88,18 +88,19 @@ OS_GFX_WindowContext* os_gfx_open_window(Arena* arena, RectU16 win_rect, Str8 wi
 			 total_size,
 			 0
 		  );
-
+	
+	// NOTE: i use memset here to load the shared memory region into ram
+	// to avoid page faults once rendering
+	MemorySet(result->image->data, 0, total_size); 
 	
 	return result;	
 }
 
 void os_gfx_resize_window(OS_GFX_WindowContext* ctx, U16 width, U16 height){
-	//xcb_resize_window(ctx->connection, ctx->window, width, height);
 	NotImplemented;
 }
 
 void os_gfx_move_window(OS_GFX_WindowContext* ctx, U16 x, U16 y){
-	//xcb_move_window(ctx->display, ctx->window, x, y);
 	NotImplemented;
 }
 
@@ -110,11 +111,42 @@ void os_gfx_resize_and_move_window(OS_GFX_WindowContext* ctx, RectU16 new_size){
 
 
 void os_gfx_draw_window(OS_GFX_WindowContext* ctx){
-	NotImplemented;
+
+	// put shm image to window
+	xcb_shm_put_image(
+		ctx->connection,
+		ctx->window,
+		ctx->graphics_ctx,
+		ctx->image->width,
+		ctx->image->height,
+		0,
+		0,
+		ctx->image->width,
+		ctx->image->height,
+		0,
+		0,
+		ctx->image->depth,
+		ctx->image->format,
+		0,
+		ctx->shm_info.shmseg,
+		0
+	);	
+
+	// flush window
+	xcb_flush(ctx->connection);
 }
 
 void os_gfx_close_window(OS_GFX_WindowContext* ctx){
-	NotImplemented;
+	xcb_shm_detach(ctx->connection, ctx->shm_info.shmseg);
+	shmdt(ctx->shm_info.shmaddr);
+	
+	// NOTE: set the base pointer to null because it has already been freed by shm
+	// so it dosent get double freed by xcb_image_destroy()
+	ctx->image->base = NULL;
+
+        xcb_image_destroy(ctx->image);
+	xcb_destroy_window(ctx->connection, ctx->window);
+	xcb_disconnect(ctx->connection);
 }
 
 void os_gfx_register_input_events(OS_GFX_WindowContext* ctx, OS_GFX_EventFlag flags){
