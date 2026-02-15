@@ -198,6 +198,51 @@ void sr_line_stress_test(OS_GFX_WindowContext* ctx) {
 }
 
 
+// Assuming your types and functions are defined above or in a header
+// typedef struct { char *str; U64 size; } Str8;
+
+void test_f32(Str8 s, float expected) {
+    float result = str8_to_f32(s);
+    
+    // Using a small epsilon for float comparison
+    float epsilon = 0.00001f;
+    if (fabsf(result - expected) < epsilon) {
+        printf("[ PASS ] '%.*s' -> %f\n", Str8VArg(s), result);
+    } else {
+        printf("[ FAIL ] '%.*s' -> Expected %f, got %f\n", Str8VArg(s), expected, result);
+    }
+}
+
+int test_str8_to_f32() {
+    printf("[--- Starting str8_to_f32 Tests ---]\n");
+
+    // Basic cases
+    test_f32(Str8Lit("1"), 1.0f);
+    test_f32(Str8Lit("123"), 123.0f);
+    test_f32(Str8Lit("-50"), -50.0f);
+
+    // Decimal cases
+    test_f32(Str8Lit("1.5"), 1.5f);
+    test_f32(Str8Lit("-1.5"), -1.5f);
+    test_f32(Str8Lit("0.005"), 0.005f);
+    test_f32(Str8Lit(".5"), 0.5f);   // Leading dot
+    test_f32(Str8Lit("10."), 10.0f); // Trailing dot
+
+    // Scientific notation (Common in high-poly OBJs)
+    test_f32(Str8Lit("1e2"), 100.0f);
+    test_f32(Str8Lit("1.5e3"), 1500.0f);
+    test_f32(Str8Lit("100E-2"), 1.0f);
+    test_f32(Str8Lit("-1.23e-2"), -0.0123f);
+
+    // Edge cases
+    test_f32(Str8Lit("-0.5"), -0.5f);
+    test_f32(Str8Lit("0"), 0.0f);
+
+    printf("[--- Tests Complete ---]\n");
+    return 0;
+}
+
+
 void x11_graphics(){
 	Arena* arena = arena_alloc();
 
@@ -248,8 +293,8 @@ S32 entry_point(U64 argc, U8** argv){
 	(void) argc;
 	(void) argv;
 	
-	x11_graphics();
-
+	//x11_graphics();
+	test_str8_to_f32();
 	return 0;
 }
 

@@ -101,6 +101,83 @@ Str8 s64_to_str8(Arena* arena, S64 integer){
 	return result;
 }
 
+S64 str8_to_s64(Str8 str){
+	Assert(str.str);
+	if(str.size == 0) return 0;	
+
+	S64 ret = 0;
+	U64 i = 0;
+	S64 sign = 1;
+
+	if(str.str[0] == '-'){
+		sign = -1;
+		i = 1;
+	}else if(str.str[0] == '+'){
+		i = 1;
+	}
+	
+	for(; i < str.size; i ++){
+		U8 c = str.str[i];
+		if(c >= '0' && c <= '9'){
+			ret = (ret * 10) + (c - '0');
+		} else InvalidPath; // invalid char
+	}
+
+	return ret * sign;
+}
+
+F32 str8_to_f32(Str8 str){
+	if(str.size == 0) return F32Lit(0.0);
+	
+	// get important indexes
+	S64 dot_idx = str8_find_first_char(str, '.');
+	S64 exp_idx = str8_find_first_char(str, 'e');
+	if(exp_idx < 0) exp_idx = str8_find_first_char(str, 'E');
+
+	// get the integer value
+	U64 int_end = str.size;	
+	if(dot_idx >= 0) int_end = dot_idx;
+	else if(exp_idx >= 0) int_end = exp_idx;
+	
+	Str8 int_slice = str8_get_slice(str, 0, int_end);
+	F32 ret = (F32)str8_to_s64(int_slice); 
+
+	if(dot_idx >= 0){
+		U64 dec_start = dot_idx + 1;
+		U64 dec_end = (exp_idx >= 0) ? (U64)exp_idx : str.size;
+		
+		Assert(dec_start <= dec_end);
+
+		Str8 dec_slice = str8_get_slice(str, dec_start, dec_end - dec_start);
+		F32 dec = (F32)str8_to_s64(dec_slice);
+
+		F32 divisor = F32Lit(1.0);
+		for EachIndex(i, dec_slice.size) divisor *= F32Lit(10.0);
+
+		if(str.str[0] == '-') ret -= dec / divisor;
+		else ret += dec / divisor;
+	}
+
+	if(exp_idx >= 0){
+		U64 exp_start = exp_idx + 1;
+		U64 exp_end = str.size; 
+		
+		Assert(exp_start <= exp_end);
+
+		Str8 exp_slice = str8_get_slice(str, exp_start, exp_end - exp_start);
+		S64 exp = str8_to_s64(exp_slice);
+
+		F32 pow_10 = F32Lit(1.0);
+		S64 abs_exp = (exp < 0)? -exp : exp;
+		for EachIndex(i, abs_exp) pow_10 *= F32Lit(10.0);
+
+		if(exp < 0) ret /= pow_10;
+		else ret *=  pow_10;
+	}
+
+	return ret;
+}
+
 U64 cstring_length(const char *c) {
 	Assert(c);
 	U64 length = 0;
