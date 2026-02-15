@@ -73,10 +73,13 @@ typedef struct {
 } Str8List;
 
 Str8List str8_list();
-Str8Node *str8_list_push_node(Str8List *list, Str8Node *node);
-Str8Node *str8_list_push_node_front(Str8List *list, Str8Node *node);
-Str8Node *str8_list_push(Arena *arena, Str8List *list, Str8 string);
-Str8Node *str8_list_push_front(Arena *arena, Str8List *list, Str8 string);
+Str8List* str8_tokenize_list(Arena* arena, Str8 str, Str8 delimiters);
+Str8Node* str8_list_push_node(Str8List *list, Str8Node *node);
+Str8Node* str8_list_push_node_front(Str8List *list, Str8Node *node);
+Str8Node* str8_list_push(Arena *arena, Str8List *list, Str8 string);
+Str8Node* str8_list_push_front(Arena *arena, Str8List *list, Str8 string);
+Str8 str8_list_get(Str8List* list, U64 idx);
+
 
 //////////////////////////////////////
 /// cjk: String Array Definitions 

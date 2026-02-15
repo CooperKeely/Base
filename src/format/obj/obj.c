@@ -12,14 +12,13 @@ FMT_OBJ_Object* fmt_obj_object_init(Arena *arena, Str8 file_path){
 }
 
 // line parsing functions
-FMT_OBJ_Line fmt_obj_parse_line(Str8* line){
-	Assert(line);
+FMT_OBJ_Line fmt_obj_parse_line(Str8 line){
 	FMT_OBJ_Line ret;
 	
-	S64 first_space = str8_find_first_char(*line, ' ');
+	S64 first_space = str8_find_first_char(line, ' ');
 	if(first_space < 0) ret = fmt_obj_parse_malformed(line);
 
-	Str8 prefix = str8_get_slice(*line, 0, first_space);
+	Str8 prefix = str8_get_slice(line, 0, first_space);
 
 	if(str8_cmp(prefix, Str8Lit("v"))) 		ret = fmt_obj_parse_vertex(line);
 	else if(str8_cmp(prefix, Str8Lit("vt"))) 	ret = fmt_obj_parse_texture(line);
@@ -32,30 +31,44 @@ FMT_OBJ_Line fmt_obj_parse_line(Str8* line){
 	else return 					ret = fmt_obj_parse_malformed(line); 
 }
 
-FMT_OBJ_Line fmt_obj_parse_vertex(Str8* line){
-	S64 first_digit_idx = str8_find_first_digit(*line);
+FMT_OBJ_Line fmt_obj_parse_vertex(Str8 line){
+	FMT_OBJ_Line ret = {0};
 
+	ret.line_type = FMT_OBJ_LineType_Vertex;
+	
+	ScratchArenaScope(scratch, 0, 0){
+		Str8List* token_list = str8_tokenize_list(scratch.arena, line, Str8Lit(' '));
 
-}
+		ret.v.x = str8_to_f32(str8_list_get(token_list, 1));
+		ret.v.y = str8_to_f32(str8_list_get(token_list, 2));
+		ret.v.z = str8_to_f32(str8_list_get(token_list, 3));
 
-FMT_OBJ_Line fmt_obj_parse_texture(Str8* line){NotImplemented;}
-FMT_OBJ_Line fmt_obj_parse_normal(Str8* line){NotImplemented;}
-FMT_OBJ_Line fmt_obj_parse_face(Str8* line){NotImplemented;}
-FMT_OBJ_Line fmt_obj_parse_group(Str8* line){NotImplemented;}
-FMT_OBJ_Line fmt_obj_parse_material(Str8* line){NotImplemented;}
-FMT_OBJ_Line fmt_obj_parse_material_library(Str8* line){NotImplemented;}
+		Str8 w = str8_list_get(token_list, 4);
+		if(w.size == 0) ret.v.w = F32Lit(1.0);
+		else ret.v.w = str8_to_f32(w);
+	}
 
-FMT_OBJ_Line fmt_obj_parse_comment(Str8* line){
-	FMT_OBJ_Line ret;
-	ret.line_type = FMT_OBJ_LineType_Comment;
-	ret.string_data = *line;
 	return ret;
 }
 
-FMT_OBJ_Line fmt_obj_parse_malformed(Str8* line){
+FMT_OBJ_Line fmt_obj_parse_texture(Str8 line){NotImplemented;}
+FMT_OBJ_Line fmt_obj_parse_normal(Str8 line){NotImplemented;}
+FMT_OBJ_Line fmt_obj_parse_face(Str8 line){NotImplemented;}
+FMT_OBJ_Line fmt_obj_parse_group(Str8 line){NotImplemented;}
+FMT_OBJ_Line fmt_obj_parse_material(Str8 line){NotImplemented;}
+FMT_OBJ_Line fmt_obj_parse_material_library(Str8 line){NotImplemented;}
+
+FMT_OBJ_Line fmt_obj_parse_comment(Str8 line){
+	FMT_OBJ_Line ret;
+	ret.line_type = FMT_OBJ_LineType_Comment;
+	ret.string_data = line;
+	return ret;
+}
+
+FMT_OBJ_Line fmt_obj_parse_malformed(Str8 line){
 	FMT_OBJ_Line ret;
 	ret.line_type = FMT_OBJ_LineType_Malformed;
-	ret.string_data = *line;
+	ret.string_data = line;
 	return ret;
 }
 

@@ -6,19 +6,19 @@ B32 char_is_digit(const U8 c)	{return (B32)( '0' <= c && c <= '9' );}
 B32 char_is_space(const U8 c)	{return (B32)( c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == '\f' || c == '\v');}
 B32 char_is_upper(const U8 c)	{return (B32)( 'A' <= c && c <= 'Z' );}
 B32 char_is_lower(const U8 c)	{return (B32)( 'a' <= c && c <= 'z');}
-B32 char_is_alpha(const U8 c)	{return (is_char_upper(c) || is_char_lower(c));}
+B32 char_is_alpha(const U8 c)	{return (char_is_upper(c) || char_is_lower(c));}
 B32 char_is_slash(const U8 c)	{return (B32)( c == '\\' || c == '/' );}
 
 U8 lower_from_char(const U8 c){
 	if (char_is_upper(c)) {
-		return c + ('a' - 'A');
+		return (c + ('a' - 'A'));
 	}
 	return c;
 }
 
 U8 upper_from_char(const U8 c) {
 	if (char_is_lower(c)) {
-		return c - ('a - 'A');
+		return (c - ('a' - 'A'));
 	}
 	return c;
 }
@@ -230,8 +230,8 @@ S64 str8_find_first_char(Str8 str, U8 c){
 S64 str8_find_first_digit(Str8 str){
 	Assert(str.str);
 	for EachIndex(idx, str.size){
-		U8 char = str8_get(str, idx);
-		if (char_is_digit(c)) return idx;
+		U8 chr = str8_get(str, idx);
+		if (char_is_digit(chr)) return idx;
 	}
 	return -1;
 }
@@ -410,6 +410,15 @@ Str8List *str8_tokenize_list(Arena *arena, Str8 string, Str8 delimiters) {
 	}
 
 	return list;
+}
+
+Str8 str8_list_get(Str8List* list, U64 idx){
+	U64 count = 0;
+	for EachNode(node, Str8Node, list->first){
+		if(idx == count) return node->string;	
+		count ++;
+	}
+	return (Str8){0};
 }
 
 ///////////////////////////////////////

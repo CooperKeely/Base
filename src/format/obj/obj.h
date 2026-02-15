@@ -68,19 +68,19 @@ typedef struct {
 FMT_OBJ_Object* fmt_obj_object_init(Arena *arena, Str8 file_path);
 
 // line parsing functions
-FMT_OBJ_Line fmt_obj_parse_line(Str8* line);
-FMT_OBJ_Line fmt_obj_parse_vertex(Str8* line);
-FMT_OBJ_Line fmt_obj_parse_texture(Str8* line);
-FMT_OBJ_Line fmt_obj_parse_normal(Str8* line);
-FMT_OBJ_Line fmt_obj_parse_face(Str8* line);
-FMT_OBJ_Line fmt_obj_parse_group(Str8* line);
-FMT_OBJ_Line fmt_obj_parse_material(Str8* line);
-FMT_OBJ_Line fmt_obj_parse_material_library(Str8* line);
-FMT_OBJ_Line fmt_obj_parse_comment(Str8* line);
-FMT_OBJ_Line fmt_obj_parse_malformed(Str8* line);
+FMT_OBJ_Line fmt_obj_parse_line(Str8 line);
+FMT_OBJ_Line fmt_obj_parse_vertex(Str8 line);
+FMT_OBJ_Line fmt_obj_parse_texture(Str8 line);
+FMT_OBJ_Line fmt_obj_parse_normal(Str8 line);
+FMT_OBJ_Line fmt_obj_parse_face(Str8 line);
+FMT_OBJ_Line fmt_obj_parse_group(Str8 line);
+FMT_OBJ_Line fmt_obj_parse_material(Str8 line);
+FMT_OBJ_Line fmt_obj_parse_material_library(Str8 line);
+FMT_OBJ_Line fmt_obj_parse_comment(Str8 line);
+FMT_OBJ_Line fmt_obj_parse_malformed(Str8 line);
 
 // line list functions
-FMT_OBJ_LineList fmt_objt_line_list_init(Arena* arena);
+FMT_OBJ_LineList fmt_obj_line_list_init(Arena* arena);
 void fmt_obj_line_list_append(FMT_OBJ_LineList* list, FMT_OBJ_Line* line);
 void fmt_obj_line_list_resize(FMT_OBJ_LineList* list);
 FMT_OBJ_Line* fmt_obj_line_list_get(FMT_OBJ_LineList* list, U64 index);
