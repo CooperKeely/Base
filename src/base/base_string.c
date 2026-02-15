@@ -70,7 +70,7 @@ U8 str8_get(Str8 string, U64 idx) {
 
 
 
-Str8 integer_to_str8(Arena* arena, S64 integer){
+Str8 s64_to_str8(Arena* arena, S64 integer){
 	if(integer == 0) return Str8Lit("0");
 	B32 is_negative = (integer < 0);
 	

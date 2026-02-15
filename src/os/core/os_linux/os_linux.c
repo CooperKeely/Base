@@ -322,7 +322,7 @@ OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
 		
 		// file name
 		Str8 path = Str8Lit("/proc/self/fd/");
-		Str8 fd = integer_to_str8(scratch.arena, file_handle);
+		Str8 fd = s64_to_str8(scratch.arena, file_handle);
 		Str8 fd_path = str8_concat(scratch.arena, path, fd);
 		const char* cstr_fd_path = str8_to_cstring(scratch.arena, fd_path);
 		

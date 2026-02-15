@@ -76,25 +76,31 @@ mkdir -p src
 mkdir -p include
 mkdir -p build
 
-if [ -v clean ]; then echo "[clean build]"; rm -rf build/*; fi
+if [ -v clean ]; then 
+	echo "[clean build]"
+	rm -rf build/*
+fi
 
 # --- Build Everything
 cd build
-if [ -v main ]; then didbuild=1 && $compile ../src/main.c $compile_link $link_os_gfx $out app ; fi
+if [ -v main ]; then 
+	didbuild=1 
+	echo ""
+	$compile ../src/main.c $compile_link $link_os_gfx $out app 
+	echo ""
+fi
 
 if [ ! -v didbuild ]; then
-	echo "[Warning] no valid build target specified";
+	echo "[Warning: no valid build target specified]"
 fi
 
 cd ..
 
 if [ -v didbuild ] && [ -v run ]; then 
 	echo "[running build]"
-	echo ""
 	./build/app; 
 elif [ -v didbuild ] && [ -v gdb ]; then
 	echo "[running gdb]"
-	echo ""
 	gdb -q -x env/debug_setup.gdb --args ./build/app 
 elif [ -v didbuild ] && [ -v profile ]; then
 	
@@ -104,7 +110,6 @@ elif [ -v didbuild ] && [ -v profile ]; then
 	mkdir -p ./prof/data
 
 	echo "[running profile]"
-	echo ""
 	perf record -F 999 -o ./prof/raw/perf.data -g ./build/app
 
 	if [ -f gmon.out ]; then
@@ -112,14 +117,14 @@ elif [ -v didbuild ] && [ -v profile ]; then
 	fi
 
 	echo "[results saved to prof_profile_summary.txt]"
-	echo ""
 	perf report --header -i ./prof/raw/perf.data --stdio > ./prof/data/prof_profile_summary.txt
 	
+	echo "[--- Profile Restults ---]"
 	if [ -v verbose ]; then
-		echo "[--- Profile Restults ---]"
 		less -S ./prof/data/prof_profile_summary.txt
 	else
 		echo "[run with build option 'verbose' to automatically show profile results]"
+		grep -E "^[[:space:]]+[0-9]+\.[0-9]+%" ./prof/data/prof_profile_summary.txt | head -n 5
 	fi
 
 	echo ""
@@ -131,7 +136,6 @@ elif [ -v didbuild ] && [ -v cache ]; then
 	mkdir -p ./prof/data
 
 	echo "[running cache audit]"
-	echo ""
 	perf stat -d -r 3 -o ./prof/data/prof_cache_audit_summary.txt ./build/app
 
 	echo "[recording cache miss locations]"
@@ -142,18 +146,16 @@ elif [ -v didbuild ] && [ -v cache ]; then
 	fi
 
 	echo "[results saved to prof_cache_audit_summary.txt]"
-	echo ""
 	perf report -i ./prof/raw/cache.data --stdio  --percent-limit 0.1 >> ./prof/data/prof_cache_audit_summary.txt
 	
+	echo "[--- Cache Audit Restults ---]"
 	if [ -v verbose ]; then
-		echo "[--- Cache Audit Restults ---]"
 		less -SR ./prof/data/prof_cache_audit_summary.txt
 	else
 		echo "[run with build option 'verbose' to automatically show cache audit results]"
 		grep "cache-misses" ./prof/data/prof_cache_audit_summary.txt | head -n 3
 	fi
-
 	echo ""
 else
-	echo "[no run target specified]"
+	echo "[just building no run target specified]"
 fi

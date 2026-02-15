@@ -27,7 +27,7 @@ char* str8_to_cstring(Arena* arena, Str8 str);
 U8 upper_from_char(U8 chr);
 Str8 str8_skip_last_slash(Str8 str);
 inline U8 str8_get(Str8 str, U64 idx);
-Str8 integer_to_str8(Arena* arena, S64 integer);
+Str8 s64_to_str8(Arena* arena, S64 integer);
 S64 str8_find_first_char(Str8 str, U8 c);
 
 // Str8 output
