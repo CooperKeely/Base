@@ -89,9 +89,6 @@ OS_GFX_WindowContext* os_gfx_open_window(Arena* arena, RectU16 win_rect, Str8 wi
 			 0
 		  );
 	
-	// NOTE: i use memset here to load the shared memory region into ram
-	// to avoid page faults once rendering
-	MemorySet(result->image->data, 0, total_size); 
 	
 	return result;	
 }

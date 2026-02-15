@@ -31,4 +31,4 @@ CSV_Row *csv_next_row(CSV *csv);
 void csv_row_parse(CSV *csv, Str8 raw_row);
 
 
-#endif FORMAT_CSV_H
+#endif // FORMAT_CSV_H

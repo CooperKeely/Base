@@ -81,10 +81,6 @@ ColorRGBA color_rgba(U8 r, U8 g, U8 b, U8 a){ return (ColorRGBA){{r, g, b,a}};}
 
 // TODO: inline color conversion
 inline ColorBGRA color_rgba_to_bgra(ColorRGBA color){
-	ColorBGRA result;
-	result.b = color.b << 2;
-	result.g = color.g << 1;
-
 	return (ColorBGRA){
 		.b = color.b,
 		.g = color.g,

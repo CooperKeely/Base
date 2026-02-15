@@ -1,12 +1,13 @@
 
-#ifdef FORMAT_ENABLE_OBJ
+#ifdef FORMAT_OBJ_ENABLE
 # include "obj/obj.c"
 #endif
 
-#ifdef FORMAT_ENABLE_CSV
+#ifdef FORMAT_CSV_ENABLE
 # include "csv/csv.c"
 #endif
 
-#ifdef FORMAT_ENABLE_BMP
+#ifdef FORMAT_BMP_ENABLE
 # include "bmp/bmp.c"
 #endif
+

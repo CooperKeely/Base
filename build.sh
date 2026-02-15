@@ -131,7 +131,7 @@ elif [ -v didbuild ] && [ -v cache ]; then
 	mkdir -p ./prof/data
 
 	echo "[running cache audit]"
-	echo "[]"
+	echo ""
 	perf stat -d -r 3 -o ./prof/data/prof_cache_audit_summary.txt ./build/app
 
 	echo "[recording cache miss locations]"
@@ -147,7 +147,7 @@ elif [ -v didbuild ] && [ -v cache ]; then
 	
 	if [ -v verbose ]; then
 		echo "[--- Cache Audit Restults ---]"
-		less -S ./prof/data/prof_cache_audit_summary.txt
+		less -SR ./prof/data/prof_cache_audit_summary.txt
 	else
 		echo "[run with build option 'verbose' to automatically show cache audit results]"
 		grep "cache-misses" ./prof/data/prof_cache_audit_summary.txt | head -n 3

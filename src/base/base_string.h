@@ -28,6 +28,7 @@ U8 upper_from_char(U8 chr);
 Str8 str8_skip_last_slash(Str8 str);
 inline U8 str8_get(Str8 str, U64 idx);
 Str8 integer_to_str8(Arena* arena, S64 integer);
+S64 str8_find_first_char(Str8 str, U8 c);
 
 // Str8 output
 void str8_printf(FILE *file_ptr, const char *format, ...);
@@ -38,6 +39,7 @@ Str8 str8(U8 *str, U64 length);
 Str8 str8_substr(Str8 s1, Rng1U64 range);
 Str8 str8_concat(Arena *arena, Str8 s1, Str8 s2);
 Str8 str8_copy(Arena *arena, Str8 s1);
+Str8 str8_get_slice(Str8 s1, U64 start_idx, U64 length);
 B32 str8_cmp(Str8 s1, Str8 s2);
 B32 str8_match(Str8 s1, Str8 s2, Str8_MatchFlags flags);
 

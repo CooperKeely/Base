@@ -129,6 +129,13 @@ char* str8_to_cstring(Arena* arena, Str8 str){
 	return cstring;	
 }
 
+S64 str8_find_first_char(Str8 str, U8 c){
+	for EachIndex(idx, str.size){
+		if (str8_get(str, idx) == c) return idx;
+	}
+	return -1;
+}
+
 Str8 str8_concat(Arena *arena, Str8 s1, Str8 s2) {
 	Assert(arena);
 
@@ -158,6 +165,17 @@ Str8 str8_substr(Str8 s1, Rng1U64 range) {
 	s1.str += range.min;
 	s1.size = dim_r1u64(range);
 	return s1;
+}
+
+Str8 str8_get_slice(Str8 s1, U64 start_idx, U64 size){
+	Assert(s1.str);
+	Assert(start_idx + size <= s1.size);
+	
+	Str8 string_slice;
+	string_slice.str = &s1.str[start_idx];
+	string_slice.size = size;
+	
+	return string_slice;
 }
 
 B32 str8_cmp(Str8 s1, Str8 s2) {

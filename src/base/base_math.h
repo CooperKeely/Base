@@ -111,11 +111,37 @@ typedef union {
 	F64 v[3];
 } Vec3F64;
 
+typedef union {
+	struct {
+		F32 x;
+		F32 y;
+		F32 z;
+		F32 w;
+	};
+	F32 v[4];
+} Vec4F32;
+
+
+typedef union {
+	struct {
+		F64 x;
+		F64 y;
+		F64 z;
+		F64 w;
+	};
+	F64 v[4];
+} Vec4F64;
+
+
 #define Vec2_F32(x, y)		vec_2f32((x), (y))
 #define Vec2_F64(x, y)		vec_2f64((x), (y))
 
 #define Vec3_F32(x, y, z)	vec_3f32((x), (y), (z))
 #define Vec3_F64(x, y, z)	vec_3f64((x), (y), (z))
+
+#define Vec4_F32(x, y, z)	vec_4f32((x), (y), (z))
+#define Vec4_F64(x, y, z)	vec_4f64((x), (y), (z))
+
 
 
 Vec2F32 vec_2f32(F32 x, F32 y);
@@ -124,11 +150,18 @@ Vec2F64 vec_2f64(F64 x, F64 y);
 Vec3F32 vec_3f32(F32 x, F32 y, F32 z);
 Vec3F64 vec_3f64(F64 x, F64 y, F64 z);
 
+Vec4F32 vec_4f32(F32 x, F32 y, F32 z, F32 w);
+Vec4F64 vec_4f64(F64 x, F64 y, F64 z, F64 w);
+
 F64 dot_vec2f32(Vec2F32 v1, Vec2F32 v2);
 F64 dot_vec2f64(Vec2F64 v1, Vec2F64 v2);
 
 F64 dot_vec3f32(Vec3F32 v1, Vec3F32 v2);
 F64 dot_vec3f64(Vec3F64 v1, Vec3F64 v2);
+
+F64 dot_vec4f32(Vec4F32 v1, Vec4F32 v2);
+F64 dot_vec4f64(Vec4F64 v1, Vec4F64 v2);
+
 
 ///////////////////////////////////////
 /// cjk: Range Definitions 

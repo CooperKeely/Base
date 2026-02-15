@@ -3,89 +3,55 @@
 
 #define OS_GFX_ENABLE
 #define RENDERER_SOFTWARE_ENABLE
+#define FORMAT_OBJ_ENABLE
 
 #include "base/base_inc.h"
 #include "os/os_inc.h"
+#include "format/format_inc.h"
 #include "renderer/renderer_inc.h"
 
 #include "base/base_inc.c"
 #include "os/os_inc.c"
+#include "format/format_inc.c"
 #include "renderer/renderer_inc.c"
 
-/*
 
-void csv_main(){
-	Arena* arena = arena_alloc();
-	CSV_Config config = {
-		.headers_enabled = 1,
-		.delimiters = Str8Lit(","),
-	};
-	
-	CSV csv_file = csv_init(arena, config, "resources/customers-2000000.csv");
+void line_draw_test(OS_GFX_WindowContext ctx){
+	// --- Group 1: Orthogonal (Top Left) ---
+	wm_draw_line(&ctx, Vec2_F32(50, 50), Vec2_F32(150, 50),  COLOR_WHITE); // Horizontal
+	wm_draw_line(&ctx, Vec2_F32(50, 50), Vec2_F32(50, 150),  COLOR_WHITE); // Vertical
 
-	for EachCSVRow(&csv_file, row){
-		for EachNode(str_node, Str8Node, row->list->first){
-			//str8_printf(stdout, "%s", str_node->string);
-		}	
-	}
+	// --- Group 2: 45 Degree Diagonals (Top Middle) ---
+	wm_draw_line(&ctx, Vec2_F32(300, 50),  Vec2_F32(400, 150), COLOR_WHITE); // Down-Right
+	wm_draw_line(&ctx, Vec2_F32(450, 150), Vec2_F32(550, 50),  COLOR_WHITE); // Up-Right
+	wm_draw_line(&ctx, Vec2_F32(700, 150), Vec2_F32(600, 50),  COLOR_WHITE); // Up-Left
+	wm_draw_line(&ctx, Vec2_F32(850, 50),  Vec2_F32(750, 150), COLOR_WHITE); // Down-Left
 
-	arena_release(arena);
+	// --- Group 3: Shallow Lines |dx| > |dy| (Center Row) ---
+	// Rightward shallow
+	wm_draw_line(&ctx, Vec2_F32(50, 300),  Vec2_F32(250, 350), COLOR_GREEN); // Octant 0
+	wm_draw_line(&ctx, Vec2_F32(250, 370), Vec2_F32(50, 320),  COLOR_GREEN); // Octant 4 (Reverse)
+	// Leftward shallow
+	wm_draw_line(&ctx, Vec2_F32(550, 300), Vec2_F32(350, 350), COLOR_YELLOW); 
+	wm_draw_line(&ctx, Vec2_F32(350, 370), Vec2_F32(550, 320), COLOR_YELLOW);
+
+	// --- Group 4: Steep Lines |dy| > |dx| (Bottom Row) ---
+	// Downward steep
+	wm_draw_line(&ctx, Vec2_F32(50,  450), Vec2_F32(100, 650), COLOR_RED);   // Octant 1
+	wm_draw_line(&ctx, Vec2_F32(120, 650), Vec2_F32(70,  450), COLOR_RED);   // Octant 5 (Reverse)
+	// Upward steep
+	wm_draw_line(&ctx, Vec2_F32(250, 650), Vec2_F32(300, 450), COLOR_BLUE);
+	wm_draw_line(&ctx, Vec2_F32(320, 450), Vec2_F32(270, 650), COLOR_BLUE);
+
+	// --- Group 5: Boundary/Clipping Test ---
+	// These test if your loop handles coordinates outside [0, 1279]
+	wm_draw_line(&ctx, Vec2_F32(1200, 10), Vec2_F32(1300, 100), COLOR_RED);  // Right edge clip
+	wm_draw_line(&ctx, Vec2_F32(10, 700),  Vec2_F32(100, 800),  COLOR_BLUE); // Bottom edge clip
+	wm_draw_line(&ctx, Vec2_F32(-50, 360), Vec2_F32(50, 360),   COLOR_GREEN); // Left edge clip
 }
 
 
-void hashtable_main(){
-	Arena* arena = arena_alloc();
-	HashMap* hash_map = hash_map_init(arena);
-
-	int test_data = 100;
-	
-	Profile("Hashtable"){
-		for EachIndex(i, 5000){
-			Str8 key = str8_pushf(arena, "%d", i);
-			hash_map_put(hash_map, key, &test_data);
-		}
-	}
-	arena_release(arena);
-}
-
-
-
-void line_draw_test(WM_Context ctx){
-		// --- Group 1: Orthogonal (Top Left) ---
-		wm_draw_line(&ctx, Vec2_F32(50, 50), Vec2_F32(150, 50),  COLOR_WHITE); // Horizontal
-		wm_draw_line(&ctx, Vec2_F32(50, 50), Vec2_F32(50, 150),  COLOR_WHITE); // Vertical
-
-		// --- Group 2: 45 Degree Diagonals (Top Middle) ---
-		wm_draw_line(&ctx, Vec2_F32(300, 50),  Vec2_F32(400, 150), COLOR_WHITE); // Down-Right
-		wm_draw_line(&ctx, Vec2_F32(450, 150), Vec2_F32(550, 50),  COLOR_WHITE); // Up-Right
-		wm_draw_line(&ctx, Vec2_F32(700, 150), Vec2_F32(600, 50),  COLOR_WHITE); // Up-Left
-		wm_draw_line(&ctx, Vec2_F32(850, 50),  Vec2_F32(750, 150), COLOR_WHITE); // Down-Left
-
-		// --- Group 3: Shallow Lines |dx| > |dy| (Center Row) ---
-		// Rightward shallow
-		wm_draw_line(&ctx, Vec2_F32(50, 300),  Vec2_F32(250, 350), COLOR_GREEN); // Octant 0
-		wm_draw_line(&ctx, Vec2_F32(250, 370), Vec2_F32(50, 320),  COLOR_GREEN); // Octant 4 (Reverse)
-		// Leftward shallow
-		wm_draw_line(&ctx, Vec2_F32(550, 300), Vec2_F32(350, 350), COLOR_YELLOW); 
-		wm_draw_line(&ctx, Vec2_F32(350, 370), Vec2_F32(550, 320), COLOR_YELLOW);
-
-		// --- Group 4: Steep Lines |dy| > |dx| (Bottom Row) ---
-		// Downward steep
-		wm_draw_line(&ctx, Vec2_F32(50,  450), Vec2_F32(100, 650), COLOR_RED);   // Octant 1
-		wm_draw_line(&ctx, Vec2_F32(120, 650), Vec2_F32(70,  450), COLOR_RED);   // Octant 5 (Reverse)
-		// Upward steep
-		wm_draw_line(&ctx, Vec2_F32(250, 650), Vec2_F32(300, 450), COLOR_BLUE);
-		wm_draw_line(&ctx, Vec2_F32(320, 450), Vec2_F32(270, 650), COLOR_BLUE);
-
-		// --- Group 5: Boundary/Clipping Test ---
-		// These test if your loop handles coordinates outside [0, 1279]
-		wm_draw_line(&ctx, Vec2_F32(1200, 10), Vec2_F32(1300, 100), COLOR_RED);  // Right edge clip
-		wm_draw_line(&ctx, Vec2_F32(10, 700),  Vec2_F32(100, 800),  COLOR_BLUE); // Bottom edge clip
-		wm_draw_line(&ctx, Vec2_F32(-50, 360), Vec2_F32(50, 360),   COLOR_GREEN); // Left edge clip
-}
-
-
-void triangle_draw_test(WM_Context ctx){
+void triangle_draw_test(OS_GFX_WindowContext ctx){
 	
 	// 1. Degenerate Case: A Single Point
 	// Should draw nothing or just one pixel.
@@ -119,7 +85,7 @@ void triangle_draw_test(WM_Context ctx){
 	wm_draw_triangle(&ctx, Vec2_F32(500, 500), Vec2_F32(550, 600), Vec2_F32(450, 600), COLOR_WHITE);
 }
 
-void circle_draw_test(WM_Context ctx){
+void circle_draw_test(OS_GFX_WindowContext ctx){
 	U32 w = ctx.size.width;
 	U32 h = ctx.size.height;
 	Vec2F32 screen_center = Vec2_F32((F32)w / 2.0f, (F32)h / 2.0f );
@@ -154,34 +120,34 @@ void circle_draw_test(WM_Context ctx){
 	wm_draw_circle(&ctx, Vec2_F32(150.5f, 150.5f), 30.0f, COLOR_RED);	
 }
 
-void rect_draw_test(WM_Context ctx) {
-    U32 w = ctx.size.width;
-    U32 h = ctx.size.height;
+void rect_draw_test(OS_GFX_WindowContext ctx) {
+	U32 w = ctx.size.width;
+	U32 h = ctx.size.height;
 
-    // 1. Large Fill (Stress Test)
-    wm_draw_rect(&ctx, Rect_F32(0.0f, 0.0f, (F32)w, (F32)h), COLOR_CYAN);
+	// 1. Large Fill (Stress Test)
+	wm_draw_rect(&ctx, Rect_F32(0.0f, 0.0f, (F32)w, (F32)h), COLOR_CYAN);
 
-    // 2. Standard Case: A simple centered rectangle
-    wm_draw_rect(&ctx, Rect_F32(100.0f, 100.0f, 200.0f, 150.0f), COLOR_BLUE);
+	// 2. Standard Case: A simple centered rectangle
+	wm_draw_rect(&ctx, Rect_F32(100.0f, 100.0f, 200.0f, 150.0f), COLOR_BLUE);
 
-    // 3. The "Line" Case: 1-pixel wide/tall rectangles
-    wm_draw_rect(&ctx, Rect_F32(50.0f, 50.0f, 300.0f, 1.0f), COLOR_WHITE);
-    wm_draw_rect(&ctx, Rect_F32(50.0f, 50.0f, 1.0f, 300.0f), COLOR_WHITE);
+	// 3. The "Line" Case: 1-pixel wide/tall rectangles
+	wm_draw_rect(&ctx, Rect_F32(50.0f, 50.0f, 300.0f, 1.0f), COLOR_WHITE);
+	wm_draw_rect(&ctx, Rect_F32(50.0f, 50.0f, 1.0f, 300.0f), COLOR_WHITE);
 
-    // 4. Out-of-Bounds: Partial Clipping
-    // Top-left clipping
-    wm_draw_rect(&ctx, Rect_F32(-50.0f, -50.0f, 100.0f, 100.0f), COLOR_RED);
-    // Bottom-right clipping
-    wm_draw_rect(&ctx, Rect_F32((F32)w - 50.0f, (F32)h - 50.0f, 100.0f, 100.0f), COLOR_GREEN);
+	// 4. Out-of-Bounds: Partial Clipping
+	// Top-left clipping
+	wm_draw_rect(&ctx, Rect_F32(-50.0f, -50.0f, 100.0f, 100.0f), COLOR_RED);
+	// Bottom-right clipping
+	wm_draw_rect(&ctx, Rect_F32((F32)w - 50.0f, (F32)h - 50.0f, 100.0f, 100.0f), COLOR_GREEN);
 
-    // 5. Fully Out-of-Bounds
-    wm_draw_rect(&ctx, Rect_F32((F32)w + 100.0f, (F32)h + 100.0f, 50.0f, 50.0f), COLOR_MAGENTA);
+	// 5. Fully Out-of-Bounds
+	wm_draw_rect(&ctx, Rect_F32((F32)w + 100.0f, (F32)h + 100.0f, 50.0f, 50.0f), COLOR_MAGENTA);
 
-    // 6. Negative Dimensions
-    wm_draw_rect(&ctx, Rect_F32(500.0f, 500.0f, -100.0f, -50.0f), COLOR_YELLOW);
+	// 6. Negative Dimensions
+	wm_draw_rect(&ctx, Rect_F32(500.0f, 500.0f, -100.0f, -50.0f), COLOR_YELLOW);
 }
 
-*/
+
 
 static U32 xorshift_state = 42;
 
@@ -235,16 +201,17 @@ void sr_line_stress_test(OS_GFX_WindowContext* ctx) {
 void x11_graphics(){
 	Arena* arena = arena_alloc();
 
-	OS_GFX_WindowContext* ctx = os_gfx_open_window(arena, 
-				 			Rect_U16(100,100,256,256), 
-				 			Str8Lit("Demo"),
-				 			0,
-				 			RGBA(0,0,0,0),
-				 			RGBA(0,0,0,0));
+	OS_GFX_WindowContext* ctx;
+	ctx = os_gfx_open_window(arena, 
+				Rect_U16(100,100,500,500), 
+				Str8Lit("Demo"),
+				0,
+				RGBA(0,0,0,0),
+				RGBA(0,0,0,0));
 
 	sr_line_stress_test(ctx);
 	os_gfx_draw_window(ctx);	
-
+	os_sleep_milliseconds(200);
 	os_gfx_close_window(ctx);
 	arena_release(arena);
 }
