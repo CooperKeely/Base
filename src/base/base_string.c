@@ -1,12 +1,28 @@
 ///////////////////////////////////////
 /// cjk: String Functions 
 
-U8 upper_from_char(U8 chr) {
-	if (chr > 'A') {
-		return chr - 32;
+// character helpers
+B32 char_is_digit(const U8 c)	{return (B32)( '0' <= c && c <= '9' );}
+B32 char_is_space(const U8 c)	{return (B32)( c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == '\f' || c == '\v');}
+B32 char_is_upper(const U8 c)	{return (B32)( 'A' <= c && c <= 'Z' );}
+B32 char_is_lower(const U8 c)	{return (B32)( 'a' <= c && c <= 'z');}
+B32 char_is_alpha(const U8 c)	{return (is_char_upper(c) || is_char_lower(c));}
+B32 char_is_slash(const U8 c)	{return (B32)( c == '\\' || c == '/' );}
+
+U8 lower_from_char(const U8 c){
+	if (char_is_upper(c)) {
+		return c + ('a' - 'A');
 	}
-	return chr;
+	return c;
 }
+
+U8 upper_from_char(const U8 c) {
+	if (char_is_lower(c)) {
+		return c - ('a - 'A');
+	}
+	return c;
+}
+
 
 Str8 str8(U8 *str, U64 length) {
 	Assert(str != NULL);
@@ -48,7 +64,7 @@ Str8 str8_skip_last_slash(Str8 str) {
 
 	U8 *ptr = str.str + str.size - 1;
 	for (; ptr >= str.str; ptr -= 1) {
-		if (*ptr == '/' || *ptr == '\\') break;
+		if (char_is_slash(*ptr)) break;
 	}
 
 	if (ptr >= str.str) {
@@ -66,9 +82,6 @@ U8 str8_get(Str8 string, U64 idx) {
 	InvalidPath;
 	return '\0';
 }
-
-
-
 
 Str8 s64_to_str8(Arena* arena, S64 integer){
 	if(integer == 0) return Str8Lit("0");
@@ -118,7 +131,7 @@ S64 str8_to_s64(Str8 str){
 	
 	for(; i < str.size; i ++){
 		U8 c = str.str[i];
-		if(c >= '0' && c <= '9'){
+		if(char_is_digit(c)){
 			ret = (ret * 10) + (c - '0');
 		} else InvalidPath; // invalid char
 	}
@@ -207,8 +220,18 @@ char* str8_to_cstring(Arena* arena, Str8 str){
 }
 
 S64 str8_find_first_char(Str8 str, U8 c){
+	Assert(str.str);
 	for EachIndex(idx, str.size){
 		if (str8_get(str, idx) == c) return idx;
+	}
+	return -1;
+}
+
+S64 str8_find_first_digit(Str8 str){
+	Assert(str.str);
+	for EachIndex(idx, str.size){
+		U8 char = str8_get(str, idx);
+		if (char_is_digit(c)) return idx;
 	}
 	return -1;
 }

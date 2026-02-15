@@ -23,10 +23,21 @@ U64 cstring_length(const char *c);
 Str8 cstring_to_str8(const char *c);
 char* str8_to_cstring(Arena* arena, Str8 str);
 
+// character helpers
+B32 char_is_digit(const U8 c);
+B32 char_is_space(const U8 c);
+B32 char_is_upper(const U8 c);
+B32 char_is_lower(const U8 c);
+B32 char_is_alpha(const U8 c);
+B32 char_is_slash(const U8 c);
+U8 lower_from_char(const U8 c);
+U8 upper_from_char(const U8 c);
+
 // String helpers
 U8 upper_from_char(U8 chr);
 Str8 str8_skip_last_slash(Str8 str);
 S64 str8_find_first_char(Str8 str, U8 c);
+S64 str8_find_first_digit(Str8 str);
 inline U8 str8_get(Str8 str, U64 idx);
 Str8 s64_to_str8(Arena* arena, S64 integer);
 S64 str8_to_s64(Str8 str);

@@ -5,6 +5,9 @@ FMT_OBJ_Object* fmt_obj_object_init(Arena *arena, Str8 file_path){
 	FMT_OBJ_Object* ret = ArenaPushStruct(arena, FMT_OBJ_Object);
 	ret->file_handle = os_file_open(file_path, OS_AccessFlag_Read); 
 	ret->arena = arena;	
+
+	
+
 	return ret;
 }
 
@@ -30,32 +33,16 @@ FMT_OBJ_Line fmt_obj_parse_line(Str8* line){
 }
 
 FMT_OBJ_Line fmt_obj_parse_vertex(Str8* line){
-
-
-
-}
-
-FMT_OBJ_Line fmt_obj_parse_texture(Str8* line){
-
+	S64 first_digit_idx = str8_find_first_digit(*line);
 
 
 }
 
-FMT_OBJ_Line fmt_obj_parse_normal(Str8* line){
-
-
-
-}
-
-FMT_OBJ_Line fmt_obj_parse_face(Str8* line){
-
-
-
-}
-
+FMT_OBJ_Line fmt_obj_parse_texture(Str8* line){NotImplemented;}
+FMT_OBJ_Line fmt_obj_parse_normal(Str8* line){NotImplemented;}
+FMT_OBJ_Line fmt_obj_parse_face(Str8* line){NotImplemented;}
 FMT_OBJ_Line fmt_obj_parse_group(Str8* line){NotImplemented;}
 FMT_OBJ_Line fmt_obj_parse_material(Str8* line){NotImplemented;}
-
 FMT_OBJ_Line fmt_obj_parse_material_library(Str8* line){NotImplemented;}
 
 FMT_OBJ_Line fmt_obj_parse_comment(Str8* line){
