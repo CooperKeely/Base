@@ -44,15 +44,51 @@ FMT_OBJ_Line fmt_obj_parse_vertex(Str8 line){
 		ret.v.z = str8_to_f32(str8_list_get(token_list, 3));
 
 		Str8 w = str8_list_get(token_list, 4);
-		if(w.size == 0) ret.v.w = F32Lit(1.0);
+		if(w.size == 0) ret.v.w = F32Lit(1.0); // w defaults to 1.0f
 		else ret.v.w = str8_to_f32(w);
 	}
 
 	return ret;
 }
 
-FMT_OBJ_Line fmt_obj_parse_texture(Str8 line){NotImplemented;}
-FMT_OBJ_Line fmt_obj_parse_normal(Str8 line){NotImplemented;}
+FMT_OBJ_Line fmt_obj_parse_texture(Str8 line){
+	FMT_OBJ_Line ret = {0};
+
+	ret.line_type = FMT_OBJ_LineType_Texture;
+	
+	ScratchArenaScope(scratch, 0, 0){
+		Str8List* token_list = str8_tokenize_list(scratch.arena, line, Str8Lit(' '));
+
+		ret.vt.x = str8_to_f32(str8_list_get(token_list, 1));
+
+		Str8 y = str8_list_get(token_list, 2);
+		if(y.size == 0) ret.vt.y = F32Lit(0.0); // y defaults to 0.0f
+		else ret.vt.y = str8_to_f32(y);
+
+		Str8 z = str8_list_get(token_list, 2);
+		if(z.size == 0) ret.vt.z = F32Lit(0.0); // z defaults to 0.0f
+		else ret.vt.z = str8_to_f32(z);
+	}
+
+	return ret;
+}
+
+FMT_OBJ_Line fmt_obj_parse_normal(Str8 line){
+	FMT_OBJ_Line ret = {0};
+
+	ret.line_type = FMT_OBJ_LineType_Normal;
+	
+	ScratchArenaScope(scratch, 0, 0){
+		Str8List* token_list = str8_tokenize_list(scratch.arena, line, Str8Lit(' '));
+
+		ret.vn.x = str8_to_f32(str8_list_get(token_list, 1));
+		ret.vn.y = str8_to_f32(str8_list_get(token_list, 2));
+		ret.vn.z = str8_to_f32(str8_list_get(token_list, 3));
+	}
+
+	return ret;
+}
+
 FMT_OBJ_Line fmt_obj_parse_face(Str8 line){NotImplemented;}
 FMT_OBJ_Line fmt_obj_parse_group(Str8 line){NotImplemented;}
 FMT_OBJ_Line fmt_obj_parse_material(Str8 line){NotImplemented;}
