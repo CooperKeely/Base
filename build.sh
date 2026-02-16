@@ -75,6 +75,9 @@ if [ -v profile ];		then compile="$compile_profile"; fi
 mkdir -p src
 mkdir -p include
 mkdir -p build
+mkdir -p ./prof
+mkdir -p ./prof/raw
+mkdir -p ./prof/data
 
 if [ -v clean ]; then 
 	echo "[clean build]"
@@ -104,11 +107,6 @@ elif [ -v didbuild ] && [ -v gdb ]; then
 	gdb -q -x env/debug_setup.gdb --args ./build/app 
 elif [ -v didbuild ] && [ -v profile ]; then
 	
-	# make profile directories
-	mkdir -p ./prof
-	mkdir -p ./prof/raw
-	mkdir -p ./prof/data
-
 	echo "[running profile]"
 	perf record -F 999 -o ./prof/raw/perf.data -g ./build/app
 
@@ -130,11 +128,6 @@ elif [ -v didbuild ] && [ -v profile ]; then
 	echo ""
 elif [ -v didbuild ] && [ -v cache ]; then
 	
-	# make profile directories
-	mkdir -p ./prof
-	mkdir -p ./prof/raw
-	mkdir -p ./prof/data
-
 	echo "[running cache audit]"
 	perf stat -d -r 3 -o ./prof/data/prof_cache_audit_summary.txt ./build/app
 
