@@ -19,19 +19,30 @@ FMT_OBJ_Object* fmt_obj_object_init(Arena *arena, Str8 file_path){
 		// find the end of the line
 		U64 end = i;
 		while (end < file_props.size && file_buf[end] != '\n' && file_buf[end] != '\r') end ++;
-
+		
 		// get a slice of the line
-		Str8 line_slice = str8(&file_buf[i], end - i);
+		Str8 line_slice = str8(&file_buf[i], end-i);
+		line_slice = str8_trim_whitespace(line_slice);	
+		if(line_slice.size == 0) goto next_line;		
+
+		// parse prefix 
+		S64 first_space = str8_find_first_char(line_slice, ' ');
+		if(first_space < 0) goto next_line;	
+
+		Str8 prefix = str8_get_slice(line_slice, 0, first_space);
+		if(prefix.size == 0) goto next_line;
+		if(prefix.str[0] == '#') goto next_line;
 		
-		// count each of the types of lines
-		if(line_slice.size != 0){
-			if(line_slice.str[0] == 'v'){
-				if(line_slice.str[1] == ' ') num_verticies ++;
-				else if(line_slice.str[1] == 'n') num_normals ++;
-				else if(line_slice.str[1] == 't') num_textures ++;
-			}else if(line_slice.str[0] == 'f') num_faces++;
-		}
-		
+
+		if(str8_cmp(prefix, Str8Lit("v"))){ num_verticies++; }
+		else if(str8_cmp(prefix, Str8Lit("vt"))){ num_textures++; }	
+		else if(str8_cmp(prefix, Str8Lit("vn"))){ num_normals++; } 	
+		else if(str8_cmp(prefix, Str8Lit("f"))){ num_faces++; }
+		//else if(str8_cmp(prefix, Str8Lit("g"))) 	
+		//else if(str8_cmp(prefix, Str8Lit("usemtl"))) 	
+		//else if(str8_cmp(prefix, Str8Lit("mtllib"))) 	
+
+		next_line:
 		// iterate through the new line characters
 		i = end;
 		while (i < file_props.size && (file_buf[i] == '\n' || file_buf[i] == '\r')) i ++;
