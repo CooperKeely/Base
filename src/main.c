@@ -296,7 +296,7 @@ void obj_parser_test(){
 	
 	fmt_obj_print_line_array(&obj_file->vertex_array);
 	fmt_obj_print_line_array(&obj_file->normal_array);
-	fmt_obj_print_line_array(&obj_file->texture_array);
+	//fmt_obj_print_line_array(&obj_file->texture_array);
 
 	arena_release(arena);
 }

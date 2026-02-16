@@ -250,9 +250,67 @@ FMT_OBJ_Line fmt_obj_parse_normal(Str8 line){
 }
 
 FMT_OBJ_Line fmt_obj_parse_face(Str8 line){
-	// TODO: (cjk): add the face parsing logic
-	FMT_OBJ_Line ret;
+	Assert(line.str);
+	Assert(line.size > 0);
+	FMT_OBJ_Line ret = {0};
+
 	ret.line_type = FMT_OBJ_LineType_Face;
+	
+	ScratchArenaScope(scratch, 0, 0){
+		Str8List* token_list = str8_tokenize_list(scratch.arena, line, Str8Lit(" "));
+
+		Str8 v1 = str8_list_get(token_list, 1);
+		Str8 v2 = str8_list_get(token_list, 2);
+		Str8 v3 = str8_list_get(token_list, 3);
+		
+		// if not found return a malformed line
+		if(x.size == 0 || y.size == 0 || z.size == 0){
+			return fmt_obj_parse_malformed(line);
+		}
+		
+		ret.face.corner[0] = fmt_obj_parse_face_corner(v1);
+		ret.face.corner[1] = fmt_obj_parse_face_corner(v1);
+		ret.face.corner[2] = fmt_obj_parse_face_corner(v1);
+	}
+
+	return ret;
+}
+
+FMT_OBJ_FaceCorner fmt_obj_parse_face_corner(Str8 corner_str){
+	Assert(corner_str.str);
+
+	FMT_OBJ_FaceCorner ret = {0};
+	if(corner_str.size == 0) return ret;	
+	Str8 str = str8_trim_whitespace(corner_str);
+	
+	// get the vertex data
+	S32 first_slash = str8_find_first_char(str, '/');
+	if(first_slash == -1) ret.corner.v_idx = (U32) str8_to_s64(str);
+	
+	Str8 v_str = str8_substr(str, Rng1_U64(0, first_slash));
+	ret.corner.v_idx = (U32) str8_to_s64(v_str);
+
+	// advance past the vertex data
+	str = str8_substr(str, Rng1_U64(first_slash + 1, str.size));
+	
+	// get the texture data
+	S32 second_slash = str8_find_first_char(str, '/');
+	if(second_slash == -1){ // (cjk): if not found format is vertex/normal eg. 10/12
+		ret.corner.vn_idx = (U32) str8_to_s64(str);
+		return ret;
+	}
+
+	Str8 vt_str = str8_substr(str, Rng1_U64(0, second_slash));
+	if(vt_str.size > 0) ret.corner.vt_idx = (U32) str8_to_s64(str);	
+
+	// advance past the texture data
+	str = str8_substr(str, Rng1_U64(second_slash+1, str.size));
+
+	// get the normal data
+	if(str.size > 0){
+		ret.corner.vn_idx = (U32) str8_to_s64(str); 
+	}
+
 	return ret;
 }
 

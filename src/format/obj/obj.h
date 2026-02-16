@@ -35,7 +35,7 @@ typedef struct{
 		Vec3F32 vn;
 
 		struct {
-			FMT_OBJ_FaceCorner corners[3];
+			FMT_OBJ_FaceCorner corner[3];
 		} face;	
 
 		Str8 string_data;
@@ -78,6 +78,9 @@ FMT_OBJ_Line fmt_obj_parse_material_library(Str8 line);
 FMT_OBJ_Line fmt_obj_parse_comment(Str8 line);
 FMT_OBJ_Line fmt_obj_parse_malformed(Str8 line);
 FMT_OBJ_Line fmt_obj_parse_empty(Str8 line);
+
+// helper line parse functions
+FMT_OBJ_FaceCorner fmt_obj_parse_face_corner(Str8 vert);
 
 // line list functions
 void fmt_obj_line_array_init(FMT_OBJ_LineArray* list, Arena* arena, U64 size);
