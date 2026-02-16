@@ -3,54 +3,51 @@
 
 FMT_OBJ_Object* fmt_obj_object_init(Arena *arena, Str8 file_path){
 	FMT_OBJ_Object* ret = ArenaPushStruct(arena, FMT_OBJ_Object);
-	ret->file_handle = os_file_open(file_path, OS_AccessFlag_Read); 
 	ret->arena = arena;	
 
-	U64 num_verticies;
-	U64 num_normals;
-	U64 num_textures;
-	U64 num_faces;
+	// open a file map
+	ret->file_handle = os_file_open(file_path, OS_AccessFlag_Read); 
+	OS_FileProperties file_props = os_properties_from_file_handle(ret->file_handle);
+	U8* file_buf = os_file_map_view_open(ret->file_handle, OS_AccessFlag_Read, Rng1_U64(0, file_props.size));
 
-	ScratchArenaScope(scratch, 0, 0){
-		U64 line_size = KB(1);
-		U8* line_buffer = ArenaPushArray(scratch.arena, U8, line_size);
+	U64 num_verticies = 0;
+	U64 num_normals = 0;
+	U64 num_textures = 0;
+	U64 num_faces = 0;
 
-		S64 bytes_read = 0;		
-		U64 start_read= 0;
-		U64 end_read = buffer_size;
+	for(U64 i = 0; i < file_props.size;){	
+		// find the end of the line
+		U64 end = i;
+		while (end < file_props.size && file_buf[end] != '\n' && file_buf[end] != '\r') end ++;
 
-		do{
-			bytes_read = os_file_read_data(ret->file_handle, 
-				  			Rng1_U64(start_read, end_read), 
-				  			(void*) line_buffer);
-			Assert(0 <= bytes_read);
-
-			U64 len = 0;
-			for (; line_buffer[len] != '\n' && len < bytes_read; len ++);
+		// get a slice of the line
+		Str8 line_slice = str8(&file_buf[i], end - i);
 		
-			Str8 line_slice = (str8){
-				.size = len,
-				.str = line_buffer,
-			};
+		// count each of the types of lines
+		if(line_slice.size != 0){
+			if(line_slice.str[0] == 'v'){
+				if(line_slice.str[1] == ' ') num_verticies ++;
+				else if(line_slice.str[1] == 'n') num_normals ++;
+				else if(line_slice.str[1] == 't') num_textures ++;
+			}else if(line_slice.str[0] == 'f') num_faces++;
+		}
+		
+		// iterate through the new line characters
+		i = end;
+		while (i < file_props.size || file_buf[i] == '\n' || file_buf[i] == '\r') i ++;
+	}
+	
+	// unmap the file
+	os_file_map_view_close(ret->file_handle, file_buf, Rng1_U64(0, file_props.size));	
 
-			Str8List* token_list = str8_tokenize_list(scratch.arena, line_slice, Str8Lit(' '));
-			
-			Str8 line_type = str8_list_get(token_list, 0);
-			
-			if(str8_cmp(line_type, Str8Lit("v"))) 		num_verticies ++;
-			else if(str8_cmp(line_type, Str8Lit("vt")))  	num_textures ++;
-			else if(str8_cmp(line_type, Str8Lit("vn")))  	num_normals ++;
-			else if(str8_cmp(line_type, Str8Lit("f")))  	num_faces ++;
-
-			start_read += len;
-			end_read += buffer_size;
-		}while(bytes_read != 0);
-	}		
-
+	// allocate exactly what each needs
 	fmt_obj_line_list_init(&ret->vertex_list, ret->arena, num_verticies);
 	fmt_obj_line_list_init(&ret->normal_list, ret->arena, num_normals);
 	fmt_obj_line_list_init(&ret->texture_list, ret->arena, num_textures);
 	fmt_obj_line_list_init(&ret->face_list, ret->arena, num_faces);
+	
+	// TODO: (cjk): add a automatic list resizing for the malformed list
+	fmt_obj_line_list_init(&ret->malformed_list, ret->arena, KB(1));
 
 	return ret;
 }
@@ -191,11 +188,7 @@ void fmt_obj_line_list_init(FMT_OBJ_LineList* list, Arena* arena, U64 size){
 }
 
 void fmt_obj_line_list_append(FMT_OBJ_LineList* list, FMT_OBJ_Line line){
-	if(list->count >= list->capacity){
-		fmt_obj_line_list_resize(list);
-	}
-	Assert(list->count < list->capacity);
-
+	Assert(list->count <= list->capacity);
 	list->array[list->count] = line;
 	list->count ++;
 }

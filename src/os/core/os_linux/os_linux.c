@@ -332,6 +332,7 @@ OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
 
 		Str8 file_name = str8((U8*) char_buf, bytes_read);
 		props.name = str8_copy(scratch.arena, file_name);
+		props.size = statbuf.st_size;
 	}
 
 	return props;
@@ -363,6 +364,7 @@ OS_FileProperties os_properties_from_file_path(Str8 path) {
 		// get file name
 		Str8 file_path = str8_skip_last_slash(path);
 		props.name = str8_copy(scratch.arena, file_path);
+		props.size = statbuf.st_size;
 	}
 
 	return props;
@@ -389,11 +391,11 @@ void* os_file_map_view_open(OS_Handle map, OS_AccessFlags flags, Rng1U64 range) 
 	Assert(map != 0);
 
 	int prot_flags = 0;
-	if(OS_AccessFlags & OS_AccessFlag_Read)  prot_flags |= PROT_READ;
-	if(OS_AccessFlags & OS_AccessFlag_Write)  prot_flags |= PROT_READ;
+	if(flags & OS_AccessFlag_Read)  prot_flags |= PROT_READ;
+	if(flags & OS_AccessFlag_Write)  prot_flags |= PROT_READ;
 
 	int proc_mapping_flags = 0;
-	if(OS_AccessFlags & OS_AccessFlag_ShareRead) proc_mapping_flags |= MAP_SHARED;
+	if(flags & OS_AccessFlag_ShareRead) proc_mapping_flags |= MAP_SHARED;
 	else proc_mapping_flags |= MAP_PRIVATE;
 
 	void* addr = mmap(NULL, dim_r1u64(range), prot_flags, proc_mapping_flags, map, range.min);

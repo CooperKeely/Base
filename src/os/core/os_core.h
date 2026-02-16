@@ -64,6 +64,7 @@ typedef struct {
 	DenseTime created;
 	DenseTime modified;
 	OS_FilePropertyFlag flags;
+	U64 size;
 } OS_FileProperties;
 
 typedef struct {
