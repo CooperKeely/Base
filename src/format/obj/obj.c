@@ -6,6 +6,48 @@ FMT_OBJ_Object* fmt_obj_object_init(Arena *arena, Str8 file_path){
 	ret->file_handle = os_file_open(file_path, OS_AccessFlag_Read); 
 	ret->arena = arena;	
 
+
+	U64 num_verticies;
+	U64 num_normals;
+	U64 num_textures;
+	U64 num_faces;
+
+	ScratchArenaScope(scratch, 0, 0){
+
+		U64 line_size = KB(1);
+
+		U8* line_buffer = ArenaPushArray(scratch.arena, U8, line_size);
+
+		S64 bytes_read = 0;		
+		U64 start_read= 0;
+		U64 end_read = buffer_size;
+
+		do{
+			bytes_read = os_file_read_data(ret->file_handle, 
+				  			Rng1_U64(start_read, end_read), 
+				  			(void*) line_buffer);
+			Assert(0 <= bytes_read);
+
+			U64 len = 0;
+			for (; line_buffer[len] != '\n' || len < bytes_read; len ++);
+		
+			Str8 line_slice = (str8){
+				.size = len,
+				.str = line_buffer,
+			};
+
+			Str8List* str8_tokenize_list(scratch.arena, line_slice, Str8Lit(' '));
+
+
+			start_read = end_read;
+			end_read += len;
+		}while(bytes_read != 0);
+
+
+			
+		
+
+	}		
 	
 
 	return ret;
@@ -16,7 +58,7 @@ FMT_OBJ_Line fmt_obj_parse_line(Str8 line){
 	FMT_OBJ_Line ret;
 	
 	S64 first_space = str8_find_first_char(line, ' ');
-	if(first_space < 0) ret = fmt_obj_parse_malformed(line);
+	if(first_space < 0) ret = fmt_obj_parse_empty(line);
 
 	Str8 prefix = str8_get_slice(line, 0, first_space);
 
@@ -132,29 +174,39 @@ FMT_OBJ_Line fmt_obj_parse_malformed(Str8 line){
 	return ret;
 }
 
+FMT_OBJ_Line fmt_obj_parse_empty(Str8 line){
+	FMT_OBJ_Line ret;
+	ret.line_type = FMT_OBJ_LineType_Empty;
+	ret.string_data = (Str8){0};
+	return ret;
+}
+
 // line list functions
-FMT_OBJ_LineList fmt_objt_line_list_init(Arena* arena){
-
-
-
+FMT_OBJ_LineList fmt_obj_line_list_init(Arena* arena, U64 size){
+	FMT_OBJ_LineList ret = {0};
+	ret.arena = arena;
+	
+	// initial size 1028
+	ret.array = ArenaPushArray(arena, FMT_OBJ_Line, KB(1));
+	
+	ret.capacity = KB(1);
+	ret.count = 0;
+	return ret;
 }
 
-void fmt_obj_line_list_append(FMT_OBJ_LineList* list, FMT_OBJ_Line* line){
+void fmt_obj_line_list_append(FMT_OBJ_LineList* list, FMT_OBJ_Line line){
+	if(list->count >= list->capacity){
+		fmt_obj_line_list_resize(list);
+	}
+	Assert(list->count < list->capacity);
 
-
-
-}
-
-void fmt_obj_line_list_resize(FMT_OBJ_LineList* list){
-
-
-
+	list->array[list->count] = line;
+	list->count ++;
 }
 
 FMT_OBJ_Line* fmt_obj_line_list_get(FMT_OBJ_LineList* list, U64 index){
-
-
-
+	Assert(index < list->count);
+	return &list->array[index];
 }
 
 

@@ -78,10 +78,11 @@ FMT_OBJ_Line fmt_obj_parse_material(Str8 line);
 FMT_OBJ_Line fmt_obj_parse_material_library(Str8 line);
 FMT_OBJ_Line fmt_obj_parse_comment(Str8 line);
 FMT_OBJ_Line fmt_obj_parse_malformed(Str8 line);
+FMT_OBJ_Line fmt_obj_parse_empty(Str8 line);
 
 // line list functions
-FMT_OBJ_LineList fmt_obj_line_list_init(Arena* arena);
-void fmt_obj_line_list_append(FMT_OBJ_LineList* list, FMT_OBJ_Line* line);
+FMT_OBJ_LineList fmt_obj_line_list_init(Arena* arena, U64 size);
+void fmt_obj_line_list_append(FMT_OBJ_LineList* list, FMT_OBJ_Line line);
 void fmt_obj_line_list_resize(FMT_OBJ_LineList* list);
 FMT_OBJ_Line* fmt_obj_line_list_get(FMT_OBJ_LineList* list, U64 index);
 
