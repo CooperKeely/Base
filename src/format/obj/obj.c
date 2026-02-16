@@ -23,21 +23,21 @@ FMT_OBJ_Object* fmt_obj_object_init(Arena *arena, Str8 file_path){
 		// get a slice of the line
 		Str8 line_slice = str8(&file_buf[i], end-i);
 		line_slice = str8_trim_whitespace(line_slice);	
-		if(line_slice.size == 0) goto next_line;		
+		if(line_slice.size == 0 || line_slice.str[0] == '#') goto next_line;		
 
 		// parse prefix 
 		S64 first_space = str8_find_first_char(line_slice, ' ');
-		if(first_space < 0) goto next_line;	
+		Str8 prefix;
+		if(first_space < 0){
+			prefix = line_slice;
+		} else{
+			prefix = str8_get_slice(line_slice, 0, first_space);
+		}
 
-		Str8 prefix = str8_get_slice(line_slice, 0, first_space);
-		if(prefix.size == 0) goto next_line;
-		if(prefix.str[0] == '#') goto next_line;
-		
-
-		if(str8_cmp(prefix, Str8Lit("v"))){ num_verticies++; }
-		else if(str8_cmp(prefix, Str8Lit("vt"))){ num_textures++; }	
-		else if(str8_cmp(prefix, Str8Lit("vn"))){ num_normals++; } 	
-		else if(str8_cmp(prefix, Str8Lit("f"))){ num_faces++; }
+		if(str8_cmp(prefix, Str8Lit("v")))		{ num_verticies++; }
+		else if(str8_cmp(prefix, Str8Lit("vt")))	{ num_textures++; }	
+		else if(str8_cmp(prefix, Str8Lit("vn")))	{ num_normals++; } 	
+		else if(str8_cmp(prefix, Str8Lit("f")))		{ num_faces++; }
 		//else if(str8_cmp(prefix, Str8Lit("g"))) 	
 		//else if(str8_cmp(prefix, Str8Lit("usemtl"))) 	
 		//else if(str8_cmp(prefix, Str8Lit("mtllib"))) 	
@@ -73,41 +73,40 @@ void fmt_obj_parse_file(FMT_OBJ_Object* obj_file){
 		U64 end = i;
 		while (end < file_props.size && file_buf[end] != '\n' && file_buf[end] != '\r') end ++;
 
-		Str8 line_slice = str8(&file_buf[i], end - i);
-		
+		Str8 line_slice = str8(&file_buf[i], end - i);	
 		FMT_OBJ_Line line = fmt_obj_parse_line(line_slice);	
 		
 		switch(line.line_type){
-			case FMT_OBJ_LineType_Vertex: 
+			case FMT_OBJ_LineType_Vertex: {
 				fmt_obj_line_array_append(&obj_file->vertex_array, line);
-				break;
-			case FMT_OBJ_LineType_Texture: 
+			} break;
+			case FMT_OBJ_LineType_Texture: {
 				fmt_obj_line_array_append(&obj_file->texture_array, line);
-				break;
-			case FMT_OBJ_LineType_Normal: 
+			} break;
+			case FMT_OBJ_LineType_Normal: { 
 				fmt_obj_line_array_append(&obj_file->normal_array, line);
-				break;
-			case FMT_OBJ_LineType_Face: 
+			} break;
+			case FMT_OBJ_LineType_Face: {
 				fmt_obj_line_array_append(&obj_file->face_array, line);
-				break;
-			case FMT_OBJ_LineType_Malformed: 
+			} break;
+			case FMT_OBJ_LineType_Malformed: {
 				fmt_obj_line_array_append(&obj_file->malformed_array, line);
-				break;
+			} break;
 			case FMT_OBJ_LineType_Group: 
 			case FMT_OBJ_LineType_Material: 
 			case FMT_OBJ_LineType_MaterialLibrary: 
 			case FMT_OBJ_LineType_Comment: 
 			case FMT_OBJ_LineType_Empty: 
 			case FMT_OBJ_LineType_Count: 
-			defualt:
-				break;
+			default:{
+			}break;
 		}
 
 		i = end;
 		while (i < file_props.size && (file_buf[i] == '\n' || file_buf[i] == '\r')) i ++;
 	}
 
-
+	os_file_map_view_close(fd, file_buf, Rng1_U64(0, file_props.size));
 }
 
 
@@ -115,8 +114,7 @@ void fmt_obj_parse_file(FMT_OBJ_Object* obj_file){
 FMT_OBJ_Line fmt_obj_parse_line(Str8 line){
 	FMT_OBJ_Line ret;
 	if(line.size == 0) return fmt_obj_parse_empty(line);
-	
-	str8_printf(stderr, "%.*s\n", Str8VArg(line));
+
 	// chopp off trailing comment
 	S64 first_comment = str8_find_first_char(line, '#');
 	if(first_comment == 0) return fmt_obj_parse_comment(line);
@@ -130,18 +128,40 @@ FMT_OBJ_Line fmt_obj_parse_line(Str8 line){
 	
 	// parse line
 	S64 first_space = str8_find_first_char(line, ' ');
-	if(first_space < 0) return fmt_obj_parse_malformed(line);
-
-	Str8 prefix = str8_get_slice(line, 0, first_space);
+	Str8 prefix;
+	if(first_space < 0){
+		prefix = line;	
+	}else{
+		prefix = str8_get_slice(line, 0, first_space);
+	} 
 	
-	if(str8_cmp(prefix, Str8Lit("v"))) 		ret = fmt_obj_parse_vertex(line);
-	else if(str8_cmp(prefix, Str8Lit("vt"))) 	ret = fmt_obj_parse_texture(line);
-	else if(str8_cmp(prefix, Str8Lit("vn"))) 	ret = fmt_obj_parse_normal(line);
-	else if(str8_cmp(prefix, Str8Lit("f"))) 	ret = fmt_obj_parse_face(line);
-	else if(str8_cmp(prefix, Str8Lit("g"))) 	ret = fmt_obj_parse_group(line);
-	else if(str8_cmp(prefix, Str8Lit("usemtl"))) 	ret = fmt_obj_parse_material(line);
-	else if(str8_cmp(prefix, Str8Lit("mtllib"))) 	ret = fmt_obj_parse_material_library(line);
-	else return 					ret = fmt_obj_parse_malformed(line); 
+	prefix = str8_trim_whitespace(prefix);
+	if(str8_cmp(prefix, Str8Lit("v"))) {
+		ret = fmt_obj_parse_vertex(line);
+	}
+	else if(str8_cmp(prefix, Str8Lit("vt"))) 	{
+		ret = fmt_obj_parse_texture(line);
+	}
+	else if(str8_cmp(prefix, Str8Lit("vn"))) 	{
+		ret = fmt_obj_parse_normal(line);
+	}
+	else if(str8_cmp(prefix, Str8Lit("f"))) 	{
+		ret = fmt_obj_parse_face(line);
+	}
+	else if(str8_cmp(prefix, Str8Lit("g"))) 	{
+		ret = fmt_obj_parse_group(line);
+	}
+	else if(str8_cmp(prefix, Str8Lit("usemtl"))) 	{
+		ret = fmt_obj_parse_material(line);
+	}
+	else if(str8_cmp(prefix, Str8Lit("mtllib"))) 	{
+		ret = fmt_obj_parse_material_library(line);
+	}
+	else {
+		ret = fmt_obj_parse_malformed(line);
+	}
+
+	return ret;
 }
 
 FMT_OBJ_Line fmt_obj_parse_vertex(Str8 line){
@@ -154,25 +174,25 @@ FMT_OBJ_Line fmt_obj_parse_vertex(Str8 line){
 	
 	ScratchArenaScope(scratch, 0, 0){
 		Str8List* token_list = str8_tokenize_list(scratch.arena, line, Str8Lit(" "));
-		// mandatory 	
+		
+
 		Str8 x = str8_list_get(token_list, 1);
 		Str8 y = str8_list_get(token_list, 2);
 		Str8 z = str8_list_get(token_list, 3);
-		
+		Str8 w = str8_list_get(token_list, 4);
+
 		// if not found return a malformed line
 		if(x.size == 0 || y.size == 0 || z.size == 0){
 			return fmt_obj_parse_malformed(line);
 		}
 		
+		// mandatory 	
 		ret.v.x = str8_to_f32(x);
 		ret.v.y = str8_to_f32(y);
 		ret.v.z = str8_to_f32(z);
 		
 		// optional
-		Str8 w = str8_list_get(token_list, 4);
-		if(w.size == 0) ret.v.w = F32Lit(1.0); // w defaults to 1.0f
-		else ret.v.w = F32Lit(1.0);
-
+		ret.v.w = (w.size > 0)? str8_to_f32(w) : F32Lit(1.0);
 	}
 
 	return ret;
@@ -195,11 +215,8 @@ FMT_OBJ_Line fmt_obj_parse_texture(Str8 line){
 		else ret.vt.x = str8_to_f32(x);
 
 		// optional
-		if(y.size == 0) ret.vt.y = F32Lit(0.0); 
-		else ret.vt.y = F32Lit(0.0);
-
-		if(z.size == 0) ret.vt.z = F32Lit(0.0); 
-		else ret.vt.z = F32Lit(0.0);
+		ret.vt.y = (y.size > 0)? str8_to_f32(y) : F32Lit(0.0);
+		ret.vt.z = (z.size > 0)? str8_to_f32(z) : F32Lit(0.0);
 	}
 
 	return ret;
@@ -210,7 +227,6 @@ FMT_OBJ_Line fmt_obj_parse_normal(Str8 line){
 	Assert(line.size > 0);
 	FMT_OBJ_Line ret = {0};
 
-	str8_printf(stderr, "%.*s\n",Str8VArg(line));
 	ret.line_type = FMT_OBJ_LineType_Normal;
 	
 	ScratchArenaScope(scratch, 0, 0){
@@ -239,6 +255,7 @@ FMT_OBJ_Line fmt_obj_parse_face(Str8 line){
 	ret.line_type = FMT_OBJ_LineType_Face;
 	return ret;
 }
+
 FMT_OBJ_Line fmt_obj_parse_group(Str8 line){
 	// TODO: (cjk): add the group parsing logic
 	FMT_OBJ_Line ret;
@@ -246,12 +263,14 @@ FMT_OBJ_Line fmt_obj_parse_group(Str8 line){
 	return ret;
 
 }
+
 FMT_OBJ_Line fmt_obj_parse_material(Str8 line){
 	// TODO: (cjk): add the material parsing logic
 	FMT_OBJ_Line ret;
 	ret.line_type = FMT_OBJ_LineType_Material;
 	return ret;
 }
+
 FMT_OBJ_Line fmt_obj_parse_material_library(Str8 line){
 	// TODO: (cjk): add the material library parsing logic
 	FMT_OBJ_Line ret;

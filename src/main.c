@@ -242,6 +242,48 @@ int test_str8_to_f32() {
     return 0;
 }
 
+void fmt_obj_print_line_array(FMT_OBJ_LineArray *array) {
+	Assert(array);
+	Assert(array->count != 0);
+
+	// Use the first element to determine the category header
+	FMT_OBJ_LineType type = array->array[0].line_type;
+	const char *label = "Elements";
+
+	switch(type) {
+		case FMT_OBJ_LineType_Vertex:  label = "Vertices"; break;
+		case FMT_OBJ_LineType_Normal:  label = "Normals";  break;
+		case FMT_OBJ_LineType_Texture: label = "Textures"; break;
+		case FMT_OBJ_LineType_Face:    label = "Faces";    break;
+	}
+
+	printf("--- %s (%lu) ---\n", label, array->count);
+
+	for (U64 i = 0; i < array->count; i++) {
+		FMT_OBJ_Line *line = &array->array[i];
+
+		switch(line->line_type) {
+			case FMT_OBJ_LineType_Vertex: {
+				if (line->v.w == 1.0f) {
+					printf("v  %.4f %.4f %.4f\n", line->v.x, line->v.y, line->v.z);
+				} else {
+					printf("v  %.4f %.4f %.4f %.4f\n", line->v.x, line->v.y, line->v.z, line->v.w);
+				}
+			} break;
+
+			case FMT_OBJ_LineType_Normal: {
+				printf("vn %.4f %.4f %.4f\n", line->vn.x, line->vn.y, line->vn.z);
+			} break;
+
+			case FMT_OBJ_LineType_Texture: {
+				printf("vt %.4f %.4f\n", line->vt.x, line->vt.y);
+			} break;
+
+			default: break;
+		}
+	}
+}
+
 
 void obj_parser_test(){
 	Arena* arena = arena_alloc();
@@ -249,7 +291,12 @@ void obj_parser_test(){
 	Assert(obj_file->vertex_array.capacity == 8);
 	Assert(obj_file->normal_array.capacity == 6);
 	Assert(obj_file->face_array.capacity == 12);
+
 	fmt_obj_parse_file(obj_file);
+	
+	fmt_obj_print_line_array(&obj_file->vertex_array);
+	fmt_obj_print_line_array(&obj_file->normal_array);
+	fmt_obj_print_line_array(&obj_file->texture_array);
 
 	arena_release(arena);
 }

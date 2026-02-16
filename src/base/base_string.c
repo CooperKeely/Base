@@ -293,12 +293,11 @@ Str8 str8_trim_whitespace(Str8 str){
 }
 
 B32 str8_cmp(Str8 s1, Str8 s2) {
-	Assert(s1.size > 0);
-	Assert(s2.size > 0);
-	Assert(s1.str);
-	Assert(s2.str);
 
 	if (s1.size != s2.size) return false;
+	if (s1.size == 0) return true;
+
+	Assert(s1.str && s2.str);
 	return MemoryMatch(s1.str, s2.str, s1.size);
 }
 
@@ -344,7 +343,7 @@ Str8Node* str8_list_push_node(Str8List *list, Str8Node *node) {
 	Assert(node != NULL);
 
 	if (list->last == NULL) {
-		list->last = node;
+		list->first = node;
 	} else {
 		list->last->next = node;
 	}
@@ -360,13 +359,12 @@ Str8Node *str8_list_push_node_front(Str8List *list, Str8Node *node) {
 	Assert(list != NULL);
 	Assert(node != NULL);
 
-	if (list->last == NULL && list->first == NULL) {
+	node->next = list->first;
+	list->first = node;
+
+	if (list->last == NULL) {
 		list->last = node;
-		list->first = node;
-	} else {
-		node->next = list->first;
-		list->first = node;
-	}
+	} 
 
 	list->count += 1;
 	list->total_size += node->string.size;
