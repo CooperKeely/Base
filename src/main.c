@@ -241,48 +241,71 @@ int test_str8_to_f32() {
     printf("[--- Tests Complete ---]\n");
     return 0;
 }
-
 void fmt_obj_print_line_array(FMT_OBJ_LineArray *array) {
-	Assert(array);
-	Assert(array->count != 0);
+    Assert(array);
+    if (array->count == 0) return; // Safer than Assert if an array is legitimately empty
 
-	// Use the first element to determine the category header
-	FMT_OBJ_LineType type = array->array[0].line_type;
-	const char *label = "Elements";
+    // Use the first element to determine the category header
+    FMT_OBJ_LineType type = array->array[0].line_type;
+    const char *label = "Elements";
 
-	switch(type) {
-		case FMT_OBJ_LineType_Vertex:  label = "Vertices"; break;
-		case FMT_OBJ_LineType_Normal:  label = "Normals";  break;
-		case FMT_OBJ_LineType_Texture: label = "Textures"; break;
-		case FMT_OBJ_LineType_Face:    label = "Faces";    break;
-	}
+    switch(type) {
+        case FMT_OBJ_LineType_Vertex:  label = "Vertices"; break;
+        case FMT_OBJ_LineType_Normal:  label = "Normals";  break;
+        case FMT_OBJ_LineType_Texture: label = "Textures"; break;
+        case FMT_OBJ_LineType_Face:    label = "Faces";    break;
+    }
 
-	printf("--- %s (%lu) ---\n", label, array->count);
+    printf("--- %s (%llu) ---\n", label, array->count);
 
-	for (U64 i = 0; i < array->count; i++) {
-		FMT_OBJ_Line *line = &array->array[i];
+    for (U64 i = 0; i < array->count; i++) {
+        FMT_OBJ_Line *line = &array->array[i];
 
-		switch(line->line_type) {
-			case FMT_OBJ_LineType_Vertex: {
-				if (line->v.w == 1.0f) {
-					printf("v  %.4f %.4f %.4f\n", line->v.x, line->v.y, line->v.z);
-				} else {
-					printf("v  %.4f %.4f %.4f %.4f\n", line->v.x, line->v.y, line->v.z, line->v.w);
-				}
-			} break;
+        switch(line->line_type) {
+            case FMT_OBJ_LineType_Vertex: {
+                if (line->v.w == 1.0f) {
+                    printf("v   %.4f %.4f %.4f\n", line->v.x, line->v.y, line->v.z);
+                } else {
+                    printf("v   %.4f %.4f %.4f %.4f\n", line->v.x, line->v.y, line->v.z, line->v.w);
+                }
+            } break;
 
-			case FMT_OBJ_LineType_Normal: {
-				printf("vn %.4f %.4f %.4f\n", line->vn.x, line->vn.y, line->vn.z);
-			} break;
+            case FMT_OBJ_LineType_Normal: {
+                printf("vn  %.4f %.4f %.4f\n", line->vn.x, line->vn.y, line->vn.z);
+            } break;
 
-			case FMT_OBJ_LineType_Texture: {
-				printf("vt %.4f %.4f\n", line->vt.x, line->vt.y);
-			} break;
+            case FMT_OBJ_LineType_Texture: {
+                printf("vt  %.4f %.4f\n", line->vt.x, line->vt.y);
+            } break;
 
-			default: break;
-		}
-	}
+            case FMT_OBJ_LineType_Face: {
+                printf("f   ");
+                for (U32 f_idx = 0; f_idx < 3; f_idx++) {
+                    U32 v  = line->face.corner[f_idx].v_idx;
+                    U32 vt = line->face.corner[f_idx].vt_idx;
+                    U32 vn = line->face.corner[f_idx].vn_idx;
+
+                    // Standard OBJ formatting logic:
+                    if (vt == 0 && vn == 0) {
+                        printf("%u", v);           // Just v
+                    } else if (vt != 0 && vn == 0) {
+                        printf("%u/%u", v, vt);    // v/vt
+                    } else if (vt == 0 && vn != 0) {
+                        printf("%u//%u", v, vn);   // v//vn (Matches your cube.obj)
+                    } else {
+                        printf("%u/%u/%u", v, vt, vn); // v/vt/vn
+                    }
+                    
+                    if (f_idx < 2) printf(" ");
+                }
+                printf("\n");
+            } break;
+
+            default: break;
+        }
+    }
 }
+
 
 
 void obj_parser_test(){
@@ -297,6 +320,7 @@ void obj_parser_test(){
 	fmt_obj_print_line_array(&obj_file->vertex_array);
 	fmt_obj_print_line_array(&obj_file->normal_array);
 	//fmt_obj_print_line_array(&obj_file->texture_array);
+	fmt_obj_print_line_array(&obj_file->face_array);
 
 	arena_release(arena);
 }

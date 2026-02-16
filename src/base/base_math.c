@@ -13,22 +13,22 @@ RectF64 rect_f64(F64 x, F64 y, F64 width, F64 height){ return (RectF64){{x, y, w
 /// cjk:  Range Functions 
 
 Rng1U32 rng_1u32(U32 min, U32 max) {
-	Assert(min < max);
+	Assert(min <= max);
 	return (Rng1U32){{.min = min, .max = max}};
 }
 
 Rng1F32 rng_1f32(F32 min, F32 max) {
-	Assert(min < max);
+	Assert(min <= max);
 	return (Rng1F32){{.min = min, .max = max}};
 }
 
 Rng1U64 rng_1u64(U64 min, U64 max) {
-	Assert(min < max);
+	Assert(min <= max);
 	return (Rng1U64){{.min = min, .max = max}};
 }
 
 Rng1F64 rng_1f64(F64 min, F64 max) {
-	Assert(min < max);
+	Assert(min <= max);
 	return (Rng1F64){{.min = min, .max = max}};
 }
 
