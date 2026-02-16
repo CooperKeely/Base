@@ -193,14 +193,14 @@ void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app) {
 	// dynamically allocated system info
 	ScratchArenaScope(scratch, 0, 0){
 		OS_SystemInfo* sys_info = &os_state.sys_info;
-		char* char_buf = ArenaPushArray(scratch.arena, char, PATH_MAX);
+		char* char_buf = ArenaPushArrayZero(scratch.arena, char, PATH_MAX);
 		S32 err = gethostname(char_buf, PATH_MAX);
 		Assert(err != -1);
 		
 		Str8 host_name = cstring_to_str8(char_buf); 
 		
 		sys_info->machine_name.size = host_name.size;
-		sys_info->machine_name.str = ArenaPushArray(os_state.arena, U8, host_name.size);
+		sys_info->machine_name.str = ArenaPushArrayZero(os_state.arena, U8, host_name.size);
 		MemoryCopyStr8(sys_info->machine_name, host_name);	
 	}
 	
@@ -215,7 +215,7 @@ void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app) {
 		Str8 home_str8 = cstring_to_str8(home);
 		proc_info->user_program_data_path = str8_copy(os_state.arena, home_str8);
 
-		char* char_buff = ArenaPushArray(scratch.arena, char, PATH_MAX);
+		char* char_buff = ArenaPushArrayZero(scratch.arena, char, PATH_MAX);
 		S32 err = readlink("/proc/self/exe", char_buff, PATH_MAX);
 		Assert(err != -1);
 
@@ -326,7 +326,7 @@ OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
 		Str8 fd_path = str8_concat(scratch.arena, path, fd);
 		const char* cstr_fd_path = str8_to_cstring(scratch.arena, fd_path);
 		
-		char* char_buf = ArenaPushArray(scratch.arena, char, PATH_MAX);
+		char* char_buf = ArenaPushArrayZero(scratch.arena, char, PATH_MAX);
 		S32 bytes_read = readlink(cstr_fd_path, char_buf, PATH_MAX);
 		Assert(bytes_read != -1);	
 

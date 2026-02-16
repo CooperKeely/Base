@@ -4,7 +4,7 @@
 OS_GFX_WindowContext* os_gfx_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 border_width, ColorRGBA border_color,  ColorRGBA background_color){
 	Assert(arena);	
 
-	OS_GFX_WindowContext* result = ArenaPushStruct(arena, OS_GFX_WindowContext);
+	OS_GFX_WindowContext* result = ArenaPushStructZero(arena, OS_GFX_WindowContext);
 	
 	result->size = win_rect;
 	result->name = window_name;

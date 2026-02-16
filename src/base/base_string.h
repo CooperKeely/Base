@@ -42,6 +42,7 @@ inline U8 str8_get(Str8 str, U64 idx);
 Str8 s64_to_str8(Arena* arena, S64 integer);
 S64 str8_to_s64(Str8 str);
 F32 str8_to_f32(Str8 str);
+Str8 str8_trim_whitespace(Str8 str);
 
 // Str8 output
 void str8_printf(FILE *file_ptr, const char *format, ...);

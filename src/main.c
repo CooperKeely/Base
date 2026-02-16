@@ -243,6 +243,19 @@ int test_str8_to_f32() {
 }
 
 
+void obj_parser_test(){
+	Arena* arena = arena_alloc();
+	FMT_OBJ_Object* obj_file = fmt_obj_object_init(arena, Str8Lit("./resources/cube.obj"));
+
+	fmt_obj_parse_file(obj_file);
+
+	Assert(obj_file->vertex_array.count == 8);
+	Assert(obj_file->normal_array.count == 6);
+
+
+	arena_release(arena);
+}
+
 void x11_graphics(){
 	Arena* arena = arena_alloc();
 
@@ -294,7 +307,8 @@ S32 entry_point(U64 argc, U8** argv){
 	(void) argv;
 	
 	//x11_graphics();
-	test_str8_to_f32();
+	//test_str8_to_f32();
+	obj_parser_test();
 	return 0;
 }
 

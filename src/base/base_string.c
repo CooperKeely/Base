@@ -50,7 +50,7 @@ Str8 str8_pushf(Arena *arena, const char *format, ...) {
 
 	U64 len = vsnprintf(NULL, 0, format, copy);
 
-	U8 *ptr = ArenaPushArray(arena, U8, len + 1);
+	U8 *ptr = ArenaPushArrayZero(arena, U8, len + 1);
 	vsnprintf((char *)ptr, len + 1, format, args);
 	arena_pop(arena, 1);
 
@@ -76,11 +76,9 @@ Str8 str8_skip_last_slash(Str8 str) {
 }
 
 U8 str8_get(Str8 string, U64 idx) {
-	if (idx < string.size) {
-		return string.str[idx];
-	}
-	InvalidPath;
-	return '\0';
+	Assert(string.str);
+	Assert(idx < string.size);		
+	return string.str[idx];
 }
 
 Str8 s64_to_str8(Arena* arena, S64 integer){
@@ -98,7 +96,7 @@ Str8 s64_to_str8(Arena* arena, S64 integer){
 
 	if(is_negative) digits ++;
 	Str8 result = (Str8){
-		.str = ArenaPushArray(arena, U8, digits),
+		.str = ArenaPushArrayZero(arena, U8, digits),
 		.size = digits 
 	};
 
@@ -213,7 +211,7 @@ char* str8_to_cstring(Arena* arena, Str8 str){
 	Assert(str.size > 0);
 	Assert(str.str);
 
-	char* cstring = ArenaPushArray(arena, char,str.size + 1);
+	char* cstring = ArenaPushArrayZero(arena, char,str.size + 1);
 	MemoryCopy(cstring, str.str, str.size);
 	cstring[str.size] = '\0';
 	return cstring;	
@@ -240,7 +238,7 @@ Str8 str8_concat(Arena *arena, Str8 s1, Str8 s2) {
 	Assert(arena);
 
 	U64 new_size = s1.size + s2.size;
-	U8 *character_buffer = ArenaPushArray(arena, U8, new_size);
+	U8 *character_buffer = ArenaPushArrayZero(arena, U8, new_size);
 
 	MemoryCopy(character_buffer, s1.str, s1.size);
 	MemoryCopy(character_buffer + s1.size, s2.str, s2.size);
@@ -253,7 +251,7 @@ Str8 str8_copy(Arena* arena, Str8 str){
 
 	Str8 result = {0};
 	result.size = str.size;
-	result.str = ArenaPushArray(arena, U8, str.size);
+	result.str = ArenaPushArrayZero(arena, U8, str.size);
 	MemoryCopyStr8(result, str);
 	return result;
 }
@@ -276,6 +274,22 @@ Str8 str8_get_slice(Str8 s1, U64 start_idx, U64 size){
 	string_slice.size = size;
 	
 	return string_slice;
+}
+
+Str8 str8_trim_whitespace(Str8 str){
+	Assert(str.str);
+	if(str.size == 0) return str;
+
+	U8* first = str.str;
+	U8* last = str.str + str.size;
+	
+	while(last < first && !char_is_space(*first)) first++;
+	while(first < last && !char_is_space(*last)) last--;
+
+	Str8 result;
+	result.str = first;
+	result.size = last - first;
+	return result;
 }
 
 B32 str8_cmp(Str8 s1, Str8 s2) {
@@ -325,17 +339,17 @@ Str8List str8_list() {
 	return (Str8List){0};
 }
 
-Str8Node *str8_list_push_node(Str8List *list, Str8Node *node) {
+Str8Node* str8_list_push_node(Str8List *list, Str8Node *node) {
 	Assert(list != NULL);
 	Assert(node != NULL);
 
-	if (list->last == NULL && list->first == NULL) {
+	if (list->last == NULL) {
 		list->last = node;
-		list->first = node;
 	} else {
 		list->last->next = node;
-		list->last = node;
 	}
+	list->last = node;
+	node->next = 0;
 
 	list->count += 1;
 	list->total_size += node->string.size;
@@ -360,12 +374,13 @@ Str8Node *str8_list_push_node_front(Str8List *list, Str8Node *node) {
 	return node;
 }
 
-Str8Node *str8_list_push(Arena *arena, Str8List *list, Str8 string) {
-	Assert(arena != NULL);
-	Assert(list != NULL);
+Str8Node* str8_list_push(Arena *arena, Str8List *list, Str8 string) {
+	Assert(arena);
+	Assert(list);
+	Assert(string.str);
 
-	Str8Node *node = ArenaPushStruct(arena, Str8Node);
-	*node = (Str8Node){.next = NULL, .string = string};
+	Str8Node *node = ArenaPushStructZero(arena, Str8Node);
+	node->string = string;
 
 	return str8_list_push_node(list, node);
 }
@@ -374,38 +389,54 @@ Str8Node *str8_list_push_front(Arena *arena, Str8List *list, Str8 string) {
 	Assert(arena != NULL);
 	Assert(list != NULL);
 
-	Str8Node *node = ArenaPushStruct(arena, Str8Node);
+	Str8Node *node = ArenaPushStructZero(arena, Str8Node);
 	*node = (Str8Node){.next = NULL, .string = string};
 
 	return str8_list_push_node_front(list, node);
 }
 
-Str8List *str8_tokenize_list(Arena *arena, Str8 string, Str8 delimiters) {
+Str8List* str8_tokenize_list(Arena *arena, Str8 string, Str8 delimiters) {
 	Assert(arena != NULL);
 	Assert(delimiters.size > 0);
+	Assert(string.str);
+	Assert(delimiters.str);
 
-	U64 start_idx = 0;
-	Str8List *list = ArenaPushStruct(arena, Str8List);
+	Str8List* list = ArenaPushStructZero(arena, Str8List);
+	U64 cursor = 0;
 
-	for EachIndex(i, string.size) {
-		B32 is_delimiter = 0;
-
-		for EachIndex(delim, delimiters.size) {
-			if (str8_get(string, i) == str8_get(delimiters, delim)) {
-				is_delimiter = 1;
-				break;
+	while(cursor < string.size) {
+		// iterate through discaring starting delimiters
+		B32 is_delim = true;
+		while( cursor < string.size && is_delim){
+			is_delim = false;
+			U8 c = str8_get(string, cursor);
+			for EachIndex(d, delimiters.size) {
+				if (c == str8_get(delimiters, d)) {
+					is_delim = true;
+					cursor ++;
+					break;
+				}
 			}
 		}
+	
+		// check if we hit end	
+		if (cursor >= string.size) break;
 
-		if (is_delimiter) {
-			Str8 token = str8_substr(string, Rng1_U64(start_idx, i));
-			start_idx = i + 1;
-			str8_list_push(arena, list, token);
+		U64 start = cursor;
+		B32 is_data = true;
+		while(cursor < string.size && is_data){
+			U8 c = str8_get(string, cursor);
+			for EachIndex(d, delimiters.size) {
+				if (c == str8_get(delimiters, d)) {
+					is_data = false;
+					break;
+				}
+			}
+			if(is_data) cursor++;
 		}
-	}
 
-	if (start_idx <= string.size) { // Push final token
-		Str8 token = str8_substr(string, Rng1_U64(start_idx, string.size));
+		// push the valid token
+		Str8 token = str8_substr(string, Rng1_U64(start, cursor));
 		str8_list_push(arena, list, token);
 	}
 

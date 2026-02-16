@@ -44,10 +44,9 @@ typedef struct{
 
 typedef struct{
 	FMT_OBJ_Line* array;
-	Arena* arena;
 	U64 count;
 	U64 capacity;
-} FMT_OBJ_LineList;
+} FMT_OBJ_LineArray;
 
 typedef struct {
 	OS_Handle file_handle;
@@ -58,11 +57,11 @@ typedef struct {
 	// FMT_MTL_Material current_material;
 	// FMT_OBJ_Group current_group;
 
-	FMT_OBJ_LineList vertex_list;
-	FMT_OBJ_LineList texture_list;
-	FMT_OBJ_LineList normal_list;
-	FMT_OBJ_LineList face_list;
-	FMT_OBJ_LineList malformed_list;
+	FMT_OBJ_LineArray vertex_array;
+	FMT_OBJ_LineArray texture_array;
+	FMT_OBJ_LineArray normal_array;
+	FMT_OBJ_LineArray face_array;
+	FMT_OBJ_LineArray malformed_array;
 } FMT_OBJ_Object;
 
 FMT_OBJ_Object* fmt_obj_object_init(Arena *arena, Str8 file_path);
@@ -81,8 +80,8 @@ FMT_OBJ_Line fmt_obj_parse_malformed(Str8 line);
 FMT_OBJ_Line fmt_obj_parse_empty(Str8 line);
 
 // line list functions
-void fmt_obj_line_list_init(FMT_OBJ_LineList* list, Arena* arena, U64 size);
-void fmt_obj_line_list_append(FMT_OBJ_LineList* list, FMT_OBJ_Line line);
-FMT_OBJ_Line* fmt_obj_line_list_get(FMT_OBJ_LineList* list, U64 index);
+void fmt_obj_line_array_init(FMT_OBJ_LineArray* list, Arena* arena, U64 size);
+void fmt_obj_line_array_append(FMT_OBJ_LineArray* list, FMT_OBJ_Line line);
+FMT_OBJ_Line* fmt_obj_line_array_get(FMT_OBJ_LineArray* list, U64 index);
 
 #endif // FORMAT_OBJ_H
