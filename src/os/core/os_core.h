@@ -7,6 +7,7 @@
 # include <errno.h>
 # include <sys/stat.h>
 # include <sys/sysinfo.h>
+# include <sys/mman.h>
 # include <execinfo.h>
 # include <signal.h>
 # include <linux/limits.h>

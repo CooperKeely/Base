@@ -322,7 +322,7 @@ OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
 		
 		// file name
 		Str8 path = Str8Lit("/proc/self/fd/");
-		Str8 fd = s64_to_str8(scratch.arena, file_handle);
+		Str8 fd = s64_to_str8(scratch.arena, file_handle); 
 		Str8 fd_path = str8_concat(scratch.arena, path, fd);
 		const char* cstr_fd_path = str8_to_cstring(scratch.arena, fd_path);
 		
@@ -376,10 +376,38 @@ B32 os_folder_path_exists(Str8 path) { NotImplemented; }
 
 
 // File map operations
-OS_Handle os_file_map_open(OS_Handle file_handle, OS_AccessFlags flags) {NotImplemented;}
-void os_file_map_close(OS_Handle map) { NotImplemented; }
-void *os_file_map_view_open(OS_Handle map, OS_AccessFlags flags, Rng1U64 range) {NotImplemented;}
-void os_file_map_view_close(OS_Handle map, void *ptr, Rng1U64 range) {NotImplemented;}
+OS_Handle os_file_map_open(OS_Handle file_handle, OS_AccessFlags flags) {
+	OS_Handle map = file_handle;
+	return map;
+}
+
+void os_file_map_close(OS_Handle map) {
+	// NOTE: not needed on linux
+}
+
+void* os_file_map_view_open(OS_Handle map, OS_AccessFlags flags, Rng1U64 range) {
+	Assert(map != 0);
+
+	int prot_flags = 0;
+	if(OS_AccessFlags & OS_AccessFlag_Read)  prot_flags |= PROT_READ;
+	if(OS_AccessFlags & OS_AccessFlag_Write)  prot_flags |= PROT_READ;
+
+	int proc_mapping_flags = 0;
+	if(OS_AccessFlags & OS_AccessFlag_ShareRead) proc_mapping_flags |= MAP_SHARED;
+	else proc_mapping_flags |= MAP_PRIVATE;
+
+	void* addr = mmap(NULL, dim_r1u64(range), prot_flags, proc_mapping_flags, map, range.min);
+	Assert(addr != MAP_FAILED);
+
+	return addr;	
+
+}
+
+void os_file_map_view_close(OS_Handle map, void *ptr, Rng1U64 range) {
+	Assert(map != 0);
+	S32 err = munmap(ptr, dim_r1u64(range));
+	Assert(err != -1);
+}
 
 // Directory iteration
 OS_FileIter *os_file_iter_begin(Arena *arena, Str8 path,OS_FileIterFlags flags) {NotImplemented;}

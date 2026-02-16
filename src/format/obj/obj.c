@@ -6,16 +6,13 @@ FMT_OBJ_Object* fmt_obj_object_init(Arena *arena, Str8 file_path){
 	ret->file_handle = os_file_open(file_path, OS_AccessFlag_Read); 
 	ret->arena = arena;	
 
-
 	U64 num_verticies;
 	U64 num_normals;
 	U64 num_textures;
 	U64 num_faces;
 
 	ScratchArenaScope(scratch, 0, 0){
-
 		U64 line_size = KB(1);
-
 		U8* line_buffer = ArenaPushArray(scratch.arena, U8, line_size);
 
 		S64 bytes_read = 0;		
@@ -29,26 +26,31 @@ FMT_OBJ_Object* fmt_obj_object_init(Arena *arena, Str8 file_path){
 			Assert(0 <= bytes_read);
 
 			U64 len = 0;
-			for (; line_buffer[len] != '\n' || len < bytes_read; len ++);
+			for (; line_buffer[len] != '\n' && len < bytes_read; len ++);
 		
 			Str8 line_slice = (str8){
 				.size = len,
 				.str = line_buffer,
 			};
 
-			Str8List* str8_tokenize_list(scratch.arena, line_slice, Str8Lit(' '));
-
-
-			start_read = end_read;
-			end_read += len;
-		}while(bytes_read != 0);
-
-
+			Str8List* token_list = str8_tokenize_list(scratch.arena, line_slice, Str8Lit(' '));
 			
-		
+			Str8 line_type = str8_list_get(token_list, 0);
+			
+			if(str8_cmp(line_type, Str8Lit("v"))) 		num_verticies ++;
+			else if(str8_cmp(line_type, Str8Lit("vt")))  	num_textures ++;
+			else if(str8_cmp(line_type, Str8Lit("vn")))  	num_normals ++;
+			else if(str8_cmp(line_type, Str8Lit("f")))  	num_faces ++;
 
+			start_read += len;
+			end_read += buffer_size;
+		}while(bytes_read != 0);
 	}		
-	
+
+	fmt_obj_line_list_init(&ret->vertex_list, ret->arena, num_verticies);
+	fmt_obj_line_list_init(&ret->normal_list, ret->arena, num_normals);
+	fmt_obj_line_list_init(&ret->texture_list, ret->arena, num_textures);
+	fmt_obj_line_list_init(&ret->face_list, ret->arena, num_faces);
 
 	return ret;
 }
@@ -182,16 +184,10 @@ FMT_OBJ_Line fmt_obj_parse_empty(Str8 line){
 }
 
 // line list functions
-FMT_OBJ_LineList fmt_obj_line_list_init(Arena* arena, U64 size){
-	FMT_OBJ_LineList ret = {0};
-	ret.arena = arena;
-	
-	// initial size 1028
-	ret.array = ArenaPushArray(arena, FMT_OBJ_Line, KB(1));
-	
-	ret.capacity = KB(1);
-	ret.count = 0;
-	return ret;
+void fmt_obj_line_list_init(FMT_OBJ_LineList* list, Arena* arena, U64 size){
+	list->array = ArenaPushArray(arena, FMT_OBJ_Line, size);
+	list->capacity = size;
+	list->count = 0;
 }
 
 void fmt_obj_line_list_append(FMT_OBJ_LineList* list, FMT_OBJ_Line line){
@@ -208,5 +204,3 @@ FMT_OBJ_Line* fmt_obj_line_list_get(FMT_OBJ_LineList* list, U64 index){
 	Assert(index < list->count);
 	return &list->array[index];
 }
-
-
