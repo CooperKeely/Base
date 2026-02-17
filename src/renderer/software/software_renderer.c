@@ -165,7 +165,7 @@ void sr_draw_circle(OS_GFX_WindowContext* ctx, Vec2F32 center, F32 radius, Color
 	#undef Local_Macro_DRAWSPAN
 }
 
-Vec2F32 sr_viewport_transform(Vec3F32 vec, U32 width, U32 height){
+Vec2F32 sr_viewport_transform_oblique_projection(Vec3F32 vec, U32 width, U32 height){
 	// oblique projection
 	F32 proj_factor = F32Lit(0.4);
 	F32 proj_x = vec.x + (vec.z * proj_factor);
@@ -182,7 +182,37 @@ Vec2F32 sr_viewport_transform(Vec3F32 vec, U32 width, U32 height){
 	return Vec2_F32(new_x, new_y);
 }
 
+Vec2F32 sr_viewport_transform(Vec3F32 vec, U32 width, U32 height){
+	F32 x = vec.x;
+	F32 y = vec.y;
+	F32 z = vec.z;
+	// 1. Set Camera Distance (d)
+	// If your cube is -1 to 1, a distance of 3.0 puts the camera 
+	// safely outside the cube.
+	F32 camera_dist = F32Lit(2.5);
 
+	// 2. Focal Length (f)
+	// This determines the "Field of View". 
+	// (width * 0.5) is a good starting point.
+	F32 focal_length = (F32)width * F32Lit(0.8);
+
+	// 3. Perspective Divide
+	// We add camera_dist to Z so that the cube isn't "behind" the camera.
+	F32 z_inv = F32Lit(1.0) / (z + camera_dist);
+
+	F32 projected_x = x * z_inv * focal_length;
+	F32 projected_y = y * z_inv * focal_length;
+
+	// 4. Center on Screen
+	// Since -1 to 1 projected will be centered around 0, 
+	// we shift it by half the screen width/height.
+	F32 final_x = ((F32)width  * F32Lit(0.5)) + projected_x;
+	F32 final_y = ((F32)height * F32Lit(0.5)) - projected_y; // -y to flip for screen space
+
+	return Vec2_F32(final_x, final_y);
+
+
+}
 
 void sr_draw_obj(OS_GFX_WindowContext* ctx, FMT_OBJ_Object* obj_file, SR_ObjectRenderFlag flags){
 	Assert(ctx);
@@ -212,13 +242,7 @@ void sr_draw_obj(OS_GFX_WindowContext* ctx, FMT_OBJ_Object* obj_file, SR_ObjectR
 		Vec2F32 p1 = sr_viewport_transform(Vec3_F32(v1.x, v1.y, v1.z), width, height); 
 		Vec2F32 p2 = sr_viewport_transform(Vec3_F32(v2.x, v2.y, v2.z), width, height); 
 		Vec2F32 p3 = sr_viewport_transform(Vec3_F32(v3.x, v3.y, v3.z), width, height); 
-	
-		// Print the transformed pixel coordinates for this triangle
-		printf("Face [%llu] Tri Points:\n", (U64)face_idx);
-		printf("  p1: {x: %7.2f, y: %7.2f}\n", p1.x, p1.y);
-		printf("  p2: {x: %7.2f, y: %7.2f}\n", p2.x, p2.y);
-		printf("  p3: {x: %7.2f, y: %7.2f}\n", p3.x, p3.y);
-		
+
 		sr_draw_triangle(ctx, p1, p2, p3, COLOR_RED);
 	}
 }
