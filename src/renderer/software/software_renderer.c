@@ -3,7 +3,7 @@
 // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm  
 // https://groups.csail.mit.edu/graphics/classes/6.837/F02/lectures/6.837-7_Line.pdf
 // https://zingl.github.io/Bresenham.pdf
-void wm_draw_line(OS_GFX_WindowContext* ctx, Vec2F32 p1, Vec2F32 p2, ColorRGBA color){
+void sr_draw_line(OS_GFX_WindowContext* ctx, Vec2F32 p1, Vec2F32 p2, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 
@@ -46,19 +46,19 @@ void wm_draw_line(OS_GFX_WindowContext* ctx, Vec2F32 p1, Vec2F32 p2, ColorRGBA c
 	}
 }
 
-void wm_draw_triangle(OS_GFX_WindowContext* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
-	wm_draw_line(ctx, v1, v2, color);
-	wm_draw_line(ctx, v2, v3, color);
-	wm_draw_line(ctx, v3, v1, color);
+void sr_draw_triangle(OS_GFX_WindowContext* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
+	sr_draw_line(ctx, v1, v2, color);
+	sr_draw_line(ctx, v2, v3, color);
+	sr_draw_line(ctx, v3, v1, color);
 } 
 
-B32 wm_is_point_in_triangle(Vec2F32 point, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3){
+B32 sr_is_point_in_triangle(Vec2F32 point, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3){
 	B32 result = false;	
 		 		
 	return result;	
 }
 
-void wm_draw_filled_triangle(OS_GFX_WindowContext* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
+void sr_draw_filled_triangle(OS_GFX_WindowContext* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 
@@ -79,7 +79,7 @@ void wm_draw_filled_triangle(OS_GFX_WindowContext* ctx, Vec2F32 v1, Vec2F32 v2, 
 
 	for EachInRange(y, y_rng){
 		for EachInRange(x, x_rng){
-			if(wm_is_point_in_triangle(Vec2_F32(x, y), v1, v2, v3)){
+			if(sr_is_point_in_triangle(Vec2_F32(x, y), v1, v2, v3)){
 				pixels[y * stride + x] = color_const;
 			}
 		}	
@@ -88,7 +88,7 @@ void wm_draw_filled_triangle(OS_GFX_WindowContext* ctx, Vec2F32 v1, Vec2F32 v2, 
 
 
 // 2d primitive drawing
-void wm_draw_rect(OS_GFX_WindowContext* ctx, RectF32 rect, ColorRGBA color){
+void sr_draw_rect(OS_GFX_WindowContext* ctx, RectF32 rect, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 
@@ -119,7 +119,7 @@ void wm_draw_rect(OS_GFX_WindowContext* ctx, RectF32 rect, ColorRGBA color){
 
 // This method uses Midpoint circle algorithm for quickly drawing a circle
 // https://en.wikipedia.org/wiki/Midpoint_circle_algorithm 
-void wm_draw_circle(OS_GFX_WindowContext* ctx, Vec2F32 center, F32 radius, ColorRGBA color){
+void sr_draw_circle(OS_GFX_WindowContext* ctx, Vec2F32 center, F32 radius, ColorRGBA color){
 	Assert(ctx);
 	Assert(ctx->image);
 	Assert(radius > 0.0);
@@ -165,3 +165,60 @@ void wm_draw_circle(OS_GFX_WindowContext* ctx, Vec2F32 center, F32 radius, Color
 	#undef Local_Macro_DRAWSPAN
 }
 
+Vec2F32 sr_viewport_transform(Vec3F32 vec, U32 width, U32 height){
+	// oblique projection
+	F32 proj_factor = F32Lit(0.4);
+	F32 proj_x = vec.x + (vec.z * proj_factor);
+	F32 proj_y = vec.y + (vec.z * proj_factor);
+
+	// scale and center
+	F32 scale = (F32)width * F32Lit(0.4);
+	F32 offset_x = (F32)width * F32Lit(0.3);
+	F32 offset_y = (F32)height * F32Lit(0.7);
+	
+	F32 new_x = offset_x + (proj_x * scale);
+	F32 new_y = offset_y - (proj_y * scale);
+	
+	return Vec2_F32(new_x, new_y);
+}
+
+
+
+void sr_draw_obj(OS_GFX_WindowContext* ctx, FMT_OBJ_Object* obj_file, SR_ObjectRenderFlag flags){
+	Assert(ctx);
+	Assert(ctx->image);
+
+	U32* pixels = (U32*) ctx->image->data;
+	U32 stride = ctx->image->stride / sizeof(ColorRGBA);
+	S32 width = (S32)ctx->size.width;
+	S32 height = (S32)ctx->size.height;
+
+	FMT_OBJ_LineArray* vertex_array = &obj_file->vertex_array;
+	FMT_OBJ_LineArray* face_array = &obj_file->face_array;
+	FMT_OBJ_LineArray* normal_array = &obj_file->normal_array;
+	FMT_OBJ_LineArray* texture_array = &obj_file->texture_array;
+
+	for EachIndex(face_idx, face_array->count){
+		FMT_OBJ_Line* current_face = fmt_obj_line_array_get(face_array, face_idx);
+		
+		U32 v_idx1 = current_face->face.corner[0].v_idx-1;
+		U32 v_idx2 = current_face->face.corner[1].v_idx-1;
+		U32 v_idx3 = current_face->face.corner[2].v_idx-1;
+
+		Vec4F32 v1 = fmt_obj_line_array_get(vertex_array, v_idx1)->v;
+		Vec4F32 v2 = fmt_obj_line_array_get(vertex_array, v_idx2)->v;
+		Vec4F32 v3 = fmt_obj_line_array_get(vertex_array, v_idx3)->v;
+		
+		Vec2F32 p1 = sr_viewport_transform(Vec3_F32(v1.x, v1.y, v1.z), width, height); 
+		Vec2F32 p2 = sr_viewport_transform(Vec3_F32(v2.x, v2.y, v2.z), width, height); 
+		Vec2F32 p3 = sr_viewport_transform(Vec3_F32(v3.x, v3.y, v3.z), width, height); 
+	
+		// Print the transformed pixel coordinates for this triangle
+		printf("Face [%llu] Tri Points:\n", (U64)face_idx);
+		printf("  p1: {x: %7.2f, y: %7.2f}\n", p1.x, p1.y);
+		printf("  p2: {x: %7.2f, y: %7.2f}\n", p2.x, p2.y);
+		printf("  p3: {x: %7.2f, y: %7.2f}\n", p3.x, p3.y);
+		
+		sr_draw_triangle(ctx, p1, p2, p3, COLOR_RED);
+	}
+}

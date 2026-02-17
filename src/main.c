@@ -18,36 +18,36 @@
 
 void line_draw_test(OS_GFX_WindowContext ctx){
 	// --- Group 1: Orthogonal (Top Left) ---
-	wm_draw_line(&ctx, Vec2_F32(50, 50), Vec2_F32(150, 50),  COLOR_WHITE); // Horizontal
-	wm_draw_line(&ctx, Vec2_F32(50, 50), Vec2_F32(50, 150),  COLOR_WHITE); // Vertical
+	sr_draw_line(&ctx, Vec2_F32(50, 50), Vec2_F32(150, 50),  COLOR_WHITE); // Horizontal
+	sr_draw_line(&ctx, Vec2_F32(50, 50), Vec2_F32(50, 150),  COLOR_WHITE); // Vertical
 
 	// --- Group 2: 45 Degree Diagonals (Top Middle) ---
-	wm_draw_line(&ctx, Vec2_F32(300, 50),  Vec2_F32(400, 150), COLOR_WHITE); // Down-Right
-	wm_draw_line(&ctx, Vec2_F32(450, 150), Vec2_F32(550, 50),  COLOR_WHITE); // Up-Right
-	wm_draw_line(&ctx, Vec2_F32(700, 150), Vec2_F32(600, 50),  COLOR_WHITE); // Up-Left
-	wm_draw_line(&ctx, Vec2_F32(850, 50),  Vec2_F32(750, 150), COLOR_WHITE); // Down-Left
+	sr_draw_line(&ctx, Vec2_F32(300, 50),  Vec2_F32(400, 150), COLOR_WHITE); // Down-Right
+	sr_draw_line(&ctx, Vec2_F32(450, 150), Vec2_F32(550, 50),  COLOR_WHITE); // Up-Right
+	sr_draw_line(&ctx, Vec2_F32(700, 150), Vec2_F32(600, 50),  COLOR_WHITE); // Up-Left
+	sr_draw_line(&ctx, Vec2_F32(850, 50),  Vec2_F32(750, 150), COLOR_WHITE); // Down-Left
 
 	// --- Group 3: Shallow Lines |dx| > |dy| (Center Row) ---
 	// Rightward shallow
-	wm_draw_line(&ctx, Vec2_F32(50, 300),  Vec2_F32(250, 350), COLOR_GREEN); // Octant 0
-	wm_draw_line(&ctx, Vec2_F32(250, 370), Vec2_F32(50, 320),  COLOR_GREEN); // Octant 4 (Reverse)
+	sr_draw_line(&ctx, Vec2_F32(50, 300),  Vec2_F32(250, 350), COLOR_GREEN); // Octant 0
+	sr_draw_line(&ctx, Vec2_F32(250, 370), Vec2_F32(50, 320),  COLOR_GREEN); // Octant 4 (Reverse)
 	// Leftward shallow
-	wm_draw_line(&ctx, Vec2_F32(550, 300), Vec2_F32(350, 350), COLOR_YELLOW); 
-	wm_draw_line(&ctx, Vec2_F32(350, 370), Vec2_F32(550, 320), COLOR_YELLOW);
+	sr_draw_line(&ctx, Vec2_F32(550, 300), Vec2_F32(350, 350), COLOR_YELLOW); 
+	sr_draw_line(&ctx, Vec2_F32(350, 370), Vec2_F32(550, 320), COLOR_YELLOW);
 
 	// --- Group 4: Steep Lines |dy| > |dx| (Bottom Row) ---
 	// Downward steep
-	wm_draw_line(&ctx, Vec2_F32(50,  450), Vec2_F32(100, 650), COLOR_RED);   // Octant 1
-	wm_draw_line(&ctx, Vec2_F32(120, 650), Vec2_F32(70,  450), COLOR_RED);   // Octant 5 (Reverse)
+	sr_draw_line(&ctx, Vec2_F32(50,  450), Vec2_F32(100, 650), COLOR_RED);   // Octant 1
+	sr_draw_line(&ctx, Vec2_F32(120, 650), Vec2_F32(70,  450), COLOR_RED);   // Octant 5 (Reverse)
 	// Upward steep
-	wm_draw_line(&ctx, Vec2_F32(250, 650), Vec2_F32(300, 450), COLOR_BLUE);
-	wm_draw_line(&ctx, Vec2_F32(320, 450), Vec2_F32(270, 650), COLOR_BLUE);
+	sr_draw_line(&ctx, Vec2_F32(250, 650), Vec2_F32(300, 450), COLOR_BLUE);
+	sr_draw_line(&ctx, Vec2_F32(320, 450), Vec2_F32(270, 650), COLOR_BLUE);
 
 	// --- Group 5: Boundary/Clipping Test ---
 	// These test if your loop handles coordinates outside [0, 1279]
-	wm_draw_line(&ctx, Vec2_F32(1200, 10), Vec2_F32(1300, 100), COLOR_RED);  // Right edge clip
-	wm_draw_line(&ctx, Vec2_F32(10, 700),  Vec2_F32(100, 800),  COLOR_BLUE); // Bottom edge clip
-	wm_draw_line(&ctx, Vec2_F32(-50, 360), Vec2_F32(50, 360),   COLOR_GREEN); // Left edge clip
+	sr_draw_line(&ctx, Vec2_F32(1200, 10), Vec2_F32(1300, 100), COLOR_RED);  // Right edge clip
+	sr_draw_line(&ctx, Vec2_F32(10, 700),  Vec2_F32(100, 800),  COLOR_BLUE); // Bottom edge clip
+	sr_draw_line(&ctx, Vec2_F32(-50, 360), Vec2_F32(50, 360),   COLOR_GREEN); // Left edge clip
 }
 
 
@@ -55,34 +55,34 @@ void triangle_draw_test(OS_GFX_WindowContext ctx){
 	
 	// 1. Degenerate Case: A Single Point
 	// Should draw nothing or just one pixel.
-	wm_draw_triangle(&ctx, Vec2_F32(100, 100), Vec2_F32(100, 100), Vec2_F32(100, 100), COLOR_RED); 
+	sr_draw_triangle(&ctx, Vec2_F32(100, 100), Vec2_F32(100, 100), Vec2_F32(100, 100), COLOR_RED); 
 
 	// 2. Degenerate Case: A Flat Line
 	// Three collinear points. Should look like a single horizontal line.
-	wm_draw_triangle(&ctx, Vec2_F32(10, 10), Vec2_F32(50, 10), Vec2_F32(100, 10), COLOR_GREEN);
+	sr_draw_triangle(&ctx, Vec2_F32(10, 10), Vec2_F32(50, 10), Vec2_F32(100, 10), COLOR_GREEN);
 
 	// 3. Standard Case: Right-angled Triangle
 	// Perfect for checking if the fill/lines align on axes.
-	wm_draw_triangle(&ctx, Vec2_F32(200, 200), Vec2_F32(200, 300), Vec2_F32(300, 300), COLOR_BLUE);
+	sr_draw_triangle(&ctx, Vec2_F32(200, 200), Vec2_F32(200, 300), Vec2_F32(300, 300), COLOR_BLUE);
 
 	// 4. "The Needle": Very thin triangle
 	// Tests the precision of your Bresenham/Rasterizer logic.
-	wm_draw_triangle(&ctx, Vec2_F32(400, 100), Vec2_F32(405, 100), Vec2_F32(600, 500), COLOR_YELLOW);
+	sr_draw_triangle(&ctx, Vec2_F32(400, 100), Vec2_F32(405, 100), Vec2_F32(600, 500), COLOR_YELLOW);
 
 	// 5. Clipping Case: Partially off-screen (Left/Top)
 	// One or more vertices have coordinates near or at 0.
-	wm_draw_triangle(&ctx, Vec2_F32(-10, -10), Vec2_F32(50, 10), Vec2_F32(10, 50), COLOR_MAGENTA);
+	sr_draw_triangle(&ctx, Vec2_F32(-10, -10), Vec2_F32(50, 10), Vec2_F32(10, 50), COLOR_MAGENTA);
 
 	// 6. Clipping Case: Partially off-screen (Right/Bottom)
 	// One or more vertices exceed ctx.size.width/height.
 	U32 w = ctx.size.width;
 	U32 h = ctx.size.height;
-	wm_draw_triangle(&ctx, Vec2_F32(w-20, h-20), Vec2_F32(w+50, h-20), Vec2_F32(w-20, h+50), COLOR_CYAN);
+	sr_draw_triangle(&ctx, Vec2_F32(w-20, h-20), Vec2_F32(w+50, h-20), Vec2_F32(w-20, h+50), COLOR_CYAN);
 
 	// 7. Winding Order Test
 	// If your algorithm depends on clockwise/counter-clockwise, 
 	// try drawing the same triangle with swapped vertices.
-	wm_draw_triangle(&ctx, Vec2_F32(500, 500), Vec2_F32(550, 600), Vec2_F32(450, 600), COLOR_WHITE);
+	sr_draw_triangle(&ctx, Vec2_F32(500, 500), Vec2_F32(550, 600), Vec2_F32(450, 600), COLOR_WHITE);
 }
 
 void circle_draw_test(OS_GFX_WindowContext ctx){
@@ -92,32 +92,32 @@ void circle_draw_test(OS_GFX_WindowContext ctx){
 	
 	// 1. Large Radius: Mostly off-screen
 	// Tests if your loop handles being 90% clipped without lagging.
-	wm_draw_circle(&ctx, screen_center, (F32)w * 0.8f, COLOR_BLACK);
+	sr_draw_circle(&ctx, screen_center, (F32)w * 0.8f, COLOR_BLACK);
 
 	// 2. Standard Case: Concentric Circles
 	// This tests if the radius is being calculated consistently.
 	// If they overlap or look "wobbly," your error term logic is off.
-	wm_draw_circle(&ctx, screen_center, 150.0f, COLOR_BLUE);
-	wm_draw_circle(&ctx, screen_center, 100.0f, COLOR_GREEN);
-	wm_draw_circle(&ctx, screen_center, 50.0f,  COLOR_RED);
+	sr_draw_circle(&ctx, screen_center, 150.0f, COLOR_BLUE);
+	sr_draw_circle(&ctx, screen_center, 100.0f, COLOR_GREEN);
+	sr_draw_circle(&ctx, screen_center, 50.0f,  COLOR_RED);
 
 	// 3. The "Dot": Minimum Radius
 	// Should draw a single pixel or a tiny 2x2/3x3 cluster.
-	wm_draw_circle(&ctx, Vec2_F32(20.0f, 20.0f), 1.0f, COLOR_YELLOW);
+	sr_draw_circle(&ctx, Vec2_F32(20.0f, 20.0f), 1.0f, COLOR_YELLOW);
 
 	// 4. Edge Clipping: Center is off-screen
 	// Only a "bow" or arc should be visible.
-	wm_draw_circle(&ctx, Vec2_F32(0.0f, 0.0f), 50.0f, COLOR_MAGENTA);
+	sr_draw_circle(&ctx, Vec2_F32(0.0f, 0.0f), 50.0f, COLOR_MAGENTA);
 
 	// 5. Side Clipping: Circle intersects the right/bottom boundaries
 	// This is where many algorithms crash due to array out-of-bounds.
-	wm_draw_circle(&ctx, Vec2_F32(w, h), 60.0f, COLOR_CYAN);
+	sr_draw_circle(&ctx, Vec2_F32(w, h), 60.0f, COLOR_CYAN);
 
 	// 6. Floating Point Precision: Tiny offset
 	// Draw two circles with a 0.5 pixel difference. 
 	// If they look identical, your algorithm is casting to int too early.
-	wm_draw_circle(&ctx, Vec2_F32(150.0f, 150.0f), 30.0f, COLOR_WHITE);
-	wm_draw_circle(&ctx, Vec2_F32(150.5f, 150.5f), 30.0f, COLOR_RED);	
+	sr_draw_circle(&ctx, Vec2_F32(150.0f, 150.0f), 30.0f, COLOR_WHITE);
+	sr_draw_circle(&ctx, Vec2_F32(150.5f, 150.5f), 30.0f, COLOR_RED);	
 }
 
 void rect_draw_test(OS_GFX_WindowContext ctx) {
@@ -125,26 +125,26 @@ void rect_draw_test(OS_GFX_WindowContext ctx) {
 	U32 h = ctx.size.height;
 
 	// 1. Large Fill (Stress Test)
-	wm_draw_rect(&ctx, Rect_F32(0.0f, 0.0f, (F32)w, (F32)h), COLOR_CYAN);
+	sr_draw_rect(&ctx, Rect_F32(0.0f, 0.0f, (F32)w, (F32)h), COLOR_CYAN);
 
 	// 2. Standard Case: A simple centered rectangle
-	wm_draw_rect(&ctx, Rect_F32(100.0f, 100.0f, 200.0f, 150.0f), COLOR_BLUE);
+	sr_draw_rect(&ctx, Rect_F32(100.0f, 100.0f, 200.0f, 150.0f), COLOR_BLUE);
 
 	// 3. The "Line" Case: 1-pixel wide/tall rectangles
-	wm_draw_rect(&ctx, Rect_F32(50.0f, 50.0f, 300.0f, 1.0f), COLOR_WHITE);
-	wm_draw_rect(&ctx, Rect_F32(50.0f, 50.0f, 1.0f, 300.0f), COLOR_WHITE);
+	sr_draw_rect(&ctx, Rect_F32(50.0f, 50.0f, 300.0f, 1.0f), COLOR_WHITE);
+	sr_draw_rect(&ctx, Rect_F32(50.0f, 50.0f, 1.0f, 300.0f), COLOR_WHITE);
 
 	// 4. Out-of-Bounds: Partial Clipping
 	// Top-left clipping
-	wm_draw_rect(&ctx, Rect_F32(-50.0f, -50.0f, 100.0f, 100.0f), COLOR_RED);
+	sr_draw_rect(&ctx, Rect_F32(-50.0f, -50.0f, 100.0f, 100.0f), COLOR_RED);
 	// Bottom-right clipping
-	wm_draw_rect(&ctx, Rect_F32((F32)w - 50.0f, (F32)h - 50.0f, 100.0f, 100.0f), COLOR_GREEN);
+	sr_draw_rect(&ctx, Rect_F32((F32)w - 50.0f, (F32)h - 50.0f, 100.0f, 100.0f), COLOR_GREEN);
 
 	// 5. Fully Out-of-Bounds
-	wm_draw_rect(&ctx, Rect_F32((F32)w + 100.0f, (F32)h + 100.0f, 50.0f, 50.0f), COLOR_MAGENTA);
+	sr_draw_rect(&ctx, Rect_F32((F32)w + 100.0f, (F32)h + 100.0f, 50.0f, 50.0f), COLOR_MAGENTA);
 
 	// 6. Negative Dimensions
-	wm_draw_rect(&ctx, Rect_F32(500.0f, 500.0f, -100.0f, -50.0f), COLOR_YELLOW);
+	sr_draw_rect(&ctx, Rect_F32(500.0f, 500.0f, -100.0f, -50.0f), COLOR_YELLOW);
 }
 
 
@@ -183,7 +183,7 @@ void sr_line_stress_test(OS_GFX_WindowContext* ctx) {
         // Packing random bits into the U32 color
         color.c = (U32)fast_rand() | 0xFF000000;
 
-        wm_draw_line(ctx, p1, p2, color);
+        sr_draw_line(ctx, p1, p2, color);
     }
 
     clock_t end_time = clock();
@@ -325,6 +325,35 @@ void obj_parser_test(){
 	arena_release(arena);
 }
 
+void draw_obj_test(){
+	Arena* arena = arena_alloc();
+	FMT_OBJ_Object* obj_file = fmt_obj_object_init(arena, Str8Lit("./resources/cube.obj"));
+	fmt_obj_parse_file(obj_file);
+
+
+	OS_GFX_WindowContext* ctx;
+	ctx = os_gfx_open_window(arena, 
+				Rect_U16(100,100,500,500), 
+				Str8Lit("Demo"),
+				0,
+				RGBA(0,0,0,0),
+				RGBA(0,0,0,0));
+	
+	//sr_draw_rect(ctx, Rect_F32(0,0,500,500), COLOR_BLACK);
+
+	sr_draw_obj(ctx, obj_file, 0);
+	//circle_draw_test(*ctx);	
+	
+	for(U64 i = 0; i < 500; i ++){
+		os_gfx_draw_window(ctx);	
+		os_sleep_milliseconds(16);
+	}	
+
+	os_gfx_close_window(ctx);
+	arena_release(arena);
+}
+
+
 void x11_graphics(){
 	Arena* arena = arena_alloc();
 
@@ -337,6 +366,7 @@ void x11_graphics(){
 				RGBA(0,0,0,0));
 
 	sr_line_stress_test(ctx);
+
 	os_gfx_draw_window(ctx);	
 	os_sleep_milliseconds(200);
 	os_gfx_close_window(ctx);
@@ -377,7 +407,8 @@ S32 entry_point(U64 argc, U8** argv){
 	
 	//x11_graphics();
 	//test_str8_to_f32();
-	obj_parser_test();
+	//obj_parser_test();
+	draw_obj_test();
 	return 0;
 }
 

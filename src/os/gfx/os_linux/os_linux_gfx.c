@@ -89,6 +89,15 @@ OS_GFX_WindowContext* os_gfx_open_window(Arena* arena, RectU16 win_rect, Str8 wi
 			 0
 		  );
 	
+	// wait for the window to be mapped before giving it to the user
+	xcb_generic_event_t *ev;
+	while ((ev = xcb_wait_for_event(result->connection))) {
+	    if ((ev->response_type & ~0x80) == XCB_MAP_NOTIFY) {
+		free(ev);
+		break;
+	    }
+	    free(ev);
+	}
 	
 	return result;	
 }
