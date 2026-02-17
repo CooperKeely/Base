@@ -328,7 +328,7 @@ void obj_parser_test(){
 void draw_obj_test(){
 	Arena* arena = arena_alloc();
 	// Load the object
-	FMT_OBJ_Object* obj_file = fmt_obj_object_init(arena, Str8Lit("./resources/diablo3_pose.obj"));
+	FMT_OBJ_Object* obj_file = fmt_obj_object_init(arena, Str8Lit("./resources/african_head.obj"));
 	fmt_obj_parse_file(obj_file);
 
 	// Open the window
@@ -336,17 +336,13 @@ void draw_obj_test(){
 	ctx = os_gfx_open_window(arena, 
 				Rect_U16(100, 100, 1000, 1000), 
 				Str8Lit("Software Renderer - Speed Test"),
-				0,
-				RGBA(0,0,0,0),
 				RGBA(0,0,0,0));
 
 
-	// 2. Setup Timing Logic
 	U64 start_time = os_now_microseconds();
 	U64 duration_us = 10 * Million(1); // 10 seconds in microseconds
 	U64 frame_count = 0;
 
-	// 3. The "As Fast As Possible" Loop
 	while (true) {
 		U64 current_time = os_now_microseconds();
 		if((current_time-start_time) > duration_us) break;
@@ -355,11 +351,9 @@ void draw_obj_test(){
 		
 		sr_draw_obj(ctx, obj_file, 0);
 		os_gfx_draw_window(ctx);	
-		
 		frame_count++;
 	}
 
-	// 4. Calculate performance stats
 	F64 total_seconds = (F64)(os_now_microseconds() - start_time) / F64Lit(1000000.0);
 	str8_printf(stderr, "Rendered %lu frames in %.2f seconds (%.2f FPS)\n", 
 				frame_count, total_seconds, (F64)frame_count / total_seconds);
@@ -377,8 +371,6 @@ void x11_graphics(){
 	ctx = os_gfx_open_window(arena, 
 				Rect_U16(100,100,1000,1000), 
 				Str8Lit("Demo"),
-				0,
-				RGBA(0,0,0,0),
 				RGBA(0,0,0,0));
 
 	sr_line_stress_test(ctx);

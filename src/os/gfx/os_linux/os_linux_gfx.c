@@ -1,7 +1,7 @@
 ///////////////////////////////////////
 /// cjk: Window API Functions 
 
-OS_GFX_WindowContext* os_gfx_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, U16 border_width, ColorRGBA border_color,  ColorRGBA background_color){
+OS_GFX_WindowContext* os_gfx_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, ColorRGBA background_color){
 	Assert(arena);	
 
 	OS_GFX_WindowContext* result = ArenaPushStructZero(arena, OS_GFX_WindowContext);
@@ -37,7 +37,7 @@ OS_GFX_WindowContext* os_gfx_open_window(Arena* arena, RectU16 win_rect, Str8 wi
 		   win_rect.y,
 		   win_rect.width,
 		   win_rect.height,
-		   border_width,
+		   0,
 		   XCB_WINDOW_CLASS_INPUT_OUTPUT,
 		   result->screen->root_visual,
 		   value_mask,
@@ -133,13 +133,15 @@ void os_gfx_draw_window(OS_GFX_WindowContext* ctx){
 		0,
 		ctx->image->depth,
 		ctx->image->format,
-		0,
+		false,
 		ctx->shm_info.shmseg,
 		0
 	);	
 
 	// flush window
 	xcb_flush(ctx->connection);
+
+
 }
 
 void os_gfx_close_window(OS_GFX_WindowContext* ctx){
@@ -156,7 +158,8 @@ void os_gfx_close_window(OS_GFX_WindowContext* ctx){
 }
 
 void os_gfx_register_input_events(OS_GFX_WindowContext* ctx, OS_GFX_EventFlag flags){
-	NotImplemented;
+	
+	
 }
 
 U32 os_gfx_num_of_pending_events(OS_GFX_WindowContext* ctx){
