@@ -347,8 +347,10 @@ void draw_obj_test(){
 	U64 frame_count = 0;
 
 	// 3. The "As Fast As Possible" Loop
-	while ((os_now_microseconds() - start_time) < duration_us) {
-		
+	while (true) {
+		U64 current_time = os_now_microseconds();
+		if((current_time-start_time) > duration_us) break;
+
 		sr_draw_rect(ctx, Rect_F32(0, 0, 1000, 1000), COLOR_BLACK);
 		
 		sr_draw_obj(ctx, obj_file, 0);

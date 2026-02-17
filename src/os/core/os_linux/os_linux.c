@@ -444,9 +444,8 @@ void os_release_memory(void *ptr, U64 size) { NotImplemented; }
 // OS time
 U64 os_now_microseconds() {
 	struct timespec time_spec;
-	S32 err = clock_gettime(CLOCK_REALTIME, &time_spec);
-
-	return time_spec.tv_nsec/ Thousand(1);
+	clock_gettime(CLOCK_MONOTONIC, &time_spec);
+	return (U64)time_spec.tv_sec * U64Lit(1000000) + (U64)time_spec.tv_nsec / U64Lit(1000);
 }
 
 DateTime os_now_universal_time() {
