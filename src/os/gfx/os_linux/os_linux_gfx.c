@@ -133,7 +133,7 @@ void os_gfx_draw_window(OS_GFX_WindowContext* ctx){
 		0,
 		ctx->image->depth,
 		ctx->image->format,
-		false,
+		BASE_FALSE,
 		ctx->shm_info.shmseg,
 		0
 	);	

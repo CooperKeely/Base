@@ -5,47 +5,128 @@
 /// cjk: Window API Definitions 
 
 typedef U64 OS_GFX_EventFlag;
-typedef U64 OS_GFX_WindowStateFlag;
+enum{
+	OS_GFX_EventFlag_Keyboard_KeyPressed,
+	OS_GFX_EventFlag_Keyboard_KeyReleased,
+	OS_GFX_EventFlag_Mouse_ButtonPressed,
+	OS_GFX_EventFlag_Mouse_ButtonReleased,
+	OS_GFX_EventFlag_Mouse_MotionNotify,
+	OS_GFX_EventFlag_Window_EnterNotify,
+	OS_GFX_EventFlag_Window_LeaveNotify,
+	OS_GFX_EventFlag_Input_FocusIn,
+	OS_GFX_EventFlag_Input_FocusOut,
+	OS_GFX_EventFlag_KeyMap_KeyMapNotify,
+	OS_GFX_EventFlag_Exposure_Expose,
+	OS_GFX_EventFlag_Exposure_GraphicsExpose,
+	OS_GFX_EventFlag_Exposure_NoExpose,
+	OS_GFX_EventFlag_Structure_CirculateRequest,
+	OS_GFX_EventFlag_Structure_ConfigureRequest,
+	OS_GFX_EventFlag_Structure_MapRequest,
+	OS_GFX_EventFlag_Strucutre_ResizeRequest,
+	OS_GFX_EventFlag_WindowState_CirculateNotify,
+	OS_GFX_EventFlag_WindowState_ConfigureNotify,
+	OS_GFX_EventFlag_WindowState_CreateNotify,
+	OS_GFX_EventFlag_WindowState_DestroyNotify,
+	OS_GFX_EventFlag_WindowState_GravityNotify,
+	OS_GFX_EventFlag_WindowState_MapNotify,
+	OS_GFX_EventFlag_WindowState_MappingNotify,
+	OS_GFX_EventFlag_WindowState_ReparentNotify,
+	OS_GFX_EventFlag_WindowState_UnmapNotify,
+	OS_GFX_EventFlag_WindowState_VisibilityNotify,
+	OS_GFX_EventFlag_ColorMap_ColorMapNotify,
+	OS_GFX_EventFlag_Client_ClientMessage,
+	OS_GFX_EventFlag_Client_PropertyNotify,
+	OS_GFX_EventFlag_Client_SelectionClear,
+	OS_GFX_EventFlag_Client_SelectionNotify,
+	OS_GFX_EventFlag_Client_SelectionRequest,
+};
+
+typedef U64 OS_GFX_WindowConfigFlag;
+enum{
+	OS_GFX_WindowConfigFlag_Fullscreen 	= (1<<0),
+	OS_GFX_WindowConfigFlag_Resizeable	= (1<<1),
+	OS_GFX_WindowConfigFlag_Undecorated	= (1<<2),
+	OS_GFX_WindowConfigFlag_Hidden		= (1<<3),
+	OS_GFX_WindowConfigFlag_Minimized	= (1<<4),
+	OS_GFX_WindowConfigFlag_Maximized	= (1<<5),
+	OS_GFX_WindowConfigFlag_Unfocused	= (1<<6),
+	OS_GFX_WindowConfigFlag_TopMost		= (1<<7),
+	OS_GFX_WindowConfigFlag_AlwaysRun	= (1<<8),
+};
+
+
+#define MAX_KEYBOARD_KEYS 512 
+#define MAX_KEY_PRESSED_QUEUE 16 
+#define MAX_CHAR_PRESSED_QUEUE 16 
+
+#define MAX_MOUSE_BUTTONS 8
 
 typedef struct {
 	struct{
 		Str8 title;
-		OS_GFX_WindowStateFlag flags;
+		OS_GFX_WindowConfigFlag flags;
 		B32 ready;
 		B32 should_close;
 		B32 resized_last_frame;
 		B32 event_waiting;
 		
-		Vec2U32 display_size;
-		Vec2U32 screen_size;
-		Point2U32 position;
-		Vec2U32 previous_screen_size;
-		Point2U32 prvious_position;
+		Pnt2U32 display_size;
+		Pnt2U32 screen_size;
+		Pnt2U32 position;
+		Pnt2U32 previous_screen_size;
+		Pnt2U32 prvious_position;
 		
-		Vec2U32 render_size;
+		Pnt2U32 render_size;
 
-		Vec2U32 screen_size_min;
-		Vec2U32 screen_size_max;
+		Pnt2U32 screen_size_min;
+		Pnt2U32 screen_size_max;
+
+		void* frame_buffer[2];
 	}window;
 	struct{
 		struct{
 			U32 exit_key;
 			U8 current_key_state[MAX_KEYBOARD_KEYS];
 			U8 previous_key_state[MAX_KEYBOARD_KEYS];
+			
+			U32 key_pressed_queue[MAX_KEY_PRESSED_QUEUE];
+			U32 key_pressed_queue_count;
 
+			U32 char_pressed_queue[MAX_CHAR_PRESSED_QUEUE];
+			U32 char_pressed_queue_count;
 		}keyboard;
 		struct{
+			Pnt2U32 offset;
+			Pnt2U32 current_position;
+			Pnt2U32 previous_posiiton;
+			Pnt2U32 locked_position;
 
+			U32 cursor;
+			B32 cursor_hidden;
+			B32 cursor_locked;
+			B32 cursor_on_screen;
+
+			U8 current_button_state[MAX_MOUSE_BUTTONS];
+			U8 previous_button_state[MAX_MOUSE_BUTTONS];
+			Vec2F32 current_wheel_move;
+			Vec2F32 previous_wheel_move;
 		}mouse;
-
-
-
-
-
-
 	}input;
 
-}OS_GFX_Context ;
+	struct{
+		U64 current; // in micro seconds
+		U64 previous;
+
+		F64 update;
+		F64 draw;
+		F64 frame;
+		F64 target;
+
+		U64 frame_counter;
+	}time;
+}OS_GFX_Context;
+
+global OS_GFX_Context glb_os_gfx_context;
 
 
 // Open and closing window
@@ -69,8 +150,8 @@ B32 os_gfx_is_window_resized(void);
 
 // window state options
 B32 os_gfx_is_window_state(U64 flag);
-B32 os_gfx_set_window_state(OS_GFX_WindowStateFlag flags);
-B32 os_gfx_clear_window_state(OS_GFX_WindowStateFlag flags);
+B32 os_gfx_set_window_state(OS_GFX_WindowConfigFlag flags);
+B32 os_gfx_clear_window_state(OS_GFX_WindowConfigFlag flags);
 
 // set window options
 void os_gfx_toggle_fullscreen(void);
@@ -88,54 +169,53 @@ void os_gfx_set_window_focused(void);
 // get window options
 U32 os_gfx_get_screen_width(void);
 U32 os_gfx_get_screen_height(void);
-Vec2U32 os_gfx_get_window_position(void);
+Pnt2U32 os_gfx_get_window_position(void);
 
 // Cursor-related functions
 void os_gfx_show_cursor(void);                                      
 void os_gfx_hide_cursor(void);                                      
-bool os_gfx_is_cursor_hidden(void);                                  
+B32 os_gfx_is_cursor_hidden(void);                                  
 void os_gfx_enable_cursor(void);                                    
 void os_gfx_disable_cursor(void);                                   
-bool os_gfx_is_cursor_on_screen(void);                                
+B32 os_gfx_is_cursor_on_screen(void);                                
 
 // Timing-related functions
-void os_gfx_set_target_fps(int fps);                       // Set target FPS (maximum)
-float os_gfx_get_frame_time(void);                         // Get time in seconds for last frame drawn (delta time)
-double os_gfx_get_time(void);                             // Get elapsed time in seconds since Init_Window()
+void os_gfx_set_target_fps(U32 fps);                       // Set target FPS (maximum)
+F32 os_gfx_get_frame_time(void);                         // Get time in seconds for last frame drawn (delta time)
+F64 os_gfx_get_time(void);                             // Get elapsed time in seconds since Init_Window()
 int os_gfx_get_fps(void);                                 // Get current FPS
 
 void os_gfx_swap_screen_buffer(void);                      // Swap back buffer with front buffer (screen drawing)
 void os_gfx_poll_input_events(void);                       // Register all input events
-void os_gfx_wait_time(double seconds);                    // Wait for some time (halt program execution)
+void os_gfx_wait_time(U64 micro_seconds);                    // Wait for some time (halt program execution)
 
 ///////////////////////////////////////
 /// cjk: Input Handeling API Definitions 
 
 // Input-related functions: keyboard
-bool os_gfx_is_key_pressed(int key);                             // Check if a key has been pressed once
-bool os_gfx_is_key_pressed_repeat(int key);                       // Check if a key has been pressed again
-bool os_gfx_is_key_down(int key);                                // Check if a key is being pressed
-bool os_gfx_is_key_released(int key);                            // Check if a key has been released once
-bool os_gfx_is_key_up(int key);                                  // Check if a key is NOT being pressed
-int os_gfx_get_key_pressed(void);                                // Get key pressed (keycode), call it multiple times for keys queued, returns 0 when the queue is empty
-int os_gfx_get_char_pressed(void);                               // Get char pressed (unicode), call it multiple times for chars queued, returns 0 when the queue is empty
-const char* os_gfx_get_key_name(int key);                        // Get name of a QWERTY key on the current keyboard layout (eg returns string 'q' for KEY_A on an AZERTY keyboard)
-void os_gfx_set_exit_key(int key);                               // Set a custom key to exit program (default is ESC)
+B32 os_gfx_is_key_pressed(U32 key);                             // Check if a key has been pressed once
+B32 os_gfx_is_key_pressed_repeat(U32 key);                       // Check if a key has been pressed again
+B32 os_gfx_is_key_down(U32 key);                                // Check if a key is being pressed
+B32 os_gfx_is_key_released(U32 key);                            // Check if a key has been released once
+B32 os_gfx_is_key_up(U32 key);                                  // Check if a key is NOT being pressed
+U32 os_gfx_get_key_pressed(void);                                // Get key pressed (keycode), call it multiple times for keys queued, returns 0 when the queue is empty
+U32 os_gfx_get_char_pressed(void);                               // Get char pressed (unicode), call it multiple times for chars queued, returns 0 when the queue is empty
+const U8* os_gfx_get_key_name(U32 key);                        // Get name of a QWERTY key on the current keyboard layout (eg returns string 'q' for KEY_A on an AZERTY keyboard)
+void os_gfx_set_exit_key(U32 key);                               // Set a custom key to exit program (default is ESC)
 
 // Input-related functions: mouse
-bool os_gfx_is_mouse_button_pressed(int button);                  // Check if a mouse button has been pressed once
-bool os_gfx_is_mouse_button_down(int button);                     // Check if a mouse button is being pressed
-bool os_gfx_is_mouse_button_released(int button);                 // Check if a mouse button has been released once
-bool os_gfx_is_mouse_button_up(int button);                       // Check if a mouse button is NOT being pressed
-int os_gfx_get_mouse_x(void);                                    // Get mouse position X
-int os_gfx_get_mouse_y(void);                                    // Get mouse position Y
-Vector2 os_gfx_get_mouse_position(void);                         // Get mouse position XY
-Vector2 os_gfx_get_mouse_delta(void);                            // Get mouse delta between frames
-void os_gfx_set_mouse_position(int x, int y);                    // Set mouse position XY
-void os_gfx_set_mouse_offset(int offset_X, int offset_Y);          // Set mouse offset
-void os_gfx_set_mouse_scale(float scale_X, float scale_Y);         // Set mouse scaling
-float os_gfx_get_mouse_wheel_move(void);                          // Get mouse wheel movement for X or Y, whichever is larger
-Vector2 os_gfx_get_mouse_wheel_move_v(void);                       // Get mouse wheel movement for both X and Y
-void os_gfx_set_mouse_cursor(int cursor);                        // Set mouse cursor
+B32 os_gfx_is_mouse_button_pressed(U32 button);                  // Check if a mouse button has been pressed once
+B32 os_gfx_is_mouse_button_down(U32 button);                     // Check if a mouse button is being pressed
+B32 os_gfx_is_mouse_button_released(U32 button);                 // Check if a mouse button has been released once
+B32 os_gfx_is_mouse_button_up(U32 button);                       // Check if a mouse button is NOT being pressed
+U32 os_gfx_get_mouse_x(void);                                    // Get mouse position X
+U32 os_gfx_get_mouse_y(void);                                    // Get mouse position Y
+Pnt2U32 os_gfx_get_mouse_position(void);                         // Get mouse position XY
+Vec2F32 os_gfx_get_mouse_delta(void);                            // Get mouse delta between frames
+void os_gfx_set_mouse_position(U32 x, U32 y);                    // Set mouse position XY
+void os_gfx_set_mouse_offset(U32 offset_X, U32 offset_Y);          // Set mouse offset
+F32 os_gfx_get_mouse_wheel_move(void);                          // Get mouse wheel movement for X or Y, whichever is larger
+Vec2F32 os_gfx_get_mouse_wheel_move_v(void);                       // Get mouse wheel movement for both X and Y
+void os_gfx_set_mouse_cursor(U32 cursor);                        // Set mouse cursor
 
 #endif // BASE_OS_GFX

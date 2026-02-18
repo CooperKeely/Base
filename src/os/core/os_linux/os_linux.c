@@ -63,8 +63,8 @@ time_t os_lnx_time_from_datetime(DateTime time){
 
 	local_persist const U32 month_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	for(U32 year = 1970; year < time.year; year ++){
-		B32 is_leap = false;
-		if ((year % 4 == 0) && ((year % 100) != 0 || (year % 400) == 0)) is_leap = true;
+		B32 is_leap = BASE_FALSE;
+		if ((year % 4 == 0) && ((year % 100) != 0 || (year % 400) == 0)) is_leap = BASE_TRUE;
 		lnx_time += (is_leap ? 366 : 365) * seconds_in_a_day;
 	}
 

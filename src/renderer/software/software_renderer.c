@@ -53,7 +53,7 @@ void sr_draw_triangle(OS_GFX_WindowContext* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32
 } 
 
 B32 sr_is_point_in_triangle(Vec2F32 point, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3){
-	B32 result = false;	
+	B32 result = BASE_FALSE;	
 		 		
 	return result;	
 }

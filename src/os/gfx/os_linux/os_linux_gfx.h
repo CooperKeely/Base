@@ -30,5 +30,10 @@ struct OS_GFX_WindowContext{
 	Str8				name;
 } ;
 
+enum{
+	OS_GFX_EventFlag_	
+
+};
+
 
 #endif //OS_GFX_LINUX_H

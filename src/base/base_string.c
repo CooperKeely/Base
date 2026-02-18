@@ -294,8 +294,8 @@ Str8 str8_trim_whitespace(Str8 str){
 
 B32 str8_cmp(Str8 s1, Str8 s2) {
 
-	if (s1.size != s2.size) return false;
-	if (s1.size == 0) return true;
+	if (s1.size != s2.size) return BASE_FALSE;
+	if (s1.size == 0) return BASE_TRUE;
 
 	Assert(s1.str && s2.str);
 	return MemoryMatch(s1.str, s2.str, s1.size);
@@ -404,13 +404,13 @@ Str8List* str8_tokenize_list(Arena *arena, Str8 string, Str8 delimiters) {
 
 	while(cursor < string.size) {
 		// iterate through discaring starting delimiters
-		B32 is_delim = true;
+		B32 is_delim = BASE_TRUE;
 		while( cursor < string.size && is_delim){
-			is_delim = false;
+			is_delim = BASE_FALSE;
 			U8 c = str8_get(string, cursor);
 			for EachIndex(d, delimiters.size) {
 				if (c == str8_get(delimiters, d)) {
-					is_delim = true;
+					is_delim = BASE_TRUE;
 					cursor ++;
 					break;
 				}
@@ -421,12 +421,12 @@ Str8List* str8_tokenize_list(Arena *arena, Str8 string, Str8 delimiters) {
 		if (cursor >= string.size) break;
 
 		U64 start = cursor;
-		B32 is_data = true;
+		B32 is_data = BASE_TRUE;
 		while(cursor < string.size && is_data){
 			U8 c = str8_get(string, cursor);
 			for EachIndex(d, delimiters.size) {
 				if (c == str8_get(delimiters, d)) {
-					is_data = false;
+					is_data = BASE_FALSE;
 					break;
 				}
 			}

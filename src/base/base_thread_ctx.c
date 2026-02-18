@@ -35,10 +35,10 @@ Arena* thread_ctx_get_scratch(Arena** conflicts, U64 count){
 	Arena** arena_ptr = selected_ctx->arenas;
 	for(U64 i = 0; i < ArrayCount(selected_ctx->arenas); i += 1, arena_ptr += 1){
 		Arena** conflict_ptr = conflicts;	
-		B32 has_conflict = false;
+		B32 has_conflict = BASE_FALSE;
 		for(U64 j = 0; j < count; j += 1, conflict_ptr += 1){
 			if(*arena_ptr == *conflict_ptr){
-				has_conflict = true;
+				has_conflict = BASE_TRUE;
 				break;
 			}
 		}

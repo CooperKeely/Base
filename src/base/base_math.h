@@ -10,7 +10,7 @@ typedef union {
 		U16 y;
 	};
 	U16 v[2];
-} Point2U16;
+} Pnt2U16;
 
 typedef union {
 	struct {
@@ -18,7 +18,7 @@ typedef union {
 		U32 y;
 	};
 	U32 v[2];
-} Point2U32;
+} Pnt2U32;
 
 typedef union {
 	struct {
@@ -26,7 +26,7 @@ typedef union {
 		U64 y;
 	};
 	U64 v[2];
-} Point2U64;
+} Pnt2U64;
 
 typedef union {
 	struct {
@@ -35,7 +35,7 @@ typedef union {
 		U16 z;
 	};
 	U16 v[3];
-} Point3U16;
+} Pnt3U16;
 
 typedef union {
 	struct {
@@ -44,7 +44,7 @@ typedef union {
 		U32 z;
 	};
 	U32 v[3];
-} Point3U32;
+} Pnt3U32;
 
 typedef union {
 	struct {
@@ -53,23 +53,23 @@ typedef union {
 		U64 z;
 	};
 	U64 v[3];
-} Point3U64;
+} Pnt3U64;
 
-#define p2_U16(x, y)  	point_2u16((x), (y))
-#define p2_U32(x, y) 	point_2u32((x), (y)) 
-#define p2_U64(x, y) 	point_2u64((x), (y)) 
+#define Pnt2_U16(x, y)  	pnt_2u16((x), (y))
+#define Pnt2_U32(x, y) 		pnt_2u32((x), (y)) 
+#define Pnt2_U64(x, y) 		pnt_2u64((x), (y)) 
 
-#define Point3_U16(x, y, z)  	point_3u16((x), (y), (z))
-#define Point3_U32(x, y, z)  	point_3u32((x), (y), (z))
-#define Point3_U64(x, y, z)  	point_3u64((x), (y), (z))
+#define Pnt3_U16(x, y, z)  	pnt_3u16((x), (y), (z))
+#define Pnt3_U32(x, y, z)  	pnt_3u32((x), (y), (z))
+#define Pnt3_U64(x, y, z)  	pnt_3u64((x), (y), (z))
 
-Point2U16 point_2u16(U16 x, U16 y);
-Point2U32 point_2u32(U32 x, U32 y);
-Point2U64 point_2u64(U64 x, U64 y);
+Pnt2U16 pnt_2u16(U16 x, U16 y);
+Pnt2U32 pnt_2u32(U32 x, U32 y);
+Pnt2U64 pnt_2u64(U64 x, U64 y);
 
-Point3U16 point_3u16(U16 x, U16 y, U16 z);
-Point3U32 point_3u32(U32 x, U32 y, U32 z);
-Point3U64 point_3u64(U64 x, U64 y, U64 z);
+Pnt3U16 pnt_3u16(U16 x, U16 y, U16 z);
+Pnt3U32 pnt_3u32(U32 x, U32 y, U32 z);
+Pnt3U64 pnt_3u64(U64 x, U64 y, U64 z);
 
 
 

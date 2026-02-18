@@ -343,7 +343,7 @@ void draw_obj_test(){
 	U64 duration_us = 10 * Million(1); // 10 seconds in microseconds
 	U64 frame_count = 0;
 
-	while (true) {
+	while (BASE_TRUE) {
 		U64 current_time = os_now_microseconds();
 		if((current_time-start_time) > duration_us) break;
 

@@ -39,13 +39,13 @@ U64 dim_r1u64(Rng1U64 r) {
 ///////////////////////////////////////
 /// cjk:  Point Functions 
 
-Point2U16 point_2u16(U16 x, U16 y){ return (Point2U16){{x, y}};}
-Point2U32 point_2u32(U32 x, U32 y){ return (Point2U32){{x, y}};}
-Point2U64 point_2u64(U64 x, U64 y){ return (Point2U64){{x, y}};}
+Pnt2U16 pnt_2u16(U16 x, U16 y){ return (Pnt2U16){{x, y}};}
+Pnt2U32 pnt_2u32(U32 x, U32 y){ return (Pnt2U32){{x, y}};}
+Pnt2U64 pnt_2u64(U64 x, U64 y){ return (Pnt2U64){{x, y}};}
 
-Point3U16 point_3u16(U16 x, U16 y, U16 z){ return (Point3U16){{x, y, z}};}
-Point3U32 point_3U32(U32 x, U32 y, U32 z){ return (Point3U32){{x, y, z}};}
-Point3U64 point_3U64(U64 x, U64 y, U64 z){ return (Point3U64){{x, y, z}};}
+Pnt3U16 pnt_3u16(U16 x, U16 y, U16 z){ return (Pnt3U16){{x, y, z}};}
+Pnt3U32 pnt_3U32(U32 x, U32 y, U32 z){ return (Pnt3U32){{x, y, z}};}
+Pnt3U64 pnt_3U64(U64 x, U64 y, U64 z){ return (Pnt3U64){{x, y, z}};}
 
 ///////////////////////////////////////
 /// cjk:  Vector Functions 

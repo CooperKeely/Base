@@ -245,8 +245,13 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #define ClampTop(A, B) Min(A, B)
 #define ClampBot(A, B) Max(A, B)
 
-#define false 0
-#define true 1
+#define FLAG_SET(n, f) ((n) |= (f))
+#define FLAG_IS_SET(n, f) (((n) & (f)) == (f))
+#define FLAG_CLEAR(n, f) ((n) &= ~(f))
+#define FLAG_TOGGLE(n, f) ((n) ^= (f))
+
+#define BASE_FALSE 0
+#define BASE_TRUE 1
 
 ///////////////////////////////////////
 /// cjk: Basic Number Definitions 

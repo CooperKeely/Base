@@ -43,7 +43,7 @@ void hash_map_put(HashMap *hash_map, Str8 key, void *data) {
 	if (bucket->data == NULL) {
 		bucket->data = data;
 		bucket->key = str8_copy(hash_map->arena, key);
-		bucket->has_next_data = false;
+		bucket->has_next_data = BASE_FALSE;
 		bucket->next_data = 0;
 		return;
 	}
@@ -67,14 +67,14 @@ void hash_map_put(HashMap *hash_map, Str8 key, void *data) {
 	}
 
 	// set previous buckets next data to the current bucket
-	prev->has_next_data = true;
+	prev->has_next_data = BASE_TRUE;
 	prev->next_data = hash_map->next_free_collision_bucket;
 
 	// insert data
 	bucket = &hash_map->collisions[hash_map->next_free_collision_bucket];
 	bucket->data = data;
 	bucket->key = str8_copy(hash_map->arena, key);
-	bucket->has_next_data = false;
+	bucket->has_next_data = BASE_FALSE;
 	bucket->next_data = 0;
 
 	hash_map->next_free_collision_bucket += 1;
