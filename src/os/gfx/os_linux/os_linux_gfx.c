@@ -305,6 +305,7 @@ void os_gfx_poll_input_events(void){
 			}break;
 			case XCB_MAP_NOTIFY:{
 				xcb_map_notify_event_t* event = (xcb_map_notify_event_t*)e;
+				ctx->window.ready = BASE_TRUE;
 			}break;
 			case XCB_MAP_REQUEST:{
 				xcb_map_request_event_t* event = (xcb_map_request_event_t*)e;
