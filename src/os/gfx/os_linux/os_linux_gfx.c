@@ -205,14 +205,53 @@ void os_gfx_swap_screen_buffer(void){
 
 }
 
+void os_gfx_set_window_size(U32 w, U32 h){
+	// if window not resizeable don't do so
+	if(!os_gfx_flag_is_window_state(OS_GFX_WindowConfigFlag_Resizeable)) continue;
+
+	U32 width = ctx->window.screen_size.x;
+	U32 height = ctx->window.screen_size.y;
+
+	U32 min_width = ctx->window.screen_min_size.x;
+	U32 max_width = ctx->window.screen_max_size.x;
+
+	U32 min_height = ctx->window.screen_min_size.y;
+	U32 max_height = ctx->window.screen_max_size.y;
+
+	if(w != width || h != height){
+		U32 new_width;
+		U32 new_height;
+		if(max_width == 0 || max_height == 0){
+			new_width = event->width;
+			new_widht = event->height;
+		}else{
+			new_width = ClampBot(ClampTop(event->width, min_width), max_width);
+			new_height = ClampBot(ClampTop(event->height, min_height), max_height);
+		}
+
+		U32 mask = XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT;
+		U32 values[] = {
+			new_width,
+			new_height
+		};
+
+		// send a configuration request
+		xcb_configure_window(lnx_ctx->connection,
+		       		lnx_ctx->window,
+		       		mask,
+		       		values);
+
+		
+	}
+}
+
 void os_gfx_poll_input_events(void){
 	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
 	OS_GFX_Context* ctx = &glb_os_gfx_context;
 	
 	xcb_generic_event_t* e;
-	while((e= xcb_wait_for_event(lnx_ctx->connection)){
+	while((e= xcb_poll_for_event(lnx_ctx->connection))){
 		switch(e->reponse_type & ~0x80){
-
 			case XCB_EXPOSE:{
 				xcb_expose_event_t* event = (xcb_expose_event_t*)e;
 			}break;
@@ -246,9 +285,6 @@ void os_gfx_poll_input_events(void){
 			case XCB_KEYMAP_NOTIFY:{
 				xcb_keymap_notify_event_t* event = (xcb_keymap_notify_event_t*)e;
 			}break;
-			case XCB_EXPOSE:{
-				xcb_expose_event_t* event = (xcb_expose_event_t*)e;
-			}break;
 			case XCB_GRAPHICS_EXPOSURE:{
 				xcb_graphics_exposure_event_t* event = (xcb_graphics_exposure_event_t*)e;
 			}break;
@@ -278,6 +314,20 @@ void os_gfx_poll_input_events(void){
 			}break;
 			case XCB_CONFIGURE_NOTIFY:{
 				xcb_configure_notify_event_t* event = (xcb_configure_notify_event_t*)e;
+				if(event->width != ctx->window.screen_size.x || event->height != ctx->window.screensize.y){
+					ctx->window.screen_size.x = event->width;
+					ctx->window.screen_size.y = event->height;
+					ctx->window.resized_last_frame = BASE_TRUE;	
+					os_gfx_reset_frame_buffers();
+				}else if( event->x != ctx->window.position.x || event->y != ctx->window.position.y){
+					ctx->window.previous_position.x = ctx->window.position.x;
+					ctx->window.previous_position.y = ctx->window.position.y;
+					ctx->window.position.x = event->x;
+					ctx->window.position.y = event->y;
+
+				}else{
+					// TODO: add logging system
+				}
 			}break;
 			case XCB_CONFIGURE_REQUEST:{
 				xcb_configure_request_event_t* event = (xcb_configure_request_event_t*)e;
@@ -287,6 +337,7 @@ void os_gfx_poll_input_events(void){
 			}break;
 			case XCB_RESIZE_REQUEST:{
 				xcb_resize_request_event_t* event = (xcb_resize_request_event_t*)e;
+				os_gfx_set_window_size(event->width, event->height);
 			}break;
 			case XCB_CIRCULATE_NOTIFY:{
 				xcb_circulate_notify_event_t* event = (xcb_circulate_notify_event_t*)e;
@@ -311,6 +362,9 @@ void os_gfx_poll_input_events(void){
 			}break;
 			case XCB_CLIENT_MESSAGE:{
 				xcb_client_message_event_t* event = (xcb_client_message_event_t*)e;
+				if(event->data.data32[0] == lnx_ctx->close_window_atom){
+					ctx->window.should_close = BASE_TRUE;
+				}
 			}break;
 			case XCB_MAPPING_NOTIFY:{
 				xcb_mapping_notify_event_t* event = (xcb_mapping_notify_event_t*)e;
@@ -324,6 +378,6 @@ void os_gfx_poll_input_events(void){
 		}
 	}
 
-	free(event);
+	free(e);
 }
 

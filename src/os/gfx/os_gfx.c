@@ -127,9 +127,6 @@ U32 os_gfx_get_fps(void){
 	
 }
 
-void os_gfx_swap_screen_buffer(void){ NotImplemented; }
-void os_gfx_poll_input_events(void){ NotImplemented; }
-
 ///////////////////////////////////////
 /// cjk: Input Handeling API Definitions 
 
