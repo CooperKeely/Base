@@ -7,7 +7,7 @@ void os_gfx_init_window(U32 x, U32 y, U32 width, U32 height, Str8 window_name){
 	OS_GFX_Context* ctx = &glb_os_gfx_context;	
 
 	ctx->window.position = Pnt2_U32(x, y);	
-	ctx->window.size = Pnt2_U32(width, height);	
+	ctx->window.screen_size = Pnt2_U32(width, height);	
 	ctx->window.title = window_name;
 
 	os_gfx_init_platform();
@@ -23,9 +23,12 @@ void os_gfx_close_window(void){
 // Begin and end drawing
 void os_gfx_begin_drawing(void){
 	OS_GFX_Context* ctx = &glb_os_gfx_context;	
+
 	ctx->time.current = os_now_microseconds();
 	ctx->time.update = ctx->time.current - ctx->time.previous;
-	ctx->previous = ctx->time.current;
+	ctx->time.previous = ctx->time.current;
+
+	while (!os_gfx_is_window_ready()) os_gfx_poll_input_events();
 }
 
 void os_gfx_end_drawing(void){
@@ -37,6 +40,10 @@ void os_gfx_end_drawing(void){
 
 void os_gfx_clear_background(ColorRGBA c){
 
+}
+
+void* os_gfx_get_frame_buffer(void){
+	return glb_os_gfx_context.window.frame_data;
 }
 
 // window helper functions
@@ -51,8 +58,8 @@ B32 os_gfx_is_window_focused(void){ return !FLAG_IS_SET(glb_os_gfx_context.windo
 
 // window state options
 B32 os_gfx_is_window_state(OS_GFX_WindowConfigFlag flag){ return FLAG_IS_SET(glb_os_gfx_context.window.flags, flag); }
-void os_gfx_set_window_state(OS_GFX_WindowConfigFlag flags){ return FLAG_SET(glb_os_gfx_context.window.flags, flags); }
-void os_gfx_clear_window_state(OS_GFX_WindowConfigFlag flags){ return FLAG_CLEAR(glb_os_gfx_context.window.flags, flags); }
+void os_gfx_set_window_state(OS_GFX_WindowConfigFlag flags){ FLAG_SET(glb_os_gfx_context.window.flags, flags); }
+void os_gfx_clear_window_state(OS_GFX_WindowConfigFlag flags){ FLAG_CLEAR(glb_os_gfx_context.window.flags, flags); }
 
 // set window options
 void os_gfx_toggle_fullscreen(void){
@@ -79,11 +86,6 @@ void os_gfx_set_window_title(Str8 title){
 void os_gfx_set_window_position(U32 x, U32 y){ glb_os_gfx_context.window.position = Pnt2_U32(x, y); }
 void os_gfx_set_window_min_size(U32 width, U32 height){ glb_os_gfx_context.window.screen_size_min = Pnt2_U32(width, height); }
 void os_gfx_set_window_max_size(U32 width, U32 height){ glb_os_gfx_context.window.screen_size_max = Pnt2_U32(width, height); }
-
-void os_gfx_set_window_size(U32 width, U32 height){
-	glb_os_gfx_context.window.screen_size = Pnt2_U32(width, height);	
-	// TODO: (cjk) send event to OS window system to update size 
-}
 
 void os_gfx_set_window_focused(void){
 }
@@ -124,7 +126,7 @@ F64 os_gfx_get_frame_time(void){
 }
 
 U32 os_gfx_get_fps(void){
-	
+	return U32Lit(60);	
 }
 
 ///////////////////////////////////////
@@ -159,11 +161,11 @@ Pnt2U32 os_gfx_get_mouse_position(void){
 	return glb_os_gfx_context.input.mouse.current_position;
 }
 
-Vec2_F32 os_gfx_get_mouse_delta(void){
+Vec2F32 os_gfx_get_mouse_delta(void){
 	U32 curr_x = glb_os_gfx_context.input.mouse.current_position.x;
 	U32 curr_y = glb_os_gfx_context.input.mouse.current_position.y;
-	U32 prev_x = glb_os_gfx_context.input.mouse.previous_posititon.x; 
-	U32 prev_y = glb_os_gfx_context.input.mouse.previous_posititon.y; 
+	U32 prev_x = glb_os_gfx_context.input.mouse.previous_position.x; 
+	U32 prev_y = glb_os_gfx_context.input.mouse.previous_position.y; 
 	return Vec2_F32(((F32)curr_x - (F32)prev_x), ((F32)curr_y - (F32)prev_y));
 }
 

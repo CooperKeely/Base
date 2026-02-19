@@ -1,4 +1,41 @@
 ///////////////////////////////////////
+/// cjk: Memory Helper Functions 
+
+B32 memory_is_zero(void* ptr, U64 size){
+	B32 result = BASE_TRUE;
+
+	U64 extra = (size&0x07);
+	U64 count8 = (size >> 3);
+	
+	// check data with 8 byte stride
+	U64 *p64 = (U64*) ptr;
+	if(result){
+		for(U64 i = 0; i < count8; i += 1, p64 += 1){
+			if(*p64 != 0){
+				result = BASE_FALSE;
+				goto done;
+			}
+		}
+
+	}
+	
+	if(result){
+		U8* p8 = (U8*) p64;
+		for(U64 i = 0; i < extra; i += 1, p8 += 1){
+			if(*p8 != 0){
+				result = BASE_FALSE;
+				goto done;
+			}
+		}
+
+	}
+
+done:;
+	return result;
+
+}
+
+///////////////////////////////////////
 /// cjk: Base Integer Functions 
 
 U8 safe_cast_U8(U16 x) {

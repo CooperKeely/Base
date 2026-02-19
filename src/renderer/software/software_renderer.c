@@ -3,21 +3,17 @@
 // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm  
 // https://groups.csail.mit.edu/graphics/classes/6.837/F02/lectures/6.837-7_Line.pdf
 // https://zingl.github.io/Bresenham.pdf
-void sr_draw_line(OS_GFX_WindowContext* ctx, Vec2F32 p1, Vec2F32 p2, ColorRGBA color){
-	Assert(ctx);
-	Assert(ctx->image);
-
-	U32* pixels = (U32*) ctx->image->data;
-	U32 stride = ctx->image->stride / sizeof(ColorRGBA);
-	S32 window_width = ctx->size.width;
-	S32 window_height = ctx->size.height;
+void sr_draw_line(Vec2F32 p1, Vec2F32 p2, ColorRGBA color){
+	U32* pixels = (U32*) os_gfx_get_frame_buffer();
+	S32 window_width = (S32) os_gfx_get_screen_width();
+	S32 window_height = (S32) os_gfx_get_screen_height();
 	U32 color_const = color_rgba_to_bgra(color).c;
+	U32 stride = window_width;
 
 	S32 x0 = (S32) p1.x;
 	S32 y0 = (S32) p1.y; 
 	S32 x1 = (S32) p2.x; 
 	S32 y1 = (S32) p2.y;
-
 
 	S32 dx = abs(x1 - x0);
 	S32 dy = -abs(y1 - y0);
@@ -46,10 +42,10 @@ void sr_draw_line(OS_GFX_WindowContext* ctx, Vec2F32 p1, Vec2F32 p2, ColorRGBA c
 	}
 }
 
-void sr_draw_triangle(OS_GFX_WindowContext* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
-	sr_draw_line(ctx, v1, v2, color);
-	sr_draw_line(ctx, v2, v3, color);
-	sr_draw_line(ctx, v3, v1, color);
+void sr_draw_triangle(Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
+	sr_draw_line(v1, v2, color);
+	sr_draw_line(v2, v3, color);
+	sr_draw_line(v3, v1, color);
 } 
 
 B32 sr_is_point_in_triangle(Vec2F32 point, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3){
@@ -58,15 +54,12 @@ B32 sr_is_point_in_triangle(Vec2F32 point, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3){
 	return result;	
 }
 
-void sr_draw_filled_triangle(OS_GFX_WindowContext* ctx, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
-	Assert(ctx);
-	Assert(ctx->image);
-
-	U32* pixels = (U32*) ctx->image->data;
-	U32 stride = ctx->image->stride / sizeof(ColorRGBA);
-	U32 window_width = ctx->size.width;
-	U32 window_height = ctx->size.height;
+void sr_draw_filled_triangle(Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
+	U32* pixels = (U32*) os_gfx_get_frame_buffer();
+	S32 window_width = (S32) os_gfx_get_screen_width();
+	S32 window_height = (S32) os_gfx_get_screen_height();
 	U32 color_const = color_rgba_to_bgra(color).c;
+	U32 stride = window_width;
 
 	// get bounding box
 	U32 x_min = Min(0, Min(v1.x, Min(v2.x, v3.x)));
@@ -88,28 +81,27 @@ void sr_draw_filled_triangle(OS_GFX_WindowContext* ctx, Vec2F32 v1, Vec2F32 v2, 
 
 
 // 2d primitive drawing
-void sr_draw_rect(OS_GFX_WindowContext* ctx, RectF32 rect, ColorRGBA color){
-	Assert(ctx);
-	Assert(ctx->image);
+void sr_draw_rect(RectF32 rect, ColorRGBA color){
+	U32* pixels = (U32*) os_gfx_get_frame_buffer();
+	S32 window_width = (S32) os_gfx_get_screen_width();
+	S32 window_height = (S32) os_gfx_get_screen_height();
+	U32 color_const = color_rgba_to_bgra(color).c;
+	U32 stride = window_width;
 
-	
-	U32 x1 = Max(0, rect.x);
-	U32 y1 = Max(0, rect.y);
-	U32 x2 = Min(ctx->size.width, (rect.x + rect.width));
-	U32 y2 = Min(ctx->size.height, (rect.y + rect.height));
+	U32 x1 = Max(0, (S32)rect.x);
+	U32 y1 = Max(0, (S32)rect.y);
+	U32 x2 = Min(window_width, (S32)(rect.x + rect.width));
+	U32 y2 = Min(window_height, (S32)(rect.y + rect.height));
 
 	if( x1 >= x2 || y1 >= y2 ) return;
 
-	U32* pixels = (U32*) ctx->image->data;
-	U32 stride = ctx->image->stride / sizeof(ColorRGBA);
-	U32 width = x2 - x1;
-	U32 color_const = color_rgba_to_bgra(color).c;
+	U32 rect_width = x2 - x1;
 
 	// this points to the first pixel in the rect
 	U32* row_ptr = pixels + (y1 * stride) + x1;
 
 	for (U32 y = y1; y < y2; y++){
-		for (U32 x = 0; x < width; x++){
+		for (U32 x = 0; x < rect_width; x++){
 			row_ptr[x] = color_const; 
 		}
 		row_ptr += stride;
@@ -119,20 +111,18 @@ void sr_draw_rect(OS_GFX_WindowContext* ctx, RectF32 rect, ColorRGBA color){
 
 // This method uses Midpoint circle algorithm for quickly drawing a circle
 // https://en.wikipedia.org/wiki/Midpoint_circle_algorithm 
-void sr_draw_circle(OS_GFX_WindowContext* ctx, Vec2F32 center, F32 radius, ColorRGBA color){
-	Assert(ctx);
-	Assert(ctx->image);
+void sr_draw_circle(Vec2F32 center, F32 radius, ColorRGBA color){
 	Assert(radius > 0.0);
+
+	U32* pixels = (U32*) os_gfx_get_frame_buffer();
+	S32 window_width = (S32) os_gfx_get_screen_width();
+	S32 window_height = (S32) os_gfx_get_screen_height();
+	U32 color_const = color_rgba_to_bgra(color).c;
+	U32 stride = window_width;
 
 	S32 x0 = (S32) floorf(center.x);
 	S32 y0 = (S32) floorf(center.y);
 	S32 r  = (S32) radius;
-
-	U32* pixels = (U32*) ctx->image->data;
-	U32 stride = ctx->image->stride / sizeof(ColorRGBA);
-	S32 window_width = (S32)ctx->size.width;
-	S32 window_height = (S32)ctx->size.height;
-	U32 color_const = color_rgba_to_bgra(color).c;
 
 	S32 x = r;
 	S32 y = 0;
@@ -214,14 +204,10 @@ Vec2F32 sr_viewport_transform(Vec3F32 vec, U32 width, U32 height){
 
 }
 
-void sr_draw_obj(OS_GFX_WindowContext* ctx, FMT_OBJ_Object* obj_file, SR_ObjectRenderFlag flags){
-	Assert(ctx);
-	Assert(ctx->image);
-
-	U32* pixels = (U32*) ctx->image->data;
-	U32 stride = ctx->image->stride / sizeof(ColorRGBA);
-	S32 width = (S32)ctx->size.width;
-	S32 height = (S32)ctx->size.height;
+void sr_draw_obj(FMT_OBJ_Object* obj_file, SR_ObjectRenderFlag flags){
+	U32* pixels = (U32*) os_gfx_get_frame_buffer();
+	U32 width = os_gfx_get_screen_width();
+	U32 height = os_gfx_get_screen_height();
 
 	FMT_OBJ_LineArray* vertex_array = &obj_file->vertex_array;
 	FMT_OBJ_LineArray* face_array = &obj_file->face_array;
@@ -243,6 +229,6 @@ void sr_draw_obj(OS_GFX_WindowContext* ctx, FMT_OBJ_Object* obj_file, SR_ObjectR
 		Vec2F32 p2 = sr_viewport_transform(Vec3_F32(v2.x, v2.y, v2.z), width, height); 
 		Vec2F32 p3 = sr_viewport_transform(Vec3_F32(v3.x, v3.y, v3.z), width, height); 
 
-		sr_draw_triangle(ctx, p1, p2, p3, COLOR_RED);
+		sr_draw_triangle(p1, p2, p3, COLOR_RED);
 	}
 }

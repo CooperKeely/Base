@@ -222,14 +222,14 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #define MemoryCopyStr8(dest, src) MemoryCopy((dest).str, (src).str, (src).size)
 
 #define MemoryZero(dest, num_bytes) memset((dest), 0, (num_bytes))
-#define MemoryZeroStruct(src) MemoryZero((src), sizeof(*(s)))
+#define MemoryZeroStruct(src) MemoryZero((src), sizeof(*(src)))
 #define MemoryZeroArray(src) MemoryZero((src), sizeof(src))
 
 #define MemoryMatch(a, b, num_bytes) (MemoryCmp((a), (b), (num_bytes)) == 0)
 #define MemoryMatchStruct(a, b) MemoryMatch((a), (b), sizeof(*(a)))
 #define MemoryMatchArray(a, b) MemoryMatch((a), (b), sizeof((a)))
 
-#define MemoryIsZeroStruct((ptr)) memory_is_zero((ptr), sizeof(*(ptr)))
+#define MemoryIsZeroStruct(ptr) memory_is_zero((ptr), sizeof(*(ptr)))
 
 ///////////////////////////////////////
 /// cjk: Math Helper Definitions

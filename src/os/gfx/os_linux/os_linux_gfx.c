@@ -105,7 +105,7 @@ void os_gfx_init_platform(void){
 	xcb_flush(lnx_ctx->connection);
 	
 	// hang unil the window is ready
-	while(!ctx->window.is_ready) os_gfx_poll_input_events();
+	while(!ctx->window.ready) os_gfx_poll_input_events();
 
 }
 
@@ -145,12 +145,12 @@ void os_gfx_reset_frame_buffers(void){
 
 		
 		// get the shared memory
-		lnx_ctx->shm_info[idx].shmid = shm_get(IPC_PRIVATE, total_size, IPC_CREAT|0777);
-		lnx_ctx->shm_info[idx].shmaddr = (void*) shmat(lnx_ctx->shm_info[idx], 0, 0);
-		Assert(lnx_ctx->shm_info[idx].shmaddr != (void*)-1);
+		lnx_ctx->shm_info[idx].shmseg = xcb_generate_id(lnx_ctx->connection);
+		lnx_ctx->shm_info[idx].shmid = shmget(IPC_PRIVATE, total_size, IPC_CREAT|0777);
+		lnx_ctx->shm_info[idx].shmaddr = (void*) shmat(lnx_ctx->shm_info[idx].shmid, 0, 0);
 		
 		// create a new image
-		lnx_ctx->frame_buffer[idx] = xcb_create_image_native(
+		lnx_ctx->frame_buffer[idx] = xcb_image_create_native(
 			lnx_ctx->connection,
 			ctx->window.screen_size.x,
 			ctx->window.screen_size.y,
@@ -161,7 +161,6 @@ void os_gfx_reset_frame_buffers(void){
 			lnx_ctx->shm_info[idx].shmaddr	
 		);
 
-		lnx_ctx->shm_info[idx].shmseg = xcb_generate_id(lnx_ctx->connection);
 
 		xcb_shm_attach(lnx_ctx->connection, 
 		 		lnx_ctx->shm_info[idx].shmseg, 
@@ -170,10 +169,11 @@ void os_gfx_reset_frame_buffers(void){
 
 		xcb_flush(lnx_ctx->connection);
 
-		shm_ctl(lnx_ctx->shm_info[idx].shmid, IPC_RMID, 0);	
+		shmctl(lnx_ctx->shm_info[idx].shmid, IPC_RMID, 0);	
 
 	}
-
+	
+	ctx->window.frame_data = lnx_ctx->frame_buffer[lnx_ctx->current_frame_buffer]->data;
 }
 
 void os_gfx_swap_screen_buffer(void){
@@ -206,42 +206,38 @@ void os_gfx_swap_screen_buffer(void){
 }
 
 void os_gfx_set_window_size(U32 w, U32 h){
+	OS_GFX_Context* ctx = &glb_os_gfx_context;
+	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+	
 	// if window not resizeable don't do so
-	if(!os_gfx_flag_is_window_state(OS_GFX_WindowConfigFlag_Resizeable)) continue;
+	if(!os_gfx_is_window_state(OS_GFX_WindowConfigFlag_Resizeable)) return;
 
 	U32 width = ctx->window.screen_size.x;
 	U32 height = ctx->window.screen_size.y;
 
-	U32 min_width = ctx->window.screen_min_size.x;
-	U32 max_width = ctx->window.screen_max_size.x;
+	U32 min_width = ctx->window.screen_size_min.x;
+	U32 max_width = ctx->window.screen_size_max.x;
 
-	U32 min_height = ctx->window.screen_min_size.y;
-	U32 max_height = ctx->window.screen_max_size.y;
+	U32 min_height = ctx->window.screen_size_min.y;
+	U32 max_height = ctx->window.screen_size_max.y;
 
 	if(w != width || h != height){
 		U32 new_width;
 		U32 new_height;
 		if(max_width == 0 || max_height == 0){
-			new_width = event->width;
-			new_widht = event->height;
+			new_width = w;
+			new_width = h;
 		}else{
-			new_width = ClampBot(ClampTop(event->width, min_width), max_width);
-			new_height = ClampBot(ClampTop(event->height, min_height), max_height);
+			new_width = ClampBot(ClampTop(w, min_width), max_width);
+			new_height = ClampBot(ClampTop(h, min_height), max_height);
 		}
 
 		U32 mask = XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT;
-		U32 values[] = {
-			new_width,
-			new_height
-		};
+		U32 values[] = { new_width, new_height};
 
 		// send a configuration request
-		xcb_configure_window(lnx_ctx->connection,
-		       		lnx_ctx->window,
-		       		mask,
-		       		values);
-
-		
+		xcb_configure_window(lnx_ctx->connection, lnx_ctx->window, mask, values);
+		xcb_flush(lnx_ctx->connection);
 	}
 }
 
@@ -251,9 +247,37 @@ void os_gfx_poll_input_events(void){
 	
 	xcb_generic_event_t* e;
 	while((e= xcb_poll_for_event(lnx_ctx->connection))){
-		switch(e->reponse_type & ~0x80){
+		switch(e->response_type & ~0x80){
+			case XCB_ENTER_NOTIFY:{
+				ctx->input.mouse.cursor_on_screen = BASE_TRUE;
+			}break;
+			case XCB_LEAVE_NOTIFY:{
+				ctx->input.mouse.cursor_on_screen = BASE_FALSE;
+			}break;
+			case XCB_DESTROY_NOTIFY:{
+				ctx->window.should_close = BASE_TRUE;
+			}break;
+			case XCB_CLIENT_MESSAGE:{
+				xcb_client_message_event_t* event = (xcb_client_message_event_t*)e;
+				if(event->data.data32[0] == lnx_ctx->close_window_atom){
+					ctx->window.should_close = BASE_TRUE;
+				}
+			}break;	
+			case XCB_UNMAP_NOTIFY:{
+				ctx->window.ready = BASE_FALSE;
+			}break;
+			case XCB_MAP_NOTIFY:{
+				ctx->window.ready = BASE_TRUE;
+			}break;	
+			case XCB_FOCUS_IN:{
+				os_gfx_clear_window_state(OS_GFX_WindowConfigFlag_Unfocused);
+			}break;
+			case XCB_FOCUS_OUT:{
+				os_gfx_set_window_state(OS_GFX_WindowConfigFlag_Unfocused);
+			}break;	
 			case XCB_EXPOSE:{
 				xcb_expose_event_t* event = (xcb_expose_event_t*)e;
+				if(event->count == 0) os_gfx_swap_screen_buffer();	
 			}break;
 			case XCB_KEY_PRESS:{
 				xcb_key_press_event_t* event = (xcb_key_press_event_t*)e;
@@ -270,52 +294,31 @@ void os_gfx_poll_input_events(void){
 			case XCB_MOTION_NOTIFY:{
 				xcb_motion_notify_event_t* event = (xcb_motion_notify_event_t*)e;
 			}break;
-			case XCB_ENTER_NOTIFY:{
-				xcb_enter_notify_event_t* event = (xcb_enter_notify_event_t*)e;
-			}break;
-			case XCB_LEAVE_NOTIFY:{
-				xcb_leave_notify_event_t* event = (xcb_leave_notify_event_t*)e;
-			}break;
-			case XCB_FOCUS_IN:{
-				xcb_focus_in_event_t* event = (xcb_focus_in_event_t*)e;
-			}break;
-			case XCB_FOCUS_OUT:{
-				xcb_focus_out_event_t* event = (xcb_focus_out_event_t*)e;
-			}break;
 			case XCB_KEYMAP_NOTIFY:{
 				xcb_keymap_notify_event_t* event = (xcb_keymap_notify_event_t*)e;
 			}break;
-			case XCB_GRAPHICS_EXPOSURE:{
-				xcb_graphics_exposure_event_t* event = (xcb_graphics_exposure_event_t*)e;
-			}break;
-			case XCB_NO_EXPOSURE:{
-				xcb_no_exposure_event_t* event = (xcb_no_exposure_event_t*)e;
-			}break;
+			case XCB_MAPPING_NOTIFY:{
+				xcb_mapping_notify_event_t* event = (xcb_mapping_notify_event_t*)e;
+			}break;	
 			case XCB_VISIBILITY_NOTIFY:{
 				xcb_visibility_notify_event_t* event = (xcb_visibility_notify_event_t*)e;
+				if(event->state == XCB_VISIBILITY_UNOBSCURED){
+					os_gfx_clear_window_state(OS_GFX_WindowConfigFlag_Hidden);
+				}else if(event->state == XCB_VISIBILITY_PARTIALLY_OBSCURED){
+					os_gfx_clear_window_state(OS_GFX_WindowConfigFlag_Hidden);
+				}else if(event->state == XCB_VISIBILITY_FULLY_OBSCURED){
+					os_gfx_set_window_state(OS_GFX_WindowConfigFlag_Hidden);
+				}else{
+					// TODO: (cjk): add some sort of log statement
+				}
 			}break;
-			case XCB_CREATE_NOTIFY:{
-				xcb_create_notify_event_t* event = (xcb_create_notify_event_t*)e;
-			}break;
-			case XCB_DESTROY_NOTIFY:{
-				xcb_destroy_notify_event_t* event = (xcb_destroy_notify_event_t*)e;
-			}break;
-			case XCB_UNMAP_NOTIFY:{
-				xcb_unmap_notify_event_t* event = (xcb_unmap_notify_event_t*)e;
-			}break;
-			case XCB_MAP_NOTIFY:{
-				xcb_map_notify_event_t* event = (xcb_map_notify_event_t*)e;
-				ctx->window.ready = BASE_TRUE;
-			}break;
-			case XCB_MAP_REQUEST:{
-				xcb_map_request_event_t* event = (xcb_map_request_event_t*)e;
-			}break;
-			case XCB_REPARENT_NOTIFY:{
-				xcb_reparent_notify_event_t* event = (xcb_reparent_notify_event_t*)e;
-			}break;
+			case XCB_RESIZE_REQUEST:{
+				xcb_resize_request_event_t* event = (xcb_resize_request_event_t*)e;
+				os_gfx_set_window_size(event->width, event->height);
+			}break;	
 			case XCB_CONFIGURE_NOTIFY:{
 				xcb_configure_notify_event_t* event = (xcb_configure_notify_event_t*)e;
-				if(event->width != ctx->window.screen_size.x || event->height != ctx->window.screensize.y){
+				if(event->width != ctx->window.screen_size.x || event->height != ctx->window.screen_size.y){
 					ctx->window.screen_size.x = event->width;
 					ctx->window.screen_size.y = event->height;
 					ctx->window.resized_last_frame = BASE_TRUE;	
@@ -330,55 +333,31 @@ void os_gfx_poll_input_events(void){
 					// TODO: add logging system
 				}
 			}break;
-			case XCB_CONFIGURE_REQUEST:{
-				xcb_configure_request_event_t* event = (xcb_configure_request_event_t*)e;
-			}break;
 			case XCB_GRAVITY_NOTIFY:{
 				xcb_gravity_notify_event_t* event = (xcb_gravity_notify_event_t*)e;
+				ctx->window.position.x = event->x;
+				ctx->window.position.y = event->y;
 			}break;
-			case XCB_RESIZE_REQUEST:{
-				xcb_resize_request_event_t* event = (xcb_resize_request_event_t*)e;
-				os_gfx_set_window_size(event->width, event->height);
-			}break;
-			case XCB_CIRCULATE_NOTIFY:{
-				xcb_circulate_notify_event_t* event = (xcb_circulate_notify_event_t*)e;
-			}break;
-			case XCB_CIRCULATE_REQUEST:{
-				xcb_circulate_request_event_t* event = (xcb_circulate_request_event_t*)e;
-			}break;
-			case XCB_PROPERTY_NOTIFY:{
-				xcb_property_notify_event_t* event = (xcb_property_notify_event_t*)e;
-			}break;
-			case XCB_SELECTION_CLEAR:{
-				xcb_selection_clear_event_t* event = (xcb_selection_clear_event_t*)e;
-			}break;
-			case XCB_SELECTION_REQUEST:{
-				xcb_selection_request_event_t* event = (xcb_selection_request_event_t*)e;
-			}break;
-			case XCB_SELECTION_NOTIFY:{
-				xcb_selection_notify_event_t* event = (xcb_selection_notify_event_t*)e;
-			}break;
-			case XCB_COLORMAP_NOTIFY:{
-				xcb_colormap_notify_event_t* event = (xcb_colormap_notify_event_t*)e;
-			}break;
-			case XCB_CLIENT_MESSAGE:{
-				xcb_client_message_event_t* event = (xcb_client_message_event_t*)e;
-				if(event->data.data32[0] == lnx_ctx->close_window_atom){
-					ctx->window.should_close = BASE_TRUE;
-				}
-			}break;
-			case XCB_MAPPING_NOTIFY:{
-				xcb_mapping_notify_event_t* event = (xcb_mapping_notify_event_t*)e;
-			}break;
-			case XCB_GE_GENERIC:{
-				xcb_ge_generic_event_t* event = (xcb_ge_generic_event_t*)e;
-			}break;
+			case XCB_NO_EXPOSURE:
+			case XCB_GE_GENERIC:
+			case XCB_REPARENT_NOTIFY:
+			case XCB_PROPERTY_NOTIFY:
+			case XCB_SELECTION_CLEAR:
+			case XCB_SELECTION_REQUEST:
+			case XCB_SELECTION_NOTIFY:
+			case XCB_MAP_REQUEST:
+			case XCB_CIRCULATE_NOTIFY:
+			case XCB_CIRCULATE_REQUEST:
+			case XCB_GRAPHICS_EXPOSURE:	
+			case XCB_COLORMAP_NOTIFY:
+			case XCB_CONFIGURE_REQUEST:
+			case XCB_CREATE_NOTIFY:
 			default:{
-
+				// TODO: (cjk): add a log
 			}
 		}
+		free(e);
 	}
-
-	free(e);
 }
+
 

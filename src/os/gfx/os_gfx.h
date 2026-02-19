@@ -78,6 +78,8 @@ typedef struct {
 
 		Pnt2U32 screen_size_min;
 		Pnt2U32 screen_size_max;
+
+		void* frame_data; 
 	}window;
 	struct{
 		struct{
@@ -94,7 +96,7 @@ typedef struct {
 		struct{
 			Pnt2U32 offset;
 			Pnt2U32 current_position;
-			Pnt2U32 previous_posiiton;
+			Pnt2U32 previous_position;
 			Pnt2U32 locked_position;
 
 			U32 cursor;
@@ -134,6 +136,7 @@ void os_gfx_close_platform(void);
 void os_gfx_begin_drawing(void);
 void os_gfx_end_drawing(void);
 void os_gfx_clear_background(ColorRGBA c);
+void* os_gfx_get_frame_buffer(void);
 
 // window helper functions
 B32 os_gfx_window_should_close(void);
@@ -147,8 +150,8 @@ B32 os_gfx_is_window_resized(void);
 
 // window state options
 B32 os_gfx_is_window_state(U64 flag);
-B32 os_gfx_set_window_state(OS_GFX_WindowConfigFlag flags);
-B32 os_gfx_clear_window_state(OS_GFX_WindowConfigFlag flags);
+void os_gfx_set_window_state(OS_GFX_WindowConfigFlag flags);
+void os_gfx_clear_window_state(OS_GFX_WindowConfigFlag flags);
 
 // set window options
 void os_gfx_toggle_fullscreen(void);
@@ -178,9 +181,9 @@ B32 os_gfx_is_cursor_on_screen(void);
 
 // Timing-related functions
 void os_gfx_set_target_fps(U32 fps);                       // Set target FPS (maximum)
-F32 os_gfx_get_frame_time(void);                         // Get time in seconds for last frame drawn (delta time)
+F64 os_gfx_get_frame_time(void);                         // Get time in seconds for last frame drawn (delta time)
 F64 os_gfx_get_time(void);                             // Get elapsed time in seconds since Init_Window()
-int os_gfx_get_fps(void);                                 // Get current FPS
+U32 os_gfx_get_fps(void);                                 // Get current FPS
 
 void os_gfx_swap_screen_buffer(void);                      // Swap back buffer with front buffer (screen drawing)
 void os_gfx_poll_input_events(void);                       // Register all input events
