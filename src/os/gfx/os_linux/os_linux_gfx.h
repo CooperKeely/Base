@@ -22,6 +22,7 @@ typedef struct{
 	xcb_screen_t*			screen;
 	xcb_window_t			window;	
 	xcb_setup_t* 			setup;
+	xcb_gcontext_t			graphics_ctx;
 
 	xcb_image_t*			frame_buffer[2];
 	xcb_shm_segment_info_t		shm_info[2];

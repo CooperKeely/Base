@@ -4,24 +4,34 @@ void os_gfx_init_window(U32 x, U32 y, U32 width, U32 height, Str8 window_name){
 	
 	// make sure all memory is set to zero
 	MemoryZeroStruct(&glb_os_gfx_context);
+	OS_GFX_Context* ctx = &glb_os_gfx_context;	
 
-	glb_os_gfx_context.window.position = Pnt2_U32(x, y);	
-	glb_os_gfx_context.window.size = Pnt2_U32(width, height);	
-	glb_os_gfx_context.window.title = window_name;
+	ctx->window.position = Pnt2_U32(x, y);	
+	ctx->window.size = Pnt2_U32(width, height);	
+	ctx->window.title = window_name;
 
-
-
+	os_gfx_init_platform();
+	
+	ctx->time.frame_counter = 0;
+	ctx->window.should_close = BASE_FALSE;
 }
 
 void os_gfx_close_window(void){
-
+	os_gfx_close_platform();
 }
 
 // Begin and end drawing
 void os_gfx_begin_drawing(void){
+	OS_GFX_Context* ctx = &glb_os_gfx_context;	
+	ctx->time.current = os_now_microseconds();
+	ctx->time.update = ctx->time.current - ctx->time.previous;
+	ctx->previous = ctx->time.current;
 }
 
 void os_gfx_end_drawing(void){
+	os_gfx_swap_screen_buffer();	
+	
+
 
 }
 
@@ -119,7 +129,6 @@ U32 os_gfx_get_fps(void){
 
 void os_gfx_swap_screen_buffer(void){ NotImplemented; }
 void os_gfx_poll_input_events(void){ NotImplemented; }
-void os_gfx_wait_time(U64 micro_seconds){ NotImplemented; }
 
 ///////////////////////////////////////
 /// cjk: Input Handeling API Definitions 
