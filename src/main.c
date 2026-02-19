@@ -204,6 +204,8 @@ void draw_obj_test(){
 	// Open the window
 	os_gfx_init_window(100, 100, 1000, 1000, Str8Lit("Software Renderer - Speed Test"));
 
+	U32 config = OS_GFX_WindowConfigFlag_Resizeable;
+	os_gfx_set_window_state(config);
 		
 	while (!os_gfx_window_should_close()) {
 		os_gfx_begin_drawing();

@@ -32,10 +32,13 @@ void os_gfx_begin_drawing(void){
 }
 
 void os_gfx_end_drawing(void){
-	os_gfx_swap_screen_buffer();	
+	OS_GFX_Context* ctx = &glb_os_gfx_context;	
 	
+	// reset rsizing
+	ctx->window.resized_last_frame = BASE_FALSE;
 
-
+	os_gfx_poll_input_events();
+	os_gfx_swap_screen_buffer();	
 }
 
 void os_gfx_clear_background(ColorRGBA c){
