@@ -4,11 +4,8 @@
 // https://groups.csail.mit.edu/graphics/classes/6.837/F02/lectures/6.837-7_Line.pdf
 // https://zingl.github.io/Bresenham.pdf
 void sr_draw_line(Vec2F32 p1, Vec2F32 p2, ColorRGBA color){
-	U32* pixels = (U32*) os_gfx_get_frame_buffer();
 	S32 window_width = (S32) os_gfx_get_screen_width();
 	S32 window_height = (S32) os_gfx_get_screen_height();
-	U32 color_const = color_rgba_to_bgra(color).c;
-	U32 stride = window_width;
 
 	S32 x0 = (S32) p1.x;
 	S32 y0 = (S32) p1.y; 
@@ -24,7 +21,7 @@ void sr_draw_line(Vec2F32 p1, Vec2F32 p2, ColorRGBA color){
 
 	for(;;){
 		if( 0 <= x0 && x0 < window_width && 0 <= y0 && y0 < window_height){
-			pixels[y0 * stride + x0] = color_const;
+			os_gfx_paint_pixel(x0, y0, color); 
 		}
 		
 		err_2 = 2 * err;
@@ -55,11 +52,8 @@ B32 sr_is_point_in_triangle(Vec2F32 point, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3){
 }
 
 void sr_draw_filled_triangle(Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
-	U32* pixels = (U32*) os_gfx_get_frame_buffer();
 	S32 window_width = (S32) os_gfx_get_screen_width();
 	S32 window_height = (S32) os_gfx_get_screen_height();
-	U32 color_const = color_rgba_to_bgra(color).c;
-	U32 stride = window_width;
 
 	// get bounding box
 	U32 x_min = Min(0, Min(v1.x, Min(v2.x, v3.x)));
@@ -73,7 +67,7 @@ void sr_draw_filled_triangle(Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color
 	for EachInRange(y, y_rng){
 		for EachInRange(x, x_rng){
 			if(sr_is_point_in_triangle(Vec2_F32(x, y), v1, v2, v3)){
-				pixels[y * stride + x] = color_const;
+				os_gfx_paint_pixel(x, y, color);
 			}
 		}	
 	}
@@ -82,11 +76,8 @@ void sr_draw_filled_triangle(Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color
 
 // 2d primitive drawing
 void sr_draw_rect(RectF32 rect, ColorRGBA color){
-	U32* pixels = (U32*) os_gfx_get_frame_buffer();
 	S32 window_width = (S32) os_gfx_get_screen_width();
 	S32 window_height = (S32) os_gfx_get_screen_height();
-	U32 color_const = color_rgba_to_bgra(color).c;
-	U32 stride = window_width;
 
 	U32 x1 = Max(0, (S32)rect.x);
 	U32 y1 = Max(0, (S32)rect.y);
@@ -96,16 +87,12 @@ void sr_draw_rect(RectF32 rect, ColorRGBA color){
 	if( x1 >= x2 || y1 >= y2 ) return;
 
 	U32 rect_width = x2 - x1;
-
-	// this points to the first pixel in the rect
-	U32* row_ptr = pixels + (y1 * stride) + x1;
-
-	for (U32 y = y1; y < y2; y++){
-		for (U32 x = 0; x < rect_width; x++){
-			row_ptr[x] = color_const; 
+	for(U32 y = y1; y < y2; y ++){
+		for (U32 x = x1; x < x2; x ++){
+			os_gfx_paint_pixel(x, y, color);
 		}
-		row_ptr += stride;
-	}
+	}	
+
 }
 
 
@@ -114,11 +101,8 @@ void sr_draw_rect(RectF32 rect, ColorRGBA color){
 void sr_draw_circle(Vec2F32 center, F32 radius, ColorRGBA color){
 	Assert(radius > 0.0);
 
-	U32* pixels = (U32*) os_gfx_get_frame_buffer();
 	S32 window_width = (S32) os_gfx_get_screen_width();
 	S32 window_height = (S32) os_gfx_get_screen_height();
-	U32 color_const = color_rgba_to_bgra(color).c;
-	U32 stride = window_width;
 
 	S32 x0 = (S32) floorf(center.x);
 	S32 y0 = (S32) floorf(center.y);
@@ -133,7 +117,7 @@ void sr_draw_circle(Vec2F32 center, F32 radius, ColorRGBA color){
       				S32 left = Max(0, (x_start));\
 				S32 right = Min((window_width-1),(x_end));\
 				for(S32 px = left; px < right; px ++){\
-					pixels[(py) * stride + px] = color_const;\
+					os_gfx_paint_pixel(px, py, color);\
 				}\
 			}\
 		}while(0)
@@ -205,7 +189,6 @@ Vec2F32 sr_viewport_transform(Vec3F32 vec, U32 width, U32 height){
 }
 
 void sr_draw_obj(FMT_OBJ_Object* obj_file, SR_ObjectRenderFlag flags){
-	U32* pixels = (U32*) os_gfx_get_frame_buffer();
 	U32 width = os_gfx_get_screen_width();
 	U32 height = os_gfx_get_screen_height();
 

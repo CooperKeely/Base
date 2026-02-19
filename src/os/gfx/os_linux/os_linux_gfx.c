@@ -10,6 +10,8 @@ void os_gfx_init_platform(void){
 	U32 value_mask = 0;
 	U32 value_list[2];
 
+	
+
 	// get connection
 	lnx_ctx->connection = xcb_connect(NULL, NULL);
 	if(xcb_connection_has_error(lnx_ctx->connection)){
@@ -17,18 +19,22 @@ void os_gfx_init_platform(void){
 	}
 
 	// register standard XCB cookies 
-	xcb_intern_atom_cookie_t protocols_cookie = xcb_intern_atom(lnx_ctx->connection, 1, 12, "WM_PROTOCOLS");
-	xcb_intern_atom_cookie_t delete_cookie = xcb_intern_atom(lnx_ctx->connection, 0, 16, "WM_CLOSE_WINDOW");
+	xcb_intern_atom_cookie_t protocols_cookie = xcb_intern_atom(lnx_ctx->connection, 0, 12, "WM_PROTOCOLS");
+	xcb_intern_atom_cookie_t delete_cookie = xcb_intern_atom(lnx_ctx->connection, 0, 16, "WM_DELETE_WINDOW");
 
 	// get screen
 	lnx_ctx->setup = xcb_get_setup(lnx_ctx->connection);
 	lnx_ctx->screen = xcb_setup_roots_iterator(lnx_ctx->setup).data;
 
+	// get display size for allocation
+	ctx->window.display_size.x = lnx_ctx->screen->width_in_pixels;
+	ctx->window.display_size.y = lnx_ctx->screen->height_in_pixels;
+
 	// window setup 
 	lnx_ctx->window = xcb_generate_id(lnx_ctx->connection);
 
 	value_mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK ;
-	value_list[0] = lnx_ctx->screen->white_pixel;
+	value_list[0] = XCB_NONE;
 	value_list[1] = XCB_EVENT_MASK_KEY_PRESS 	| 	XCB_EVENT_MASK_KEY_RELEASE	|
 			XCB_EVENT_MASK_BUTTON_PRESS 	|	XCB_EVENT_MASK_BUTTON_RELEASE	|
 			XCB_EVENT_MASK_ENTER_WINDOW	|	XCB_EVENT_MASK_LEAVE_WINDOW	|
@@ -38,7 +44,7 @@ void os_gfx_init_platform(void){
 			XCB_EVENT_MASK_BUTTON_MOTION	|	XCB_EVENT_MASK_BUTTON_1_MOTION	|	
 			XCB_EVENT_MASK_BUTTON_2_MOTION	|	XCB_EVENT_MASK_BUTTON_3_MOTION	|	
 			XCB_EVENT_MASK_BUTTON_4_MOTION	|	XCB_EVENT_MASK_BUTTON_5_MOTION	|	
-			XCB_EVENT_MASK_KEYMAP_STATE	|	XCB_EVENT_MASK_RESIZE_REDIRECT	;
+			XCB_EVENT_MASK_KEYMAP_STATE	;
 			
 	// create a window
 	xcb_create_window(lnx_ctx->connection, 
@@ -140,8 +146,8 @@ void os_gfx_reset_frame_buffers(void){
 			shmdt(lnx_ctx->shm_info[idx].shmaddr);
 		}
 		
-		U64 total_size = ctx->window.screen_size.x * ctx->window.screen_size.y * sizeof(ColorBGRA);
-
+		// make the shared memory region be the whole size of the screen
+		U64 total_size = ctx->window.display_size.x * ctx->window.display_size.y * sizeof(ColorBGRA);
 		
 		// get the shared memory
 		lnx_ctx->shm_info[idx].shmseg = xcb_generate_id(lnx_ctx->connection);
@@ -151,8 +157,8 @@ void os_gfx_reset_frame_buffers(void){
 		// create a new image
 		lnx_ctx->frame_buffer[idx] = xcb_image_create_native(
 			lnx_ctx->connection,
-			ctx->window.screen_size.x,
-			ctx->window.screen_size.y,
+			ctx->window.display_size.x,
+			ctx->window.display_size.y,
 			XCB_IMAGE_FORMAT_Z_PIXMAP,
 			lnx_ctx->screen->root_depth,
 			lnx_ctx->shm_info[idx].shmaddr,
@@ -177,22 +183,25 @@ void os_gfx_reset_frame_buffers(void){
 
 void os_gfx_swap_screen_buffer(void){
 	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+	OS_GFX_Context* ctx = &glb_os_gfx_context;
+
 	U32 frame = lnx_ctx->current_frame_buffer;
 	xcb_image_t* image = lnx_ctx->frame_buffer[frame];
 	
+	U32 win_w = os_gfx_get_screen_width();	
+	U32 win_h = os_gfx_get_screen_height();
+
 	// put shm image to window
 	xcb_shm_put_image(lnx_ctx->connection,
 			lnx_ctx->window,
 			lnx_ctx->graphics_ctx,
-			image->width,
-			image->height,
+			image->width, image->height,
 			0, 0,
-			image->width,
-			image->height,
+			win_w, win_h,
 			0, 0,
 			image->depth,
 			image->format,
-			BASE_TRUE,
+			BASE_FALSE,
 			lnx_ctx->shm_info[frame].shmseg,
 			0);	
 
@@ -202,6 +211,26 @@ void os_gfx_swap_screen_buffer(void){
 	// XOR the current frame buffer state
 	lnx_ctx->current_frame_buffer ^= 1;
 
+	ctx->window.frame_data = lnx_ctx->frame_buffer[lnx_ctx->current_frame_buffer]->data;
+}
+
+void os_gfx_paint_pixel(U32 width, U32 height, ColorRGBA c){
+
+	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+	xcb_image_t* image = lnx_ctx->frame_buffer[lnx_ctx->current_frame_buffer];
+
+	U32* pixels = image->data;
+	U32 stride = image->width;
+	U32 color = color_rgba_to_bgra(c).c;
+
+	Assert(0 <= width && width < image->width);
+	Assert(0 <= height && height < image->height);
+
+	if(width <= os_gfx_get_screen_width() && height <= os_gfx_get_screen_height()){
+		pixels[height * stride + width] = color;
+	}else{
+		// TODO: (cjk): add a log err statment saying it was out of bounds
+	}
 }
 
 void os_gfx_set_window_size(U32 w, U32 h){
@@ -229,6 +258,8 @@ void os_gfx_set_window_size(U32 w, U32 h){
 
 		ctx->window.resized_last_frame = BASE_TRUE;	
 		
+		ctx->window.previous_screen_size.x = width;
+		ctx->window.previous_screen_size.y = height;
 		ctx->window.screen_size.x = new_width;
 		ctx->window.screen_size.y = new_height;
 	}
@@ -307,15 +338,13 @@ void os_gfx_poll_input_events(void){
 			}break;
 			case XCB_CONFIGURE_NOTIFY:{
 				xcb_configure_notify_event_t* event = (xcb_configure_notify_event_t*)e;
-				if(event->width != os_gfx_get_screen_width() || event->height != os_gfx_get_screen_height()){
-					os_gfx_set_window_size(event->width, event->height);
-				}
-				if( event->x != ctx->window.position.x || event->y != ctx->window.position.y){
-					ctx->window.previous_position.x = ctx->window.position.x;
-					ctx->window.previous_position.y = ctx->window.position.y;
-					ctx->window.position.x = event->x;
-					ctx->window.position.y = event->y;
-				}
+				ctx->window.pending_size = Pnt2_U32(event->width, event->height);
+				ctx->window.pending_resize = BASE_TRUE;
+
+				ctx->window.previous_position.x = ctx->window.position.x;
+				ctx->window.previous_position.y = ctx->window.position.y;
+				ctx->window.position.x = event->x;
+				ctx->window.position.y = event->y;
 			}break;
 			case XCB_GRAVITY_NOTIFY:{
 				xcb_gravity_notify_event_t* event = (xcb_gravity_notify_event_t*)e;
@@ -342,10 +371,6 @@ void os_gfx_poll_input_events(void){
 			}
 		}
 		free(e);
-	}
-
-	if(os_gfx_is_window_resized()){
-		os_gfx_reset_frame_buffers();
 	}
 }
 

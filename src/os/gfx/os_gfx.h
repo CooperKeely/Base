@@ -68,9 +68,11 @@ typedef struct {
 		B32 ready;
 		B32 should_close;
 		B32 resized_last_frame;
+		B32 pending_resize;
 		B32 event_waiting;
-		
+
 		Pnt2U32 display_size;
+		Pnt2U32 pending_size;
 		Pnt2U32 screen_size;
 		Pnt2U32 position;
 		Pnt2U32 previous_screen_size;
@@ -136,7 +138,7 @@ void os_gfx_close_platform(void);
 void os_gfx_begin_drawing(void);
 void os_gfx_end_drawing(void);
 void os_gfx_clear_background(ColorRGBA c);
-void* os_gfx_get_frame_buffer(void);
+void os_gfx_paint_pixel(U32 width, U32 height, ColorRGBA c);
 
 // window helper functions
 B32 os_gfx_window_should_close(void);

@@ -210,8 +210,8 @@ void draw_obj_test(){
 	while (!os_gfx_window_should_close()) {
 		os_gfx_begin_drawing();
 
-		sr_draw_rect(Rect_F32(0, 0, 1000, 1000), COLOR_BLACK);
-		
+		os_gfx_clear_background(COLOR_BLACK);		
+
 		sr_draw_obj(obj_file, 0);
 
 		os_gfx_end_drawing();
