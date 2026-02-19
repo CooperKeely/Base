@@ -45,11 +45,12 @@ void os_gfx_end_drawing(void){
 	ctx->window.resized_last_frame = BASE_FALSE;
 
 	os_gfx_poll_input_events();
-	if(!os_gfx_is_window_hidden()){
-	}
+	// TODO: add a render api to flush the render commands
+
 	os_gfx_swap_screen_buffer();	
 
 	ctx->time.frame_counter++;
+	
 }
 
 void os_gfx_clear_background(ColorRGBA c){
@@ -57,8 +58,6 @@ void os_gfx_clear_background(ColorRGBA c){
 	U32 height = os_gfx_get_screen_height();
 	sr_draw_rect(Rect_F32(0, 0, width, height), c);
 }
-
-
 
 // window helper functions
 B32 os_gfx_window_should_close(void) { return glb_os_gfx_context.window.should_close; }
@@ -70,43 +69,13 @@ B32 os_gfx_is_window_minimized(void){ return FLAG_IS_SET(glb_os_gfx_context.wind
 B32 os_gfx_is_window_maximized(void){ return FLAG_IS_SET(glb_os_gfx_context.window.flags, OS_GFX_WindowConfigFlag_Maximized); }
 B32 os_gfx_is_window_focused(void){ return !FLAG_IS_SET(glb_os_gfx_context.window.flags, OS_GFX_WindowConfigFlag_Unfocused); }
 
-// window state options
-B32 os_gfx_is_window_state(OS_GFX_WindowConfigFlag flag){ return FLAG_IS_SET(glb_os_gfx_context.window.flags, flag); }
-void os_gfx_set_window_state(OS_GFX_WindowConfigFlag flags){ FLAG_SET(glb_os_gfx_context.window.flags, flags); }
-void os_gfx_clear_window_state(OS_GFX_WindowConfigFlag flags){ FLAG_CLEAR(glb_os_gfx_context.window.flags, flags); }
 
-// set window options
-void os_gfx_toggle_fullscreen(void){
-
-}
-
-void os_gfx_maximize_window(void){
-
-}
-
-void os_gfx_minimize_window(void){
-
-}
-
-void os_gfx_restore_window(void){
-
-}
-
-void os_gfx_set_window_title(Str8 title){
-	glb_os_gfx_context.window.title = title;
-	// TODO: (cjk) send event to OS window system to update name
-}
-
-void os_gfx_set_window_position(U32 x, U32 y){ glb_os_gfx_context.window.position = Pnt2_U32(x, y); }
-void os_gfx_set_window_min_size(U32 width, U32 height){ glb_os_gfx_context.window.screen_size_min = Pnt2_U32(width, height); }
-void os_gfx_set_window_max_size(U32 width, U32 height){ glb_os_gfx_context.window.screen_size_max = Pnt2_U32(width, height); }
-
-void os_gfx_set_window_focused(void){
-}
 
 // get window options
 U32 os_gfx_get_screen_width(void){ return glb_os_gfx_context.window.screen_size.x; }
 U32 os_gfx_get_screen_height(void){ return glb_os_gfx_context.window.screen_size.y; }
+U32 os_gfx_get_display_width(void){ return glb_os_gfx_context.window.display_size.x; }
+U32 os_gfx_get_display_height(void){ return glb_os_gfx_context.window.display_size.y; }
 Pnt2U32 os_gfx_get_window_position(void){ return glb_os_gfx_context.window.position; }
 
 // Cursor-related functions

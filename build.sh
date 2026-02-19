@@ -54,7 +54,7 @@ gcc_link="-lm -ldl -lrt"
 gcc_out="-o"
 
 # --- Per-Build Settings
-link_os_gfx="-lxcb -lxcb-shm -lxcb-image"
+link_os_gfx="-lxcb -lxcb-shm -lxcb-image -lxcb-icccm"
 
 # --- Choose Compile/Link lines
 if [ -v gcc ];			then compile_debug="$gcc_debug"; fi

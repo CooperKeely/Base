@@ -7,10 +7,10 @@
 
 # include <xcb/xcb.h>
 # include <xcb/xproto.h>
+# include <xcb/xcb_icccm.h>
 # include <xcb/xcb_pixel.h>
 # include <xcb/xcb_image.h>
 # include <xcb/shm.h>
-
 
 # include <sys/ipc.h>
 # include <sys/shm.h>

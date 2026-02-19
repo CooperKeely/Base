@@ -10,8 +10,6 @@ void os_gfx_init_platform(void){
 	U32 value_mask = 0;
 	U32 value_list[2];
 
-	
-
 	// get connection
 	lnx_ctx->connection = xcb_connect(NULL, NULL);
 	if(xcb_connection_has_error(lnx_ctx->connection)){
@@ -25,10 +23,6 @@ void os_gfx_init_platform(void){
 	// get screen
 	lnx_ctx->setup = xcb_get_setup(lnx_ctx->connection);
 	lnx_ctx->screen = xcb_setup_roots_iterator(lnx_ctx->setup).data;
-
-	// get display size for allocation
-	ctx->window.display_size.x = lnx_ctx->screen->width_in_pixels;
-	ctx->window.display_size.y = lnx_ctx->screen->height_in_pixels;
 
 	// window setup 
 	lnx_ctx->window = xcb_generate_id(lnx_ctx->connection);
@@ -82,7 +76,13 @@ void os_gfx_init_platform(void){
 	       lnx_ctx->window,
 	       value_mask,
 	       value_list);
+	
+	// get display size for allocation
+	ctx->window.display_size.x = lnx_ctx->screen->width_in_pixels;
+	ctx->window.display_size.y = lnx_ctx->screen->height_in_pixels;
 
+	os_gfx_set_window_max_size(ctx->window.display_size.x, ctx->window.display_size.y);
+	os_gfx_set_window_min_size(0, 0);
 
 	// collect replies 
 	xcb_intern_atom_reply_t* protocols_reply = xcb_intern_atom_reply(lnx_ctx->connection, protocols_cookie, NULL);
@@ -215,7 +215,6 @@ void os_gfx_swap_screen_buffer(void){
 }
 
 void os_gfx_paint_pixel(U32 width, U32 height, ColorRGBA c){
-
 	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
 	xcb_image_t* image = lnx_ctx->frame_buffer[lnx_ctx->current_frame_buffer];
 
@@ -233,7 +232,9 @@ void os_gfx_paint_pixel(U32 width, U32 height, ColorRGBA c){
 	}
 }
 
+// window state options
 void os_gfx_set_window_size(U32 w, U32 h){
+
 	OS_GFX_Context* ctx = &glb_os_gfx_context;
 	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
 	
@@ -263,6 +264,110 @@ void os_gfx_set_window_size(U32 w, U32 h){
 		ctx->window.screen_size.x = new_width;
 		ctx->window.screen_size.y = new_height;
 	}
+}
+
+B32 os_gfx_is_window_state(OS_GFX_WindowConfigFlag flag){ return FLAG_IS_SET(glb_os_gfx_context.window.flags, flag); }
+void os_gfx_set_window_state(OS_GFX_WindowConfigFlag flags){ FLAG_SET(glb_os_gfx_context.window.flags, flags); }
+void os_gfx_clear_window_state(OS_GFX_WindowConfigFlag flags){ FLAG_CLEAR(glb_os_gfx_context.window.flags, flags); }
+
+// set window options
+void os_gfx_toggle_fullscreen(void){
+
+}
+
+void os_gfx_maximize_window(void){
+
+}
+
+void os_gfx_minimize_window(void){
+
+}
+
+void os_gfx_restore_window(void){
+
+}
+
+void os_gfx_set_window_title(Str8 title){
+
+	OS_GFX_Context* ctx = &glb_os_gfx_context;
+	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+	
+	ctx->window.title = title;
+	
+	// set window name
+	xcb_change_property(lnx_ctx->connection,
+			XCB_PROP_MODE_REPLACE,
+			lnx_ctx->window,
+			XCB_ATOM_WM_NAME,
+			XCB_ATOM_STRING, 
+			8,
+			ctx->window.title.size,
+			ctx->window.title.str);
+	xcb_flush(lnx_ctx->connection);
+}
+
+void os_gfx_set_window_position(U32 x, U32 y){ 
+	OS_GFX_Context* ctx = &glb_os_gfx_context;
+	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+	
+	// set window position 
+	U32 values[] = {x, y};
+	xcb_configure_window(lnx_ctx->connection,
+			lnx_ctx->window,
+			XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y,
+			values);
+	
+	ctx->window.position = Pnt2_U32(x, y); 
+
+	xcb_flush(lnx_ctx->connection);
+}
+
+void os_gfx_set_window_min_size(U32 width, U32 height){ 
+	OS_GFX_Context* ctx = &glb_os_gfx_context;
+	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+	
+	Assert(0 <= width && width <= os_gfx_get_display_width());
+	Assert(0 <= height && height <= os_gfx_get_display_height());
+
+	xcb_size_hints_t hints;
+	MemoryZeroStruct(&hints);
+
+	hints.flags = XCB_ICCCM_SIZE_HINT_P_MAX_SIZE | XCB_ICCCM_SIZE_HINT_P_MIN_SIZE;
+	hints.max_width = ctx->window.screen_size_max.x;
+	hints.max_height = ctx->window.screen_size_max.y;
+	hints.min_width = width;
+	hints.min_height = height; 
+
+	xcb_icccm_set_wm_normal_hints(lnx_ctx->connection, lnx_ctx->window, &hints);
+	xcb_flush(lnx_ctx->connection);	
+
+	ctx->window.screen_size_min = Pnt2_U32(width, height); 
+}
+
+void os_gfx_set_window_max_size(U32 width, U32 height){ 
+	OS_GFX_Context* ctx = &glb_os_gfx_context;
+	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+
+	Assert(0 <= width && width <= os_gfx_get_display_width());
+	Assert(0 <= height && height <= os_gfx_get_display_height());
+
+	xcb_size_hints_t hints;
+	MemoryZeroStruct(&hints);
+
+	hints.flags = XCB_ICCCM_SIZE_HINT_P_MAX_SIZE | XCB_ICCCM_SIZE_HINT_P_MIN_SIZE;
+	hints.max_width = width;
+	hints.max_height = height;
+	hints.min_width = ctx->window.screen_size_min.x;
+	hints.min_height = ctx->window.screen_size_max.y;
+
+	xcb_icccm_set_wm_normal_hints(lnx_ctx->connection, lnx_ctx->window, &hints);
+	xcb_flush(lnx_ctx->connection);	
+
+	ctx->window.screen_size_max = Pnt2_U32(width, height); 
+}
+
+void os_gfx_set_window_focused(void){
+
 }
 
 void os_gfx_poll_input_events(void){
