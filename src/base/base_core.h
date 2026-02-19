@@ -229,6 +229,8 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #define MemoryMatchStruct(a, b) MemoryMatch((a), (b), sizeof(*(a)))
 #define MemoryMatchArray(a, b) MemoryMatch((a), (b), sizeof((a)))
 
+#define MemoryIsZeroStruct((ptr)) memory_is_zero((ptr), sizeof(*(ptr)))
+
 ///////////////////////////////////////
 /// cjk: Math Helper Definitions
 

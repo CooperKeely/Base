@@ -1,118 +1,158 @@
 ///////////////////////////////////////
 /// cjk: Window API Functions 
 
-OS_GFX_WindowContext* os_gfx_open_window(Arena* arena, RectU16 win_rect, Str8 window_name, ColorRGBA background_color){
-	Assert(arena);	
+void os_gfx_init_platform(void){
+	MemoryZeroStruct(&glb_os_gfx_linux_context);
 
-	OS_GFX_WindowContext* result = ArenaPushStructZero(arena, OS_GFX_WindowContext);
-	
-	result->size = win_rect;
-	result->name = window_name;
+	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+	OS_GFX_Context* ctx = &glb_os_gfx_context;
 
 	U32 value_mask = 0;
 	U32 value_list[2];
 
-
 	// get connection
-	result->connection = xcb_connect(NULL, NULL);
-	if(xcb_connection_has_error(result->connection)){
+	lnx_ctx->connection = xcb_connect(NULL, NULL);
+	if(xcb_connection_has_error(lnx_ctx->connection)){
 		InvalidPath;
 	}
 
+	// register standard XCB cookies 
+	xcb_intern_atom_cookie_t protocols_cookie = xcb_intern_atom(lnx_ctx->connection, 1, 12, "WM_PROTOCOLS");
+	xcb_intern_atom_cookie_t delete_cookie = xcb_intern_atom(lnx_ctx->connection, 0, 16, "WM_CLOSE_WINDOW");
+
 	// get screen
-	result->setup = xcb_get_setup(result->connection);
-	result->screen = xcb_setup_roots_iterator(result->setup).data;
+	lnx_ctx->setup = xcb_get_setup(lnx_ctx->connection);
+	lnx_ctx->screen = xcb_setup_roots_iterator(lnx_ctx->setup).data;
 
 	// create window
-	result->window = xcb_generate_id(result->connection);
-	value_mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
-	value_list[0] = result->screen->white_pixel;
-	value_list[1] = XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_STRUCTURE_NOTIFY;
+	lnx_ctx->window = xcb_generate_id(lnx_ctx->connection);
 
-	xcb_create_window(result->connection, 
-		   XCB_COPY_FROM_PARENT,
-		   result->window,
-		   result->screen->root,
-		   win_rect.x,
-		   win_rect.y,
-		   win_rect.width,
-		   win_rect.height,
-		   0,
-		   XCB_WINDOW_CLASS_INPUT_OUTPUT,
-		   result->screen->root_visual,
-		   value_mask,
-		   value_list
-		);
+	value_mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK ;
+	value_list[0] = lnx_ctx->screen->white_pixel;
+	value_list[1] = XCB_EVENT_MASK_KEY_PRESS 	| 	XCB_EVENT_MASK_KEY_RELEASE	|
+			XCB_EVENT_MASK_BUTTON_PRESS 	|	XCB_EVENT_MASK_BUTTON_RELEASE	|
+			XCB_EVENT_MASK_ENTER_WINDOW	|	XCB_EVENT_MASK_LEAVE_WINDOW	|
+			XCB_EVENT_MASK_POINTER_MOTION 	|	XCB_EVENT_MASK_EXPOSURE		|
+			XCB_EVENT_MASK_STRUCTURE_NOTIFY |	XCB_EVENT_MASK_FOCUS_CHANGE	|
+			XCB_EVENT_MASK_PROPERTY_CHANGE	|	XCB_EVENT_MASK_VISIBILITY_CHANGE|
+			XCB_EVENT_MASK_BUTTON_MOTION	|	XCB_EVENT_MASK_BUTTON_1_MOTION	|	
+			XCB_EVENT_MASK_BUTTON_2_MOTION	|	XCB_EVENT_MASK_BUTTON_3_MOTION	|	
+			XCB_EVENT_MASK_BUTTON_4_MOTION	|	XCB_EVENT_MASK_BUTTON_5_MOTION	|	
+			XCB_EVENT_MASK_KEYMAP_STATE	|	XCB_EVENT_MASK_RESIZE_REDIRECT	;
+			
 
-	// create graphics context
-	result->graphics_ctx = xcb_generate_id(result->connection);
-	value_mask = XCB_GC_FOREGROUND | XCB_GC_GRAPHICS_EXPOSURES;
-	value_list[0] = result->screen->black_pixel;
-	value_list[1] = 0;
-	xcb_create_gc(result->connection, result->graphics_ctx, result->window, value_mask, value_list);
-
+	xcb_create_window(lnx_ctx->connection, 
+			XCB_COPY_FROM_PARENT,
+			lnx_ctx->window,
+			lnx_ctx->screen->root,
+			ctx->window.position.x,
+			ctx->window.position.y,
+			ctx->window.screen_size.x,
+			ctx->window.screen_size.y,
+			0,
+			XCB_WINDOW_CLASS_INPUT_OUTPUT,
+			lnx_ctx->screen->root_visual,
+			value_mask,
+			value_list);
+		
 	// set window name
-	xcb_change_property(result->connection,
-		     XCB_PROP_MODE_REPLACE,
-		     result->window,
-		     XCB_ATOM_WM_NAME,
-		     XCB_ATOM_STRING, 
-		     8,
-		     window_name.size,
-		     window_name.str);
-
-	// map window to screen
-	xcb_map_window(result->connection, result->window);
-	xcb_flush(result->connection);
-
-	// test if shm is enabled
-	xcb_shm_query_version_reply_t* version = xcb_shm_query_version_reply(result->connection, xcb_shm_query_version(result->connection), NULL);
-	free(version);
-
-	// create shared memory region
-	U64 total_size = win_rect.width * win_rect.height * sizeof(ColorBGRA);  
+	xcb_change_property(lnx_ctx->connection,
+			XCB_PROP_MODE_REPLACE,
+			lnx_ctx->window,
+			XCB_ATOM_WM_NAME,
+			XCB_ATOM_STRING, 
+			8,
+			ctx->window.title.size,
+			ctx->window.title.str);
 	
-	result->shm_info.shmid = shmget(IPC_PRIVATE, total_size, IPC_CREAT|0600);
-	result->shm_info.shmaddr = shmat(result->shm_info.shmid, 0, 0);
-	result->shm_info.shmseg = xcb_generate_id(result->connection);
-
-	xcb_shm_attach(result->connection, result->shm_info.shmseg, result->shm_info.shmid, 0);
-	shmctl(result->shm_info.shmid, IPC_RMID, 0);
-
-	result->image = xcb_image_create_native(result->connection,
-			 win_rect.width, 
-			 win_rect.height,
-			 XCB_IMAGE_FORMAT_Z_PIXMAP,
-			 result->screen->root_depth,
-			 result->shm_info.shmaddr,
-			 total_size,
-			 0
-		  );
+	// collect replies 
+	xcb_intern_atom_reply_t* protocols_reply = xcb_intern_atom_reply(lnx_ctx->connection, protocols_cookie, NULL);
+	xcb_intern_atom_reply_t* delete_reply = xcb_intern_atom_reply(lnx_ctx->connection, delete_cookie, NULL);
 	
-	// wait for the window to be mapped before giving it to the user
-	xcb_generic_event_t *ev;
-	while ((ev = xcb_wait_for_event(result->connection))) {
-	    if ((ev->response_type & ~0x80) == XCB_MAP_NOTIFY) {
-		free(ev);
-		break;
-	    }
-	    free(ev);
+	// tell the window mangager to send message instad of killing us 
+	xcb_change_property(lnx_ctx->connection,
+			XCB_PROP_MODE_REPLACE,
+			lnx_ctx->window,
+			protocols_reply->atom,
+			XCB_ATOM_ATOM, 
+			32,
+		     	1,
+			&delete_reply->atom);
+	
+	// save the atom to check for it later in event loop
+	lnx_ctx->close_window_atom = delete_reply->atom;	
+	
+	free(protocols_reply);
+	free(delete_reply);	
+
+	os_gfx_reset_frame_buffers();
+}
+
+void os_gfx_close_platform(void){
+	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+
+	for EachIndex(idx, 2){
+		xcb_shm_detach(lnx_ctx->connection, lnx_ctx->shm_info[idx].shmseg);
+		shmdt(lnx_ctx->shm_info[idx].shmaddr);
+	
+		// NOTE: set the base pointer to null because it has already been freed by shm
+		// so it dosent get double freed by xcb_image_destroy()
+
+		lnx_ctx->frame_buffer[idx]->base = NULL;
+        	xcb_image_destroy(lnx_ctx->frame_buffer[idx]);
+		lnx_ctx->frame_buffer[idx] = NULL;
 	}
 	
-	return result;	
+	if(lnx_ctx->window) xcb_destroy_window(lnx_ctx->connection, lnx_ctx->window);
+	if(lnx_ctx->connection) xcb_disconnect(lnx_ctx->connection);
 }
 
-void os_gfx_resize_window(OS_GFX_WindowContext* ctx, U16 width, U16 height){
-	NotImplemented;
-}
+void os_gfx_reset_frame_buffers(void){
+	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+	OS_GFX_Context* ctx = &glb_os_gfx_context;
+	lnx_ctx->current_frame_buffer = 0;
 
-void os_gfx_move_window(OS_GFX_WindowContext* ctx, U16 x, U16 y){
-	NotImplemented;
-}
+	for EachIndex(idx, 2){
+		// free old shared frame buffer memory
+		if(lnx_ctx->frame_buffer[idx]){
+			xcb_shm_detach(lnx_ctx->connection, lnx_ctx->shm_info[idx].shmseg);
+			free(lnx_ctx->frame_buffer[idx]);
+			shmdt(lnx_ctx->shm_info[idx].shmaddr);
+		}
+		
+		U64 total_size = ctx->window.screen_size.x * ctx->window.screen_size.y * sizeof(ColorBGRA);
 
+		
+		// get the shared memory
+		lnx_ctx->shm_info[idx].shmid = shm_get(IPC_PRIVATE, total_size, IPC_CREAT|0777);
+		lnx_ctx->shm_info[idx].shmaddr = (void*) shmat(lnx_ctx->shm_info[idx], 0, 0);
+		Assert(lnx_ctx->shm_info[idx].shmaddr != (void*)-1);
+		
+		// create a new image
+		lnx_ctx->frame_buffer[idx] = xcb_create_image_native(
+			lnx_ctx->connection,
+			ctx->window.screen_size.x,
+			ctx->window.screen_size.y,
+			XCB_IMAGE_FORMAT_Z_PIXMAP,
+			lnx_ctx->screen->root_depth,
+			lnx_ctx->shm_info[idx].shmaddr,
+			total_size,
+			lnx_ctx->shm_info[idx].shmaddr	
+		);
 
-void os_gfx_resize_and_move_window(OS_GFX_WindowContext* ctx, RectU16 new_size){
-	NotImplemented;
+		lnx_ctx->shm_info[idx].shmseg = xcb_generate_id(lnx_ctx->connection);
+
+		xcb_shm_attach(lnx_ctx->connection, 
+		 		lnx_ctx->shm_info[idx].shmseg, 
+		 		lnx_ctx->shm_info[idx].shmid, 
+		 		0);
+
+		xcb_flush(lnx_ctx->connection);
+
+		shm_ctl(lnx_ctx->shm_info[idx].shmid, IPC_RMID, 0);	
+
+	}
+
 }
 
 
@@ -144,24 +184,3 @@ void os_gfx_draw_window(OS_GFX_WindowContext* ctx){
 
 }
 
-void os_gfx_close_window(OS_GFX_WindowContext* ctx){
-	xcb_shm_detach(ctx->connection, ctx->shm_info.shmseg);
-	shmdt(ctx->shm_info.shmaddr);
-	
-	// NOTE: set the base pointer to null because it has already been freed by shm
-	// so it dosent get double freed by xcb_image_destroy()
-	ctx->image->base = NULL;
-
-        xcb_image_destroy(ctx->image);
-	xcb_destroy_window(ctx->connection, ctx->window);
-	xcb_disconnect(ctx->connection);
-}
-
-void os_gfx_register_input_events(OS_GFX_WindowContext* ctx, OS_GFX_EventFlag flags){
-	
-	
-}
-
-U32 os_gfx_num_of_pending_events(OS_GFX_WindowContext* ctx){
-	NotImplemented;
-}

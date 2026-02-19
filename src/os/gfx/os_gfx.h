@@ -74,14 +74,10 @@ typedef struct {
 		Pnt2U32 screen_size;
 		Pnt2U32 position;
 		Pnt2U32 previous_screen_size;
-		Pnt2U32 prvious_position;
-		
-		Pnt2U32 render_size;
+		Pnt2U32 previous_position;
 
 		Pnt2U32 screen_size_min;
 		Pnt2U32 screen_size_max;
-
-		void* frame_buffer[2];
 	}window;
 	struct{
 		struct{
@@ -128,10 +124,11 @@ typedef struct {
 
 global OS_GFX_Context glb_os_gfx_context;
 
-
 // Open and closing window
 void os_gfx_init_window(U32 x, U32 y, U32 width, U32 height, Str8 window_name);
 void os_gfx_close_window(void);
+void os_gfx_init_platform(void);
+void os_gfx_close_platform(void);
 
 // Begin and end drawing
 void os_gfx_begin_drawing(void);
@@ -188,6 +185,7 @@ int os_gfx_get_fps(void);                                 // Get current FPS
 void os_gfx_swap_screen_buffer(void);                      // Swap back buffer with front buffer (screen drawing)
 void os_gfx_poll_input_events(void);                       // Register all input events
 void os_gfx_wait_time(U64 micro_seconds);                    // Wait for some time (halt program execution)
+void* os_gfx_get_current_frame_buffer();
 
 ///////////////////////////////////////
 /// cjk: Input Handeling API Definitions 

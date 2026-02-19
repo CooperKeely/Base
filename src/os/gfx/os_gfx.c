@@ -1,5 +1,15 @@
 // Open and closing window
 void os_gfx_init_window(U32 x, U32 y, U32 width, U32 height, Str8 window_name){
+	Assert(!MemoryIsZeroStruct(&os_state)); // os must be inialized before using os gfx
+	
+	// make sure all memory is set to zero
+	MemoryZeroStruct(&glb_os_gfx_context);
+
+	glb_os_gfx_context.window.position = Pnt2_U32(x, y);	
+	glb_os_gfx_context.window.size = Pnt2_U32(width, height);	
+	glb_os_gfx_context.window.title = window_name;
+
+
 
 }
 
@@ -12,6 +22,7 @@ void os_gfx_begin_drawing(void){
 }
 
 void os_gfx_end_drawing(void){
+
 }
 
 void os_gfx_clear_background(ColorRGBA c){
@@ -21,40 +32,17 @@ void os_gfx_clear_background(ColorRGBA c){
 // window helper functions
 B32 os_gfx_window_should_close(void) { return glb_os_gfx_context.window.should_close; }
 B32 os_gfx_is_window_ready(void){ return glb_os_gfx_context.window.ready; }
-
 B32 os_gfx_is_window_resized(void){ return glb_os_gfx_context.window.resized_last_frame; }
-
-B32 os_gfx_is_window_fullscreen(void){
-	return FLAG_IS_SET(glb_os_gfx_context.window.flags, OS_GFX_WindowConfigFlag_Fullscreen);
-}
-B32 os_gfx_is_window_hidden(void){
-	return FLAG_IS_SET(glb_os_gfx_context.window.flags, OS_GFX_WindowConfigFlag_Hidden);
-}
-B32 os_gfx_is_window_minimized(void){
-	return FLAG_IS_SET(glb_os_gfx_context.window.flags, OS_GFX_WindowConfigFlag_Minimized);
-}
-
-B32 os_gfx_is_window_maximized(void){
-	return FLAG_IS_SET(glb_os_gfx_context.window.flags, OS_GFX_WindowConfigFlag_Maximized);
-}
-
-B32 os_gfx_is_window_focused(void){
-	return !FLAG_IS_SET(glb_os_gfx_context.window.flags, OS_GFX_WindowConfigFlag_Unfocused);
-}
-
+B32 os_gfx_is_window_fullscreen(void){ return FLAG_IS_SET(glb_os_gfx_context.window.flags, OS_GFX_WindowConfigFlag_Fullscreen); }
+B32 os_gfx_is_window_hidden(void){ return FLAG_IS_SET(glb_os_gfx_context.window.flags, OS_GFX_WindowConfigFlag_Hidden); }
+B32 os_gfx_is_window_minimized(void){ return FLAG_IS_SET(glb_os_gfx_context.window.flags, OS_GFX_WindowConfigFlag_Minimized); }
+B32 os_gfx_is_window_maximized(void){ return FLAG_IS_SET(glb_os_gfx_context.window.flags, OS_GFX_WindowConfigFlag_Maximized); }
+B32 os_gfx_is_window_focused(void){ return !FLAG_IS_SET(glb_os_gfx_context.window.flags, OS_GFX_WindowConfigFlag_Unfocused); }
 
 // window state options
-B32 os_gfx_is_window_state(OS_GFX_WindowConfigFlag flag){
-	return FLAG_IS_SET(glb_os_gfx_context.window.flags, flag);
-}
-
-void os_gfx_set_window_state(OS_GFX_WindowConfigFlag flags){
-	return FLAG_SET(glb_os_gfx_context.window.flags, flags);
-}
-
-void os_gfx_clear_window_state(OS_GFX_WindowConfigFlag flags){
-	return FLAG_CLEAR(glb_os_gfx_context.window.flags, flags);
-}
+B32 os_gfx_is_window_state(OS_GFX_WindowConfigFlag flag){ return FLAG_IS_SET(glb_os_gfx_context.window.flags, flag); }
+void os_gfx_set_window_state(OS_GFX_WindowConfigFlag flags){ return FLAG_SET(glb_os_gfx_context.window.flags, flags); }
+void os_gfx_clear_window_state(OS_GFX_WindowConfigFlag flags){ return FLAG_CLEAR(glb_os_gfx_context.window.flags, flags); }
 
 // set window options
 void os_gfx_toggle_fullscreen(void){
@@ -78,17 +66,9 @@ void os_gfx_set_window_title(Str8 title){
 	// TODO: (cjk) send event to OS window system to update name
 }
 
-void os_gfx_set_window_position(U32 x, U32 y){
-	glb_os_gfx_context.window.position = Pnt2_U32(x, y);
-}
-
-void os_gfx_set_window_min_size(U32 width, U32 height){
-	glb_os_gfx_context.window.screen_size_min = Pnt2_U32(width, height);
-}
-
-void os_gfx_set_window_max_size(U32 width, U32 height){
-	glb_os_gfx_context.window.screen_size_max = Pnt2_U32(width, height);
-}
+void os_gfx_set_window_position(U32 x, U32 y){ glb_os_gfx_context.window.position = Pnt2_U32(x, y); }
+void os_gfx_set_window_min_size(U32 width, U32 height){ glb_os_gfx_context.window.screen_size_min = Pnt2_U32(width, height); }
+void os_gfx_set_window_max_size(U32 width, U32 height){ glb_os_gfx_context.window.screen_size_max = Pnt2_U32(width, height); }
 
 void os_gfx_set_window_size(U32 width, U32 height){
 	glb_os_gfx_context.window.screen_size = Pnt2_U32(width, height);	
@@ -99,15 +79,9 @@ void os_gfx_set_window_focused(void){
 }
 
 // get window options
-U32 os_gfx_get_screen_width(void){
-	return glb_os_gfx_context.window.screen_size.x;
-}
-U32 os_gfx_get_screen_height(void){
-	return glb_os_gfx_context.window.screen_size.y;
-}
-Pnt2U32 os_gfx_get_window_position(void){
-	return glb_os_gfx_context.window.position;
-}
+U32 os_gfx_get_screen_width(void){ return glb_os_gfx_context.window.screen_size.x; }
+U32 os_gfx_get_screen_height(void){ return glb_os_gfx_context.window.screen_size.y; }
+Pnt2U32 os_gfx_get_window_position(void){ return glb_os_gfx_context.window.position; }
 
 // Cursor-related functions
 void os_gfx_show_cursor(void){
@@ -118,13 +92,8 @@ void os_gfx_hide_cursor(void){
 
 }
 
-B32 os_gfx_is_cursor_hidden(void){
-	return glb_os_gfx_context.input.mouse.cursor_hidden;
-}
-
-B32 os_gfx_is_cursor_on_screen(void){
-	return glb_os_gfx_context.input.mouse.cursor_on_screen;
-}
+B32 os_gfx_is_cursor_hidden(void){ return glb_os_gfx_context.input.mouse.cursor_hidden; }
+B32 os_gfx_is_cursor_on_screen(void){ return glb_os_gfx_context.input.mouse.cursor_on_screen; }
 
 void os_gfx_enable_cursor(void){
 
@@ -136,13 +105,17 @@ void os_gfx_disable_cursor(void){
 
 // Timing-related functions
 void os_gfx_set_target_fps(U32 fps){
-		
-
+	if(fps == 0) glb_os_gfx_context.time.target = F32Lit(0.0);
+	else glb_os_gfx_context.time.target = F32Lit(1.0)/(F32)fps;
 } 
 
-F32 os_gfx_get_frame_time(void){ NotImplemented; }
-F64 os_gfx_get_time(void){ NotImplemented; }
-int os_gfx_get_fps(void){ NotImplemented; }
+F64 os_gfx_get_frame_time(void){
+	return glb_os_gfx_context.time.frame;
+}
+
+U32 os_gfx_get_fps(void){
+	
+}
 
 void os_gfx_swap_screen_buffer(void){ NotImplemented; }
 void os_gfx_poll_input_events(void){ NotImplemented; }

@@ -17,23 +17,17 @@
 
 # pragma pop_macro("read_only")
 
-struct OS_GFX_WindowContext{
+typedef struct{
 	xcb_connection_t*		connection;
 	xcb_screen_t*			screen;
 	xcb_window_t			window;	
-	xcb_image_t*			image;
-	const xcb_setup_t* 		setup;
-	xcb_gcontext_t			graphics_ctx;
-	xcb_shm_segment_info_t		shm_info;
-	RectU16				size;
-	RectU16				over_size;
-	Str8				name;
-} ;
+	xcb_setup_t* 			setup;
 
-enum{
-	OS_GFX_EventFlag_	
+	xcb_image_t*			frame_buffer[2];
+	xcb_shm_segment_info_t		shm_info[2];
+	B32				current_frame_buffer;
+} OS_GFX_LinuxContext;
 
-};
-
+global OS_GFX_LinuxContext glb_os_gfx_linux_context;
 
 #endif //OS_GFX_LINUX_H
