@@ -4,43 +4,6 @@
 ///////////////////////////////////////
 /// cjk: Window API Definitions 
 
-typedef U64 OS_GFX_EventFlag;
-enum{
-	OS_GFX_EventFlag_Keyboard_KeyPressed,
-	OS_GFX_EventFlag_Keyboard_KeyReleased,
-	OS_GFX_EventFlag_Mouse_ButtonPressed,
-	OS_GFX_EventFlag_Mouse_ButtonReleased,
-	OS_GFX_EventFlag_Mouse_MotionNotify,
-	OS_GFX_EventFlag_Window_EnterNotify,
-	OS_GFX_EventFlag_Window_LeaveNotify,
-	OS_GFX_EventFlag_Input_FocusIn,
-	OS_GFX_EventFlag_Input_FocusOut,
-	OS_GFX_EventFlag_KeyMap_KeyMapNotify,
-	OS_GFX_EventFlag_Exposure_Expose,
-	OS_GFX_EventFlag_Exposure_GraphicsExpose,
-	OS_GFX_EventFlag_Exposure_NoExpose,
-	OS_GFX_EventFlag_Structure_CirculateRequest,
-	OS_GFX_EventFlag_Structure_ConfigureRequest,
-	OS_GFX_EventFlag_Structure_MapRequest,
-	OS_GFX_EventFlag_Strucutre_ResizeRequest,
-	OS_GFX_EventFlag_WindowState_CirculateNotify,
-	OS_GFX_EventFlag_WindowState_ConfigureNotify,
-	OS_GFX_EventFlag_WindowState_CreateNotify,
-	OS_GFX_EventFlag_WindowState_DestroyNotify,
-	OS_GFX_EventFlag_WindowState_GravityNotify,
-	OS_GFX_EventFlag_WindowState_MapNotify,
-	OS_GFX_EventFlag_WindowState_MappingNotify,
-	OS_GFX_EventFlag_WindowState_ReparentNotify,
-	OS_GFX_EventFlag_WindowState_UnmapNotify,
-	OS_GFX_EventFlag_WindowState_VisibilityNotify,
-	OS_GFX_EventFlag_ColorMap_ColorMapNotify,
-	OS_GFX_EventFlag_Client_ClientMessage,
-	OS_GFX_EventFlag_Client_PropertyNotify,
-	OS_GFX_EventFlag_Client_SelectionClear,
-	OS_GFX_EventFlag_Client_SelectionNotify,
-	OS_GFX_EventFlag_Client_SelectionRequest,
-};
-
 typedef U64 OS_GFX_WindowConfigFlag;
 enum{
 	OS_GFX_WindowConfigFlag_Fullscreen 	= (1<<0),
@@ -171,6 +134,8 @@ void os_gfx_set_window_focused(void);
 // get window options
 U32 os_gfx_get_screen_width(void);
 U32 os_gfx_get_screen_height(void);
+U32 os_gfx_get_display_width(void);
+U32 os_gfx_get_display_height(void);
 Pnt2U32 os_gfx_get_window_position(void);
 
 // Cursor-related functions

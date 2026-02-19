@@ -271,6 +271,14 @@ void os_gfx_set_window_state(OS_GFX_WindowConfigFlag flags){ FLAG_SET(glb_os_gfx
 void os_gfx_clear_window_state(OS_GFX_WindowConfigFlag flags){ FLAG_CLEAR(glb_os_gfx_context.window.flags, flags); }
 
 // set window options
+void os_gfx_sync_window_config(void){
+	OS_GFX_Context* ctx = &glb_os_gfx_context;
+	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+	
+	// update decorations
+	xcb_intern_atom_cookie_t motif_cookie = xcb_intern_atom()
+}
+
 void os_gfx_toggle_fullscreen(void){
 
 }
@@ -288,7 +296,6 @@ void os_gfx_restore_window(void){
 }
 
 void os_gfx_set_window_title(Str8 title){
-
 	OS_GFX_Context* ctx = &glb_os_gfx_context;
 	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
 	
@@ -341,6 +348,7 @@ void os_gfx_set_window_min_size(U32 width, U32 height){
 	xcb_icccm_set_wm_normal_hints(lnx_ctx->connection, lnx_ctx->window, &hints);
 	xcb_flush(lnx_ctx->connection);	
 
+	os_gfx_set_window_state(OS_GFX_WindowConfigFlag_Resizeable);
 	ctx->window.screen_size_min = Pnt2_U32(width, height); 
 }
 
@@ -363,6 +371,7 @@ void os_gfx_set_window_max_size(U32 width, U32 height){
 	xcb_icccm_set_wm_normal_hints(lnx_ctx->connection, lnx_ctx->window, &hints);
 	xcb_flush(lnx_ctx->connection);	
 
+	os_gfx_set_window_state(OS_GFX_WindowConfigFlag_Resizeable);
 	ctx->window.screen_size_max = Pnt2_U32(width, height); 
 }
 
