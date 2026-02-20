@@ -272,11 +272,11 @@ void os_gfx_clear_window_state(OS_GFX_WindowConfigFlag flags){ FLAG_CLEAR(glb_os
 
 // set window options
 void os_gfx_sync_window_config(void){
-	OS_GFX_Context* ctx = &glb_os_gfx_context;
-	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+	//OS_GFX_Context* ctx = &glb_os_gfx_context;
+	//OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
 	
 	// update decorations
-	xcb_intern_atom_cookie_t motif_cookie = xcb_intern_atom()
+	//xcb_intern_atom_cookie_t motif_cookie = xcb_intern_atom()
 }
 
 void os_gfx_toggle_fullscreen(void){
@@ -284,11 +284,72 @@ void os_gfx_toggle_fullscreen(void){
 }
 
 void os_gfx_maximize_window(void){
+	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+	
+	// get the atoms for the state change
+	xcb_intern_atom_cookie_t state_cookie = xcb_intern_atom(lnx_ctx->connection, 0, 13, "_NET_WM_STATE");
+	xcb_intern_atom_cookie_t horz_cookie = xcb_intern_atom(lnx_ctx->connection, 0, 28, "_NET_WM_STATE_MAXIMIZED_HORZ");
+	xcb_intern_atom_cookie_t vert_cookie = xcb_intern_atom(lnx_ctx->connection, 0, 28, "_NET_WM_STATE_MAXIMIZED_VERT");
 
+	xcb_intern_atom_reply_t* state_reply = xcb_intern_atom_reply(lnx_ctx->connection, state_cookie, NULL);
+	xcb_intern_atom_reply_t* horz_reply = xcb_intern_atom_reply(lnx_ctx->connection, horz_cookie, NULL);
+	xcb_intern_atom_reply_t* vert_reply = xcb_intern_atom_reply(lnx_ctx->connection, vert_cookie, NULL);
+	
+	// prepare client message
+	xcb_client_message_event_t event = {0};
+	event.response_type = XCB_CLIENT_MESSAGE;
+	event.format = 32;
+	event.sequence = 0;
+	event.window = lnx_ctx->window;
+	event.type = state_reply->atom;
+
+	event.data.data32[0] = 1;
+	event.data.data32[1] = horz_reply->atom;
+	event.data.data32[2] = vert_reply->atom;
+	event.data.data32[3] = 0;
+	event.data.data32[4] = 0;
+
+	// send the event
+	xcb_send_event(lnx_ctx->connection,
+		0,
+		lnx_ctx->screen->root,
+		XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
+		(const char*) &event);
+
+	xcb_flush(lnx_ctx->connection);
+
+	free(state_reply);
+	free(horz_reply);
+	free(vert_reply);
 }
 
 void os_gfx_minimize_window(void){
+	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+	
+	// get the atoms for the state change
+	xcb_intern_atom_cookie_t state_cookie = xcb_intern_atom(lnx_ctx->connection, 0, cstring_length("WM_CHANGE_STATE") , "WM_CHANGE_STATE");
+	xcb_intern_atom_reply_t* state_reply = xcb_intern_atom_reply(lnx_ctx->connection, state_cookie, NULL);
 
+	// prepare client message
+	xcb_client_message_event_t event = {0};
+	event.response_type = XCB_CLIENT_MESSAGE;
+	event.format = 32;
+	event.sequence = 0;
+	event.window = lnx_ctx->window;
+	event.type = state_reply->atom;
+
+	event.data.data32[0] = 3;
+
+	// send the event
+	xcb_send_event(lnx_ctx->connection,
+		0,
+		lnx_ctx->screen->root,
+		XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
+		(const char*) &event);
+
+	xcb_flush(lnx_ctx->connection);
+
+	free(state_reply);
 }
 
 void os_gfx_restore_window(void){
@@ -310,6 +371,7 @@ void os_gfx_set_window_title(Str8 title){
 			8,
 			ctx->window.title.size,
 			ctx->window.title.str);
+
 	xcb_flush(lnx_ctx->connection);
 }
 
