@@ -203,7 +203,8 @@ void draw_obj_test(){
 
 	// Open the window
 	os_gfx_init_window(100, 100, 1000, 1000, Str8Lit("Software Renderer - Speed Test"));
-	os_gfx_minimize_window();
+
+	os_gfx_toggle_fullscreen();
 	
 	//os_gfx_set_window_max_size(1500, 1500);
 	//os_gfx_set_window_min_size(500, 500);

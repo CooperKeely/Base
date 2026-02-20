@@ -280,7 +280,52 @@ void os_gfx_sync_window_config(void){
 }
 
 void os_gfx_toggle_fullscreen(void){
+	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+	
+	// get the atoms for the state change
+	char* state_message = "_NET_WM_STATE";
+	U32 state_len = cstring_length(state_message);
 
+	char* fullscreen_message = "_NET_WM_STATE_FULLSCREEN";
+	U32 fullscreen_len = cstring_length(fullscreen_message); 
+
+	xcb_intern_atom_cookie_t state_cookie = 
+		xcb_intern_atom(lnx_ctx->connection, 0, state_len, state_message);
+
+	xcb_intern_atom_cookie_t fs_cookie = 
+		xcb_intern_atom(lnx_ctx->connection, 0, fullscreen_len, fullscreen_message);
+
+	xcb_intern_atom_reply_t* state_reply = xcb_intern_atom_reply(lnx_ctx->connection, state_cookie, NULL);
+	xcb_intern_atom_reply_t* fs_reply = xcb_intern_atom_reply(lnx_ctx->connection, fs_cookie, NULL);
+	
+	// prepare client message
+	xcb_client_message_event_t event = {0};
+	event.response_type = XCB_CLIENT_MESSAGE;
+	event.format = 32;
+	event.sequence = 0;
+	event.window = lnx_ctx->window;
+	event.type = state_reply->atom;
+
+	B32 is_window_fs = os_gfx_is_window_state(OS_GFX_WindowConfigFlag_Fullscreen);
+	event.data.data32[0] = !is_window_fs;
+	event.data.data32[1] = fs_reply->atom;
+	event.data.data32[2] = 0; 
+	event.data.data32[3] = 1;
+	
+	if(is_window_fs) os_gfx_clear_window_state(OS_GFX_WindowConfigFlag_Fullscreen);
+	else os_gfx_set_window_state(OS_GFX_WindowConfigFlag_Fullscreen);
+
+	// send the event
+	xcb_send_event(lnx_ctx->connection,
+		0,
+		lnx_ctx->screen->root,
+		XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
+		(const char*) &event);
+
+	xcb_flush(lnx_ctx->connection);
+
+	free(state_reply);
+	free(fs_reply);
 }
 
 void os_gfx_maximize_window(void){
@@ -327,8 +372,11 @@ void os_gfx_minimize_window(void){
 	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
 	
 	// get the atoms for the state change
-	xcb_intern_atom_cookie_t state_cookie = xcb_intern_atom(lnx_ctx->connection, 0, cstring_length("WM_CHANGE_STATE") , "WM_CHANGE_STATE");
-	xcb_intern_atom_reply_t* state_reply = xcb_intern_atom_reply(lnx_ctx->connection, state_cookie, NULL);
+	xcb_intern_atom_cookie_t state_cookie = 
+		xcb_intern_atom(lnx_ctx->connection, 0, cstring_length("WM_CHANGE_STATE") , "WM_CHANGE_STATE");
+
+	xcb_intern_atom_reply_t* state_reply = 
+		xcb_intern_atom_reply(lnx_ctx->connection, state_cookie, NULL);
 
 	// prepare client message
 	xcb_client_message_event_t event = {0};
@@ -353,7 +401,37 @@ void os_gfx_minimize_window(void){
 }
 
 void os_gfx_restore_window(void){
+	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+	
+	// get the atoms for the state change
+	char* client_message = "_NET_ACTIVE_WINDOW";
+	xcb_intern_atom_cookie_t state_cookie = 
+		xcb_intern_atom(lnx_ctx->connection, 0, cstring_length(client_message), client_message);
 
+	xcb_intern_atom_reply_t* state_reply = 
+		xcb_intern_atom_reply(lnx_ctx->connection, state_cookie, NULL);
+
+	// prepare client message
+	xcb_client_message_event_t event = {0};
+	event.response_type = XCB_CLIENT_MESSAGE;
+	event.format = 32;
+	event.sequence = 0;
+	event.window = lnx_ctx->window;
+	event.type = state_reply->atom;
+
+	event.data.data32[0] = 2;
+	event.data.data32[1] = XCB_CURRENT_TIME;
+	event.data.data32[2] = 0;
+	
+	// send the event
+	xcb_send_event(lnx_ctx->connection,
+		0,
+		lnx_ctx->screen->root,
+		XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
+		(const char*) &event);
+
+	xcb_flush(lnx_ctx->connection);
+	free(state_reply);
 }
 
 void os_gfx_set_window_title(Str8 title){
@@ -420,10 +498,11 @@ void os_gfx_set_window_max_size(U32 width, U32 height){
 
 	Assert(0 <= width && width <= os_gfx_get_display_width());
 	Assert(0 <= height && height <= os_gfx_get_display_height());
-
+	
+	// send a icccm hint to set the window max size
 	xcb_size_hints_t hints;
 	MemoryZeroStruct(&hints);
-
+	
 	hints.flags = XCB_ICCCM_SIZE_HINT_P_MAX_SIZE | XCB_ICCCM_SIZE_HINT_P_MIN_SIZE;
 	hints.max_width = width;
 	hints.max_height = height;
@@ -438,7 +517,36 @@ void os_gfx_set_window_max_size(U32 width, U32 height){
 }
 
 void os_gfx_set_window_focused(void){
+	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
+	
+	// get the atoms for the state change
+	char* client_message = "_NET_ACTIVE_WINDOW";
+	xcb_intern_atom_cookie_t state_cookie = xcb_intern_atom(lnx_ctx->connection, 0, cstring_length(client_message) , client_message);
+	xcb_intern_atom_reply_t* state_reply = xcb_intern_atom_reply(lnx_ctx->connection, state_cookie, NULL);
 
+	// prepare client message
+	xcb_client_message_event_t event = {0};
+	event.response_type = XCB_CLIENT_MESSAGE;
+	event.format = 32;
+	event.sequence = 0;
+	event.window = lnx_ctx->window;
+	event.type = state_reply->atom;
+
+	event.data.data32[0] = 1;
+	event.data.data32[1] = 1;
+	event.data.data32[2] = 0;
+	event.data.data32[3] = 0;
+	event.data.data32[4] = 0;
+
+	// send the event
+	xcb_send_event(lnx_ctx->connection,
+		0,
+		lnx_ctx->screen->root,
+		XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
+		(const char*) &event);
+
+	xcb_flush(lnx_ctx->connection);
+	free(state_reply);
 }
 
 void os_gfx_poll_input_events(void){
