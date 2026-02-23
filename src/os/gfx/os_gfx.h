@@ -154,8 +154,8 @@ U32 os_gfx_get_fps(void);                                 // Get current FPS
 
 void os_gfx_swap_screen_buffer(void);                      // Swap back buffer with front buffer (screen drawing)
 void os_gfx_poll_input_events(void);                       // Register all input events
-void* os_gfx_get_current_frame_buffer();
-void os_gfx_reset_frame_buffers();
+void* os_gfx_get_current_frame_buffer(void);
+void os_gfx_reset_frame_buffers(void);
 
 ///////////////////////////////////////
 /// cjk: Input Handeling API Definitions 

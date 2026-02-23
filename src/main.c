@@ -15,8 +15,6 @@
 #include "format/format_inc.c"
 #include "renderer/renderer_inc.c"
 
-
-
 static U32 xorshift_state = 42;
 
 U32 fast_rand(void){
@@ -204,15 +202,6 @@ void draw_obj_test(){
 	// Open the window
 	os_gfx_init_window(100, 100, 1000, 1000, Str8Lit("Software Renderer - Speed Test"));
 
-	os_gfx_toggle_fullscreen();
-	
-	//os_gfx_set_window_max_size(1500, 1500);
-	//os_gfx_set_window_min_size(500, 500);
-	
-	// setup window configuration
-	//U32 config = OS_GFX_WindowConfigFlag_Resizeable;
-	//os_gfx_set_window_state(config);
-
 	os_gfx_set_target_fps(60);
 
 	while (!os_gfx_window_should_close()) {
@@ -268,9 +257,3 @@ S32 entry_point(U64 argc, U8** argv){
 
 
 int main(int argc, char** argv){os_entry_point(argc, (U8**) argv, &entry_point);}
-
-
-
-
-
-
