@@ -1,11 +1,9 @@
 ///////////////////////////////////////
 /// cjk: Window API Functions 
 
-void os_gfx_init_platform(void){
-	MemoryZeroStruct(&glb_os_gfx_linux_context);
-
-	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
-	OS_GFX_Context* ctx = &glb_os_gfx_context;
+void os_gfx_init_platform(Arena* arena){
+	OS_GFX_LinuxContext* lnx_ctx = ArenaPushStructZero(arena, OS_GFX_LinuxContext);
+	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
 
 	U32 value_mask = 0;
 	U32 value_list[2];
@@ -133,9 +131,10 @@ void os_gfx_close_platform(void){
 	if(lnx_ctx->connection) xcb_disconnect(lnx_ctx->connection);
 }
 
+
 void os_gfx_reset_frame_buffers(void){
 	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
-	OS_GFX_Context* ctx = &glb_os_gfx_context;
+	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
 	lnx_ctx->current_frame_buffer = 0;
 
 	for EachIndex(idx, 2){
@@ -183,7 +182,7 @@ void os_gfx_reset_frame_buffers(void){
 
 void os_gfx_swap_screen_buffer(void){
 	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
-	OS_GFX_Context* ctx = &glb_os_gfx_context;
+	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
 
 	U32 frame = lnx_ctx->current_frame_buffer;
 	xcb_image_t* image = lnx_ctx->frame_buffer[frame];
@@ -235,7 +234,7 @@ void os_gfx_paint_pixel(U32 width, U32 height, ColorRGBA c){
 // window state options
 void os_gfx_set_window_size(U32 w, U32 h){
 
-	OS_GFX_Context* ctx = &glb_os_gfx_context;
+	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
 	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
 	
 	// if window not resizeable don't do so
@@ -265,11 +264,6 @@ void os_gfx_set_window_size(U32 w, U32 h){
 		ctx->window.screen_size.y = new_height;
 	}
 }
-
-B32 os_gfx_is_window_state(OS_GFX_WindowConfigFlag flag){ return FLAG_IS_SET(glb_os_gfx_context.window.flags, flag); }
-void os_gfx_set_window_state(OS_GFX_WindowConfigFlag flags){ FLAG_SET(glb_os_gfx_context.window.flags, flags); }
-void os_gfx_clear_window_state(OS_GFX_WindowConfigFlag flags){ FLAG_CLEAR(glb_os_gfx_context.window.flags, flags); }
-
 // set window options
 void os_gfx_sync_window_config(void){
 	//OS_GFX_Context* ctx = &glb_os_gfx_context;
@@ -435,7 +429,7 @@ void os_gfx_restore_window(void){
 }
 
 void os_gfx_set_window_title(Str8 title){
-	OS_GFX_Context* ctx = &glb_os_gfx_context;
+	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
 	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
 	
 	ctx->window.title = title;
@@ -454,7 +448,7 @@ void os_gfx_set_window_title(Str8 title){
 }
 
 void os_gfx_set_window_position(U32 x, U32 y){ 
-	OS_GFX_Context* ctx = &glb_os_gfx_context;
+	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
 	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
 	
 	// set window position 
@@ -470,7 +464,7 @@ void os_gfx_set_window_position(U32 x, U32 y){
 }
 
 void os_gfx_set_window_min_size(U32 width, U32 height){ 
-	OS_GFX_Context* ctx = &glb_os_gfx_context;
+	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
 	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
 	
 	Assert(0 <= width && width <= os_gfx_get_display_width());
@@ -493,7 +487,7 @@ void os_gfx_set_window_min_size(U32 width, U32 height){
 }
 
 void os_gfx_set_window_max_size(U32 width, U32 height){ 
-	OS_GFX_Context* ctx = &glb_os_gfx_context;
+	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
 	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
 
 	Assert(0 <= width && width <= os_gfx_get_display_width());
@@ -551,8 +545,8 @@ void os_gfx_set_window_focused(void){
 
 void os_gfx_poll_input_events(void){
 	OS_GFX_LinuxContext* lnx_ctx = &glb_os_gfx_linux_context;
-	OS_GFX_Context* ctx = &glb_os_gfx_context;
-	
+	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
+
 	xcb_generic_event_t* e;
 	while((e = xcb_poll_for_event(lnx_ctx->connection))){
 		switch(e->response_type & ~0x80){

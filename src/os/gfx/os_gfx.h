@@ -89,13 +89,15 @@ typedef struct {
 	}time;
 }OS_GFX_Context;
 
-global OS_GFX_Context glb_os_gfx_context;
+global OS_GFX_Context* glb_os_gfx_context;
 
 // Open and closing window
-void os_gfx_init_window(U32 x, U32 y, U32 width, U32 height, Str8 window_name);
+OS_GFX_Context* os_gfx_init_window(Arena* arena, U32 x, U32 y, U32 width, U32 height, Str8 window_name);
 void os_gfx_close_window(void);
-void os_gfx_init_platform(void);
+void os_gfx_init_platform(Arena* arena);
 void os_gfx_close_platform(void);
+void os_gfx_set_global_context(OS_GFX_Context* ctx);	
+OS_GFX_Context* os_gfx_get_current_context();
 
 // Begin and end drawing
 void os_gfx_begin_drawing(void);
