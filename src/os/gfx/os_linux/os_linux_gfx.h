@@ -28,8 +28,11 @@ typedef struct{
 	xcb_image_t*			frame_buffer[2];
 	xcb_shm_segment_info_t		shm_info[2];
 	B32				current_frame_buffer;
-} OS_GFX_LinuxContext;
+} OS_LNX_GFX_Context;
 
-global OS_GFX_LinuxContext glb_os_gfx_linux_context;
+global OS_LNX_GFX_Context* glb_os_gfx_linux_context;
+
+void os_lnx_gfx_set_current_global_context(OS_GFX_LinuxContext* ctx);
+OS_LNX_GFX_Context* os_lnx_gfx_get_current_global_context();
 
 #endif //OS_GFX_LINUX_H

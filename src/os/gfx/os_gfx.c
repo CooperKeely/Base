@@ -5,6 +5,7 @@ OS_GFX_Context* os_gfx_init_window(Arena* arena, U32 x, U32 y, U32 width, U32 he
 	
 	// make sure all memory is set to zero
 	OS_GFX_Context* ctx = ArenaPushStructZero(arena, OS_GFX_Context);
+	os_gfx_set_global_context(ctx);
 
 	ctx->window.position = Pnt2_U32(x, y);	
 	ctx->window.screen_size = Pnt2_U32(width, height);	

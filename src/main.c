@@ -201,7 +201,6 @@ void draw_obj_test(){
 
 	// Open the window
 	OS_GFX_Context* ctx = os_gfx_init_window(arena, 100, 100, 1000, 1000, Str8Lit("Software Renderer - Speed Test"));
-	os_gfx_set_global_context(ctx);	
 
 	os_gfx_set_target_fps(60);
 

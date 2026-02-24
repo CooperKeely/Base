@@ -99,6 +99,7 @@ void os_gfx_close_platform(void);
 void os_gfx_set_global_context(OS_GFX_Context* ctx);	
 OS_GFX_Context* os_gfx_get_current_context();
 
+
 // Begin and end drawing
 void os_gfx_begin_drawing(void);
 void os_gfx_end_drawing(void);
