@@ -3,7 +3,7 @@ void log_set_current_glb_level(LOG_Level type){
 	glb_log_level = type;		
 }
 
-void log_msg(LOG_Level lvl, const char* file, U64 line, U64 col, const char* function, const char* fmt,  ...) {
+void log_msg(LOG_Level lvl, const char* file, int line, int col, const char* function, const char* fmt,  ...) {
 	if(lvl < glb_log_level) return;
 	if(fmt == NULL) return;
 
@@ -22,7 +22,7 @@ void log_msg(LOG_Level lvl, const char* file, U64 line, U64 col, const char* fun
 	
 	// print file function and line
 	offset += snprintf(log_buf + offset, LOG_MAX_LENGTH - offset, "\033[90m"); // set the metadata to a dark grey color
-	offset += snprintf(log_buf + offset, LOG_MAX_LENGTH - offset, " | %s:%lu:%lu (%s)", clean_file, line, col, function);
+	offset += snprintf(log_buf + offset, LOG_MAX_LENGTH - offset, " | %s:%d:%d (%s)", clean_file, line, col, function);
 	
 	// reset color and print new line
 	offset += snprintf(log_buf + offset, LOG_MAX_LENGTH - offset, "\033[0m\n");
@@ -33,7 +33,7 @@ void log_msg(LOG_Level lvl, const char* file, U64 line, U64 col, const char* fun
 const char* log_filename_from_path(const char* path){
 	const char* last_slash = path;
 	for(const char* p = path; *p; p++){
-		if(char_is_slash(*p)) last_slash = p + 1;
+		if(*p == '\\' || *p == '/' ) last_slash = p + 1;
 	}
 	return last_slash;
 }

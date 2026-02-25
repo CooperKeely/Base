@@ -4,8 +4,7 @@
 ///////////////////////////////////////
 /// cjk: Logging 
 
-typedef U64 LOG_Level;
-enum{
+typedef enum{
 	LOG_Level_All = 0,
 	LOG_Level_Debug,
 	LOG_Level_Info,
@@ -13,8 +12,8 @@ enum{
 	LOG_Level_Error,
 	LOG_Level_Fatal,
 	LOG_Level_None,
-	LOG_Level_Count,
-};
+	LOG_Level_Count, // dont use this its just good for for loops
+} LOG_Level;
 
 const char* log_level_strings[] = {
 	"[All]",
@@ -54,11 +53,11 @@ const char* log_level_color_codes[] = {
 #define LogError(...) log_msg(LOG_Level_Error, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
 #define LogFatal(...) log_msg(LOG_Level_Fatal, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
 
-global LOG_Level glb_log_level = LOG_Level_All;
+static LOG_Level glb_log_level = LOG_Level_All; // this is global
 
 void log_set_current_glb_level(LOG_Level type);
 
-void log_msg(LOG_Level lvl, const char* file, U64 line, U64 col, const char* function, const char* fmt,  ...) LOG_FORMAT_CHECK(6, 7);
+void log_msg(LOG_Level lvl, const char* file, int line, int col, const char* function, const char* fmt,  ...) LOG_FORMAT_CHECK(6, 7);
 
 const char* log_filename_from_path(const char* path);
 
