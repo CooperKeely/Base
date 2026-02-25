@@ -67,15 +67,27 @@ void os_file_props_test(){
 
 }
 
+void test_logging(){
+	LOG_Context ctx = (LOG_Context){
+		STDERR_FILENO,
+		LOG_Level_All,
+		LOG_Option_TimeStamp,
+	};
+
+	LogCtxInfo(ctx, "testing");
+	LogCtxDebug(ctx, "testing");
+	LogCtxWarning(ctx, "testing");
+	LogCtxError(ctx, "testing");
+	LogCtxFatal(ctx, "testing");
+}
+
 
 S32 entry_point(U64 argc, U8** argv){
 	(void) argc;
 	(void) argv;
-	
-	//x11_graphics();
-	//test_str8_to_f32();
-	//obj_parser_test();
-	draw_obj_test();
+
+	test_logging();
+
 	return 0;
 }
 

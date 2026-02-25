@@ -13,35 +13,37 @@ enum{
 	LOG_Level_Error,
 	LOG_Level_Fatal,
 	LOG_Level_None,
-	LOG_Level_Count, // dont use this its just good for for loops
+	LOG_Level_Count, // dont use this its just good for looping 
 } ;
 
 typedef U64 LOG_Option;
 enum{
 	LOG_Option_None		= 0,
-	LOG_Option_Verbose	= (1 << 0),
-	LOG_Option_TimeStamp	= (1 << 1),
-	LOG_Option_Abort	= (1 << 2),
-	LOG_Option_ForceFlush 	= (1 << 3)
+	LOG_Option_TimeStamp	= (1 << 0),
+	LOG_Option_Abort	= (1 << 1),
+	LOG_Option_ForceFlush 	= (1 << 2),
+	LOG_Option_MetaData 	= (1 << 3),
+	LOG_Option_Category	= (1 << 4)
 };
 
 
 typedef struct{
 	U64 fd;
-	LOG_Level current_level;	
-} LOG_Config;
+	LOG_Level level;	
+	LOG_Option log_flags;
+	Str8	category;
+} LOG_Context;
 
-
-const char* log_level_strings[] = {
-	"[All]",
-	"[Debug]",
-	"[Info]",
-	"[Warning]",
-	"[Error]",
-	"[Fatal]"
+read_only const char* log_level_strings[] = {
+	"All", // unused
+	"DEBG",
+	"INFO",
+	"WARN",
+	"ERRO",
+	"FATL"
 };
 
-const char* log_level_color_codes[] = {
+read_only const char* log_level_color_codes[] = {
 	"",
 	"",
 	"",
@@ -64,20 +66,25 @@ const char* log_level_color_codes[] = {
 
 #define LOG_MAX_LENGTH 512 
 
-#define LogDebug(...) log_msg(LOG_Level_Debug, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
-#define LogInfo(...) log_msg(LOG_Level_Info, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
-#define LogWarning(...) log_msg(LOG_Level_Warning, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
-#define LogError(...) log_msg(LOG_Level_Error, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
-#define LogFatal(...) log_msg(LOG_Level_Fatal, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
+// these use the defualt log context to std err and allow all types of logs
+#define LogDebug(...) 		log_msg((const LOG_Context){2, 0, 0, {0}}, LOG_Level_Debug, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
+#define LogInfo(...) 		log_msg((const LOG_Context){2, 0, 0, {0}}, LOG_Level_Info, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
+#define LogWarning(...) 	log_msg((const LOG_Context){2, 0, 0, {0}}, LOG_Level_Warning, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
+#define LogError(...) 		log_msg((const LOG_Context){2, 0, 0, {0}}, LOG_Level_Error, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
+#define LogFatal(...) 		log_msg((const LOG_Context){2, 0, 0, {0}}, LOG_Level_Fatal, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
 
-static LOG_Config glb_log_config = (LOG_Config) {STDERR_FILENO, LOG_Level_All};
+// to define a log context pass them into this function
+#define LogCtxDebug(ctx, ...)	log_msg((ctx), LOG_Level_Debug, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
+#define LogCtxInfo(ctx, ...)    log_msg((ctx), LOG_Level_Info, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
+#define LogCtxWarning(ctx, ...) log_msg((ctx), LOG_Level_Warning, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
+#define LogCtxError(ctx, ...)   log_msg((ctx), LOG_Level_Error, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
+#define LogCtxFatal(ctx, ...)   log_msg((ctx), LOG_Level_Fatal, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
 
-void log_set_current_glb_level(LOG_Level type);
+// to get special logs create and pass in a log context and a level 
+#define LogMsg(log_ctx, level, ...) 	log_msg((log_ctx), (level), __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
 
-void log_set_current_glb_fd(U64 fd);
+void log_msg(LOG_Context ctx, LOG_Level lvl, const char* file, U64 line, U64 col, const char* function, const char* fmt,  ...) LOG_FORMAT_CHECK(7, 8);
 
-void log_msg(LOG_Level lvl, const U8* file, U64 line, U64 col, const U8* function, const U8* fmt,  ...) LOG_FORMAT_CHECK(6, 7);
-
-const char* log_filename_from_path(const U8* path);
+const U8* log_filename_from_path(const U8* path);
 
 #endif // BASE_LOG_H
