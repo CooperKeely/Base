@@ -33,15 +33,12 @@ OS_GFX_Context* os_gfx_get_current_global_context(){
 }
 
 // Begin and end drawing
-void os_gfx_begin_drawing(void){
+void os_gfx_begin(void){
 	OS_GFX_Context* ctx = os_gfx_get_current_global_context();	
 	
-	// TODO: (cjk): adding buffered rendering will fix this weird code but it works for now
-	if(ctx->window.pending_resize){
-		os_gfx_set_window_size(ctx->window.pending_size.x, ctx->window.pending_size.y);
-		ctx->window.resized_last_frame = BASE_TRUE;
-		ctx->window.pending_resize = BASE_FALSE;
-	}	
+	os_gfx_set_window_size(ctx->window.pending_size.x, ctx->window.pending_size.y);
+	ctx->window.resized_last_frame = BASE_TRUE;
+	ctx->window.pending_resize = BASE_FALSE;
 
 	ctx->time.current = os_now_microseconds();
 	ctx->time.update = ctx->time.current - ctx->time.previous;
@@ -50,7 +47,7 @@ void os_gfx_begin_drawing(void){
 	while (!os_gfx_is_window_ready()) os_gfx_poll_input_events();
 }
 
-void os_gfx_end_drawing(void){
+void os_gfx_end(void){
 	OS_GFX_Context* ctx = os_gfx_get_current_global_context();	
 	
 	// reset rsizing
@@ -65,11 +62,7 @@ void os_gfx_end_drawing(void){
 	
 }
 
-void os_gfx_clear_background(ColorRGBA c){
-	U32 width = os_gfx_get_screen_width();
-	U32 height = os_gfx_get_screen_height();
-	sr_draw_rect(Rect_F32(0, 0, width, height), c);
-}
+
 
 // window helper functions
 B32 os_gfx_window_should_close(void) { return glb_os_gfx_context->window.should_close; }

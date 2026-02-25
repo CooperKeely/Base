@@ -275,13 +275,15 @@ void os_gfx_set_window_size(U32 w, U32 h){
 		ctx->window.screen_size.y = new_height;
 	}
 }
-// set window options
-void os_gfx_sync_window_config(void){
-	//OS_GFX_Context* ctx = &glb_os_gfx_context;
-	//OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
-	
-	// update decorations
-	//xcb_intern_atom_cookie_t motif_cookie = xcb_intern_atom()
+
+void* os_gfx_get_current_frame_buffer(void){
+	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
+	return lnx_ctx->frame_buffer[lnx_ctx->current_frame_buffer];
+}
+
+void* os_gfx_get_window_handle(void){
+	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
+	return &lnx_ctx->window;
 }
 
 void os_gfx_toggle_fullscreen(void){

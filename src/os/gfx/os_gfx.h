@@ -101,9 +101,8 @@ OS_GFX_Context* os_gfx_get_current_context();
 
 
 // Begin and end drawing
-void os_gfx_begin_drawing(void);
-void os_gfx_end_drawing(void);
-void os_gfx_clear_background(ColorRGBA c);
+void os_gfx_begin(void);
+void os_gfx_end(void);
 void os_gfx_paint_pixel(U32 width, U32 height, ColorRGBA c);
 
 // window helper functions

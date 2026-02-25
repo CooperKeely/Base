@@ -1,7 +1,7 @@
 #ifndef RENDERER_INC_C
 #define RENDERER_INC_C 
 
-
+# include "renderer.c"
 # if defined(RENDERER_SOFTWARE_ENABLE)
 #  include "software/software_renderer.c"
 # elif  defined(RENDERER_VULKAN_ENABLE)

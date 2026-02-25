@@ -95,7 +95,27 @@ void sr_draw_rect(RectF32 rect, ColorRGBA color){
 
 }
 
+// rendering api functions
+void soft_r_init(R_RenderContext* ctx){
+	// not needed for the software renderer 
+}
 
+void soft_r_begin_frame(R_RenderContext* ctx, R_RenderTarget target){
+	
+}
+
+void soft_r_submit_commands(R_RenderCommand* cmd, U64 count){
+
+}
+void soft_r_end_frame(R_RenderContext* ctx){
+
+}
+
+void soft_r_close(R_RenderContext* ctx){
+
+}
+
+/*
 // This method uses Midpoint circle algorithm for quickly drawing a circle
 // https://en.wikipedia.org/wiki/Midpoint_circle_algorithm 
 void sr_draw_circle(Vec2F32 center, F32 radius, ColorRGBA color){
@@ -139,54 +159,6 @@ void sr_draw_circle(Vec2F32 center, F32 radius, ColorRGBA color){
 	#undef Local_Macro_DRAWSPAN
 }
 
-Vec2F32 sr_viewport_transform_oblique_projection(Vec3F32 vec, U32 width, U32 height){
-	// oblique projection
-	F32 proj_factor = F32Lit(0.4);
-	F32 proj_x = vec.x + (vec.z * proj_factor);
-	F32 proj_y = vec.y + (vec.z * proj_factor);
-
-	// scale and center
-	F32 scale = (F32)width * F32Lit(0.4);
-	F32 offset_x = (F32)width * F32Lit(0.3);
-	F32 offset_y = (F32)height * F32Lit(0.7);
-	
-	F32 new_x = offset_x + (proj_x * scale);
-	F32 new_y = offset_y - (proj_y * scale);
-	
-	return Vec2_F32(new_x, new_y);
-}
-
-Vec2F32 sr_viewport_transform(Vec3F32 vec, U32 width, U32 height){
-	F32 x = vec.x;
-	F32 y = vec.y;
-	F32 z = vec.z;
-	// 1. Set Camera Distance (d)
-	// If your cube is -1 to 1, a distance of 3.0 puts the camera 
-	// safely outside the cube.
-	F32 camera_dist = F32Lit(2.5);
-
-	// 2. Focal Length (f)
-	// This determines the "Field of View". 
-	// (width * 0.5) is a good starting point.
-	F32 focal_length = (F32)width * F32Lit(0.8);
-
-	// 3. Perspective Divide
-	// We add camera_dist to Z so that the cube isn't "behind" the camera.
-	F32 z_inv = F32Lit(1.0) / (z + camera_dist);
-
-	F32 projected_x = x * z_inv * focal_length;
-	F32 projected_y = y * z_inv * focal_length;
-
-	// 4. Center on Screen
-	// Since -1 to 1 projected will be centered around 0, 
-	// we shift it by half the screen width/height.
-	F32 final_x = ((F32)width  * F32Lit(0.5)) + projected_x;
-	F32 final_y = ((F32)height * F32Lit(0.5)) - projected_y; // -y to flip for screen space
-
-	return Vec2_F32(final_x, final_y);
-
-
-}
 
 void sr_draw_obj(FMT_OBJ_Object* obj_file, SR_ObjectRenderFlag flags){
 	U32 width = os_gfx_get_screen_width();
@@ -214,4 +186,7 @@ void sr_draw_obj(FMT_OBJ_Object* obj_file, SR_ObjectRenderFlag flags){
 
 		sr_draw_triangle(p1, p2, p3, COLOR_RED);
 	}
-}
+}*/
+
+
+

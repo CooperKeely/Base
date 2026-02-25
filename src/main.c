@@ -16,33 +16,6 @@
 #include "renderer/renderer_inc.c"
 
 
-void draw_obj_test(){
-	Arena* arena = arena_alloc();
-	
-	// Load the object
-	FMT_OBJ_Object* obj_file = fmt_obj_object_init(arena, Str8Lit("./resources/african_head.obj"));
-	fmt_obj_parse_file(obj_file);
-
-	// Open the window
-	OS_GFX_Context* ctx = os_gfx_init_window(arena, 100, 100, 1000, 1000, Str8Lit("Software Renderer - Speed Test"));
-
-	os_gfx_set_target_fps(60);
-
-	while (!os_gfx_window_should_close()) {
-		os_gfx_begin_drawing();
-
-		os_gfx_clear_background(COLOR_BLACK);		
-
-		sr_draw_obj(obj_file, 0);
-
-		os_gfx_end_drawing();
-	}
-
-	os_gfx_close_window();
-	arena_release(arena);
-}
-
-
 void os_file_props_test(){
 	ScratchArenaScope(scratch, 0, 0){
 		Str8 current_dir = os_get_current_path(scratch.arena);
@@ -67,26 +40,45 @@ void os_file_props_test(){
 
 }
 
-void test_logging(){
-	LOG_Context ctx = (LOG_Context){
-		STDERR_FILENO,
-		LOG_Level_All,
-		LOG_Option_TimeStamp,
-	};
-
-	LogCtxInfo(ctx, "testing");
-	LogCtxDebug(ctx, "testing");
-	LogCtxWarning(ctx, "testing");
-	LogCtxError(ctx, "testing");
-	LogCtxFatal(ctx, "testing");
-}
-
 
 S32 entry_point(U64 argc, U8** argv){
 	(void) argc;
 	(void) argv;
+	
+	Arena* arena = arena_alloc();
+	
+	// Load the object
+	FMT_OBJ_Object* obj_file = fmt_obj_object_init(arena, Str8Lit("./resources/african_head.obj"));
+	fmt_obj_parse_file(obj_file);
 
-	test_logging();
+	// Open the window
+	os_gfx_init_window(arena, 100, 100, 1000, 1000, Str8Lit("Software Renderer"));
+	r_init_render(arena, R_RenderingBackend_Software);
+
+	os_gfx_set_target_fps(60);
+
+	while (!os_gfx_window_should_close()) {
+		os_gfx_begin();
+		
+		// TODO: (cjk): there must be a better way of doing this but to separate
+		// the os_gfx api and the rendering api this will do for now
+		R_RenderTarget target = {0}; 
+		target.width = os_gfx_get_screen_width();
+		target.height = os_gfx_get_screen_height();
+		target.stride = target.width * sizeof(ColorRGBA);
+		target.os_handle = os_gfx_get_window_handle();
+		target.buffer = os_gfx_get_current_frame_buffer();
+
+		r_begin_frame(target);
+
+		r_draw_background(COLOR_RED);
+		
+		r_end_frame();
+		os_gfx_end();
+	}
+
+	os_gfx_close_window();
+	arena_release(arena);
 
 	return 0;
 }
