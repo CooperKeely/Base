@@ -179,7 +179,7 @@ F32 str8_to_f32(Str8 str){
 		S64 exp = str8_to_s64(exp_slice);
 
 		F32 pow_10 = F32Lit(1.0);
-		S64 abs_exp = (exp < 0)? -exp : exp;
+		U64 abs_exp = (exp < 0)? -exp : exp;
 		for EachIndex(i, abs_exp) pow_10 *= F32Lit(10.0);
 
 		if(exp < 0) ret /= pow_10;

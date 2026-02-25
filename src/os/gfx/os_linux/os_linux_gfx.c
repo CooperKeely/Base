@@ -5,6 +5,8 @@ void os_gfx_init_platform(Arena* arena){
 	OS_LNX_GFX_Context* lnx_ctx = ArenaPushStructZero(arena, OS_LNX_GFX_Context);
 	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
 
+	os_lnx_gfx_set_current_global_context(lnx_ctx);
+
 	U32 value_mask = 0;
 	U32 value_list[2];
 
@@ -85,6 +87,7 @@ void os_gfx_init_platform(Arena* arena){
 	// collect replies 
 	xcb_intern_atom_reply_t* protocols_reply = xcb_intern_atom_reply(lnx_ctx->connection, protocols_cookie, NULL);
 	xcb_intern_atom_reply_t* delete_reply = xcb_intern_atom_reply(lnx_ctx->connection, delete_cookie, NULL);
+	Assert(protocols_reply && delete_reply);	
 	
 	// tell the window mangager to send message instad of killing us 
 	xcb_change_property(lnx_ctx->connection,
@@ -110,7 +113,6 @@ void os_gfx_init_platform(Arena* arena){
 	
 	while(!os_gfx_is_window_ready()) os_gfx_poll_input_events();
 
-	os_lnx_gfx_set_current_global_context(lnx_ctx);
 }
 
 void os_gfx_close_platform(void){
@@ -190,7 +192,7 @@ void os_gfx_reset_frame_buffers(void){
 }
 
 void os_gfx_swap_screen_buffer(void){
-	OS_LNX_GFX_Context* lnx_ctx = &glb_os_gfx_linux_context;
+	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
 	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
 
 	U32 frame = lnx_ctx->current_frame_buffer;
@@ -223,10 +225,10 @@ void os_gfx_swap_screen_buffer(void){
 }
 
 void os_gfx_paint_pixel(U32 width, U32 height, ColorRGBA c){
-	OS_LNX_GFX_Context* lnx_ctx = &glb_os_gfx_linux_context;
+	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
 	xcb_image_t* image = lnx_ctx->frame_buffer[lnx_ctx->current_frame_buffer];
 
-	U32* pixels = image->data;
+	U32* pixels = (U32*) image->data;
 	U32 stride = image->width;
 	U32 color = color_rgba_to_bgra(c).c;
 
@@ -244,7 +246,7 @@ void os_gfx_paint_pixel(U32 width, U32 height, ColorRGBA c){
 void os_gfx_set_window_size(U32 w, U32 h){
 
 	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
-	OS_LNX_GFX_Context* lnx_ctx = &glb_os_gfx_linux_context;
+	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
 	
 	// if window not resizeable don't do so
 	if(!os_gfx_is_window_state(OS_GFX_WindowConfigFlag_Resizeable)) return;
@@ -276,14 +278,14 @@ void os_gfx_set_window_size(U32 w, U32 h){
 // set window options
 void os_gfx_sync_window_config(void){
 	//OS_GFX_Context* ctx = &glb_os_gfx_context;
-	//OS_LNX_GFX_Context* lnx_ctx = &glb_os_gfx_linux_context;
+	//OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
 	
 	// update decorations
 	//xcb_intern_atom_cookie_t motif_cookie = xcb_intern_atom()
 }
 
 void os_gfx_toggle_fullscreen(void){
-	OS_LNX_GFX_Context* lnx_ctx = &glb_os_gfx_linux_context;
+	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
 	
 	// get the atoms for the state change
 	char* state_message = "_NET_WM_STATE";
@@ -332,7 +334,7 @@ void os_gfx_toggle_fullscreen(void){
 }
 
 void os_gfx_maximize_window(void){
-	OS_LNX_GFX_Context* lnx_ctx = &glb_os_gfx_linux_context;
+	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
 	
 	// get the atoms for the state change
 	xcb_intern_atom_cookie_t state_cookie = xcb_intern_atom(lnx_ctx->connection, 0, 13, "_NET_WM_STATE");
@@ -372,7 +374,7 @@ void os_gfx_maximize_window(void){
 }
 
 void os_gfx_minimize_window(void){
-	OS_LNX_GFX_Context* lnx_ctx = &glb_os_gfx_linux_context;
+	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
 	
 	// get the atoms for the state change
 	xcb_intern_atom_cookie_t state_cookie = 
@@ -404,7 +406,7 @@ void os_gfx_minimize_window(void){
 }
 
 void os_gfx_restore_window(void){
-	OS_LNX_GFX_Context* lnx_ctx = &glb_os_gfx_linux_context;
+	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
 	
 	// get the atoms for the state change
 	char* client_message = "_NET_ACTIVE_WINDOW";
@@ -439,7 +441,7 @@ void os_gfx_restore_window(void){
 
 void os_gfx_set_window_title(Str8 title){
 	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
-	OS_LNX_GFX_Context* lnx_ctx = &glb_os_gfx_linux_context;
+	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
 	
 	ctx->window.title = title;
 	
@@ -458,7 +460,7 @@ void os_gfx_set_window_title(Str8 title){
 
 void os_gfx_set_window_position(U32 x, U32 y){ 
 	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
-	OS_LNX_GFX_Context* lnx_ctx = &glb_os_gfx_linux_context;
+	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
 	
 	// set window position 
 	U32 values[] = {x, y};
@@ -474,7 +476,7 @@ void os_gfx_set_window_position(U32 x, U32 y){
 
 void os_gfx_set_window_min_size(U32 width, U32 height){ 
 	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
-	OS_LNX_GFX_Context* lnx_ctx = &glb_os_gfx_linux_context;
+	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
 	
 	Assert(0 <= width && width <= os_gfx_get_display_width());
 	Assert(0 <= height && height <= os_gfx_get_display_height());
@@ -497,7 +499,7 @@ void os_gfx_set_window_min_size(U32 width, U32 height){
 
 void os_gfx_set_window_max_size(U32 width, U32 height){ 
 	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
-	OS_LNX_GFX_Context* lnx_ctx = &glb_os_gfx_linux_context;
+	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
 
 	Assert(0 <= width && width <= os_gfx_get_display_width());
 	Assert(0 <= height && height <= os_gfx_get_display_height());
@@ -520,7 +522,7 @@ void os_gfx_set_window_max_size(U32 width, U32 height){
 }
 
 void os_gfx_set_window_focused(void){
-	OS_LNX_GFX_Context* lnx_ctx = &glb_os_gfx_linux_context;
+	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
 	
 	// get the atoms for the state change
 	char* client_message = "_NET_ACTIVE_WINDOW";
