@@ -276,10 +276,7 @@ void os_gfx_set_window_size(U32 w, U32 h){
 	}
 }
 
-void* os_gfx_get_current_frame_buffer(void){
-	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
-	return lnx_ctx->frame_buffer[lnx_ctx->current_frame_buffer];
-}
+
 
 void* os_gfx_get_window_handle(void){
 	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
@@ -630,7 +627,6 @@ void os_gfx_poll_input_events(void){
 			case XCB_CONFIGURE_NOTIFY:{
 				xcb_configure_notify_event_t* event = (xcb_configure_notify_event_t*)e;
 				ctx->window.pending_size = Pnt2_U32(event->width, event->height);
-				ctx->window.pending_resize = BASE_TRUE;
 
 				ctx->window.previous_position.x = ctx->window.position.x;
 				ctx->window.previous_position.y = ctx->window.position.y;

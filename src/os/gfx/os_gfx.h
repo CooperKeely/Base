@@ -31,7 +31,6 @@ typedef struct {
 		B32 ready;
 		B32 should_close;
 		B32 resized_last_frame;
-		B32 pending_resize;
 		B32 event_waiting;
 
 		Pnt2U32 display_size;

@@ -38,7 +38,6 @@ void os_gfx_begin(void){
 	
 	os_gfx_set_window_size(ctx->window.pending_size.x, ctx->window.pending_size.y);
 	ctx->window.resized_last_frame = BASE_TRUE;
-	ctx->window.pending_resize = BASE_FALSE;
 
 	ctx->time.current = os_now_microseconds();
 	ctx->time.update = ctx->time.current - ctx->time.previous;
@@ -54,15 +53,14 @@ void os_gfx_end(void){
 	ctx->window.resized_last_frame = BASE_FALSE;
 
 	os_gfx_poll_input_events();
-	// TODO: add a render api to flush the render commands
-
 	os_gfx_swap_screen_buffer();	
-
 	ctx->time.frame_counter++;
-	
 }
 
-
+void* os_gfx_get_current_frame_buffer(void){
+	OS_GFX_Context* ctx = os_gfx_get_current_global_context();	
+	return ctx->window.frame_data;
+}
 
 // window helper functions
 B32 os_gfx_window_should_close(void) { return glb_os_gfx_context->window.should_close; }
