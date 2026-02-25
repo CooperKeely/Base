@@ -238,7 +238,7 @@ void os_gfx_paint_pixel(U32 width, U32 height, ColorRGBA c){
 	if(width <= os_gfx_get_screen_width() && height <= os_gfx_get_screen_height()){
 		pixels[height * stride + width] = color;
 	}else{
-		// TODO: (cjk): add a log err statment saying it was out of bounds
+		LogError("pixel write out of bounds");
 	}
 }
 
@@ -622,7 +622,7 @@ void os_gfx_poll_input_events(void){
 				}else if(event->state == XCB_VISIBILITY_FULLY_OBSCURED){
 					os_gfx_set_window_state(OS_GFX_WindowConfigFlag_Hidden);
 				}else{
-					// TODO: (cjk): add some sort of log statement
+					LogWarning("Unrecognized xcb visibility notify event type");
 				}
 			}break;
 			case XCB_CONFIGURE_NOTIFY:{
@@ -656,7 +656,7 @@ void os_gfx_poll_input_events(void){
 			case XCB_CONFIGURE_REQUEST:
 			case XCB_CREATE_NOTIFY:
 			default:{
-				// TODO: (cjk): add a log
+				LogWarning("Unrecognized xcb event type");
 			}
 		}
 		free(e);
