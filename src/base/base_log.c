@@ -3,11 +3,11 @@ void log_set_current_glb_level(LOG_Level type){
 	glb_log_level = type;		
 }
 
-void log_msg(LOG_Level lvl, const char* file, U64 line, const char* function, const char* fmt,  ...) {
+void log_msg(LOG_Level lvl, const char* file, U64 line, U64 col, const char* function, const char* fmt,  ...) {
 	if(lvl < glb_log_level) return;
 	if(fmt == NULL) return;
 
-	char log_buf[LOG_MAX_LENGTH]; // 256 bytes
+	char log_buf[LOG_MAX_LENGTH]; // 512 bytes
 	U64 offset = 0;
 	const char* clean_file = log_filename_from_path(file);
 	
@@ -22,7 +22,7 @@ void log_msg(LOG_Level lvl, const char* file, U64 line, const char* function, co
 	
 	// print file function and line
 	offset += snprintf(log_buf + offset, LOG_MAX_LENGTH - offset, "\033[90m"); // set the metadata to a dark grey color
-	offset += snprintf(log_buf + offset, LOG_MAX_LENGTH - offset, " -> %s:%lu (%s)", clean_file, line, function );
+	offset += snprintf(log_buf + offset, LOG_MAX_LENGTH - offset, " | %s:%lu:%lu (%s)", clean_file, line, col, function);
 	
 	// reset color and print new line
 	offset += snprintf(log_buf + offset, LOG_MAX_LENGTH - offset, "\033[0m\n");
