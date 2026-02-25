@@ -1,10 +1,15 @@
 
 void log_set_current_glb_level(LOG_Level type){
-	glb_log_level = type;		
+	glb_log_config.current_level = type;		
 }
 
+void log_set_current_glb_fd(uint64_t fd){
+	glb_log_config.fd = fd;		
+}
+
+
 void log_msg(LOG_Level lvl, const char* file, int line, int col, const char* function, const char* fmt,  ...) {
-	if(lvl < glb_log_level) return;
+	if(lvl < glb_log_config.current_level) return;
 	if(fmt == NULL) return;
 
 	char log_buf[LOG_MAX_LENGTH]; // 512 bytes

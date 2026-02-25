@@ -4,7 +4,8 @@
 ///////////////////////////////////////
 /// cjk: Logging 
 
-typedef enum{
+typedef U64 LOG_Level;
+enum{
 	LOG_Level_All = 0,
 	LOG_Level_Debug,
 	LOG_Level_Info,
@@ -13,7 +14,23 @@ typedef enum{
 	LOG_Level_Fatal,
 	LOG_Level_None,
 	LOG_Level_Count, // dont use this its just good for for loops
-} LOG_Level;
+} ;
+
+typedef U64 LOG_Option;
+enum{
+	LOG_Option_None		= 0,
+	LOG_Option_Verbose	= (1 << 0),
+	LOG_Option_TimeStamp	= (1 << 1),
+	LOG_Option_Abort	= (1 << 2),
+	LOG_Option_ForceFlush 	= (1 << 3)
+};
+
+
+typedef struct{
+	U64 fd;
+	LOG_Level current_level;	
+} LOG_Config;
+
 
 const char* log_level_strings[] = {
 	"[All]",
@@ -53,12 +70,14 @@ const char* log_level_color_codes[] = {
 #define LogError(...) log_msg(LOG_Level_Error, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
 #define LogFatal(...) log_msg(LOG_Level_Fatal, __FILE__, __LINE__, __LOG_COL__, __FUNCTION__, __VA_ARGS__)
 
-static LOG_Level glb_log_level = LOG_Level_All; // this is global
+static LOG_Config glb_log_config = (LOG_Config) {STDERR_FILENO, LOG_Level_All};
 
 void log_set_current_glb_level(LOG_Level type);
 
-void log_msg(LOG_Level lvl, const char* file, int line, int col, const char* function, const char* fmt,  ...) LOG_FORMAT_CHECK(6, 7);
+void log_set_current_glb_fd(U64 fd);
 
-const char* log_filename_from_path(const char* path);
+void log_msg(LOG_Level lvl, const U8* file, U64 line, U64 col, const U8* function, const U8* fmt,  ...) LOG_FORMAT_CHECK(6, 7);
+
+const char* log_filename_from_path(const U8* path);
 
 #endif // BASE_LOG_H
