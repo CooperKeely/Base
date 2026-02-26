@@ -182,23 +182,73 @@ typedef union {
 #define Vec4_F32(x, y, z)	vec_4f32((x), (y), (z))
 #define Vec4_F64(x, y, z)	vec_4f64((x), (y), (z))
 
+// Vector Functions 
+
 Vec2F32 vec_2f32(F32 x, F32 y);
+F32 	dot_vec2f32(Vec2F32 v1, Vec2F32 v2);
+Vec2F32 add_vec2f32(Vec2F32 v1, Vec2F32 v2);
+Vec2F32 sub_vec2f32(Vec2F32 v1, Vec2F32 v2);
+Vec2F32 mul_vec2f32(Vec2F32 v1, Vec2F32 v2);
+Vec2F32 div_vec2f32(Vec2F32 v1, Vec2F32 v2);
+Vec2F32 scale_vec2f32(Vec2F32 v1, F32 s);
+F32	length_squared_vec2f32(Vec2F32 v1);
+F32 	length_vec2f32(Vec2F32 v1);
+Vec2F32	normalize_vec2f32(Vec2F32 v1);
+
 Vec2F64 vec_2f64(F64 x, F64 y);
+F64 	dot_vec2f64(Vec2F64 v1, Vec2F64 v2);
+Vec2F64 add_vec2f64(Vec2F64 v1, Vec2F64 v2);
+Vec2F64 sub_vec2f64(Vec2F64 v1, Vec2F64 v2);
+Vec2F64 mul_vec2f64(Vec2F64 v1, Vec2F64 v2);
+Vec2F64 div_vec2f64(Vec2F64 v1, Vec2F64 v2);
+Vec2F64 scale_vec2f64(Vec2F64 v1, F64 s);
+F64	length_squared_vec2f64(Vec2F64 v1);
+F64 	length_vec2f64(Vec2F64 v1);
+Vec2F64	normalize_vec2f64(Vec2F64 v1);
 
 Vec3F32 vec_3f32(F32 x, F32 y, F32 z);
+F32 	dot_vec3f32(Vec3F32 v1, Vec3F32 v2);
+Vec3F32 add_vec3f32(Vec3F32 v1, Vec3F32 v2);
+Vec3F32 sub_vec3f32(Vec3F32 v1, Vec3F32 v2);
+Vec3F32 mul_vec3f32(Vec3F32 v1, Vec3F32 v2);
+Vec3F32 div_vec3f32(Vec3F32 v1, Vec3F32 v2);
+Vec3F32 scale_vec3f32(Vec3F32 v1, F32 s);
+F32	length_squared_vec3f32(Vec3F32 v1);
+F32 	length_vec3f32(Vec3F32 v1);
+Vec3F32	normalize_vec3f32(Vec3F32 v1);
+
 Vec3F64 vec_3f64(F64 x, F64 y, F64 z);
+F64 	dot_vec3f64(Vec3F64 v1, Vec3F64 v2);
+Vec3F64 add_vec3f64(Vec3F64 v1, Vec3F64 v2);
+Vec3F64 sub_vec3f64(Vec3F64 v1, Vec3F64 v2);
+Vec3F64 mul_vec3f64(Vec3F64 v1, Vec3F64 v2);
+Vec3F64 div_vec3f64(Vec3F64 v1, Vec3F64 v2);
+Vec3F64 scale_vec3f64(Vec3F64 v1, F64 s);
+F64	length_squared_vec3f64(Vec3F64 v1);
+F64 	length_vec3f64(Vec3F64 v1);
+Vec3F64	normalize_vec3f64(Vec3F64 v1);
 
 Vec4F32 vec_4f32(F32 x, F32 y, F32 z, F32 w);
+F32 	dot_vec4f32(Vec4F32 v1, Vec4F32 v2);
+Vec4F32 add_vec4f32(Vec4F32 v1, Vec4F32 v2);
+Vec4F32 sub_vec4f32(Vec4F32 v1, Vec4F32 v2);
+Vec4F32 mul_vec4f32(Vec4F32 v1, Vec4F32 v2);
+Vec4F32 div_vec4f32(Vec4F32 v1, Vec4F32 v2);
+Vec4F32 scale_vec4f32(Vec4F32 v1, F32 s);
+F32	length_squared_vec4f32(Vec4F32 v1);
+F32 	length_vec4f32(Vec4F32 v1);
+Vec4F32	normalize_vec4f32(Vec4F32 v1);
+
 Vec4F64 vec_4f64(F64 x, F64 y, F64 z, F64 w);
-
-F64 dot_vec2f32(Vec2F32 v1, Vec2F32 v2);
-F64 dot_vec2f64(Vec2F64 v1, Vec2F64 v2);
-
-F64 dot_vec3f32(Vec3F32 v1, Vec3F32 v2);
-F64 dot_vec3f64(Vec3F64 v1, Vec3F64 v2);
-
-F64 dot_vec4f32(Vec4F32 v1, Vec4F32 v2);
-F64 dot_vec4f64(Vec4F64 v1, Vec4F64 v2);
+F64 	dot_vec4f64(Vec4F64 v1, Vec4F64 v2);
+Vec4F64 add_vec4f64(Vec4F64 v1, Vec4F64 v2);
+Vec4F64 sub_vec4f64(Vec4F64 v1, Vec4F64 v2);
+Vec4F64 mul_vec4f64(Vec4F64 v1, Vec4F64 v2);
+Vec4F64 div_vec4f64(Vec4F64 v1, Vec4F64 v2);
+Vec4F64 scale_vec4f64(Vec4F64 v1, F64 s);
+F64	length_squared_vec4f64(Vec4F64 v1);
+F64 	length_vec4f64(Vec4F64 v1);
+Vec4F64	normalize_vec4f64(Vec4F64 v1);
 
 ///////////////////////////////////////
 /// cjk: Matrix Definitions
@@ -220,7 +270,7 @@ typedef union {
 		F32 a41, a42, a43, a44;
 	};
 	F32 m[4][4];
-} Mat3x3F32;
+} Mat4x4F32;
 
 // matrix functions
 Mat3x3F32 mat_3x3f32(F32 diagonal);
