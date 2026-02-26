@@ -3,7 +3,7 @@
 // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm  
 // https://groups.csail.mit.edu/graphics/classes/6.837/F02/lectures/6.837-7_Line.pdf
 // https://zingl.github.io/Bresenham.pdf
-void sr_draw_line(Vec2F32 p1, Vec2F32 p2, ColorRGBA color){
+void soft_r_draw_line(Vec2F32 p1, Vec2F32 p2, ColorRGBA color){
 	S32 window_width = (S32) os_gfx_get_screen_width();
 	S32 window_height = (S32) os_gfx_get_screen_height();
 
@@ -39,19 +39,19 @@ void sr_draw_line(Vec2F32 p1, Vec2F32 p2, ColorRGBA color){
 	}
 }
 
-void sr_draw_triangle(Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
+void soft_r_draw_triangle(Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
 	sr_draw_line(v1, v2, color);
 	sr_draw_line(v2, v3, color);
 	sr_draw_line(v3, v1, color);
 } 
 
-B32 sr_is_point_in_triangle(Vec2F32 point, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3){
+B32 soft_r_is_point_in_triangle(Vec2F32 point, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3){
 	B32 result = BASE_FALSE;	
 		 		
 	return result;	
 }
 
-void sr_draw_filled_triangle(Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
+void soft_r_draw_filled_triangle(Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color){
 	S32 window_width = (S32) os_gfx_get_screen_width();
 	S32 window_height = (S32) os_gfx_get_screen_height();
 
@@ -75,7 +75,7 @@ void sr_draw_filled_triangle(Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color
 
 
 // 2d primitive drawing
-void sr_draw_rect(RectF32 rect, ColorRGBA color){
+void soft_r_draw_rect(RectF32 rect, ColorRGBA color){
 	S32 window_width = (S32) os_gfx_get_screen_width();
 	S32 window_height = (S32) os_gfx_get_screen_height();
 
@@ -95,25 +95,34 @@ void sr_draw_rect(RectF32 rect, ColorRGBA color){
 
 }
 
-// rendering api functions
-void soft_r_init(R_RenderContext* ctx){
-	// not needed for the software renderer 
-}
+// camera projections
+Vec2F32 soft_r_orthographic_projection(Vec3F32 vec, R_Camera camera);
+Vec2F32 soft_r_perspective_projection(Vec3F32 vec, R_Camera camera);
 
-void soft_r_begin_frame(R_RenderContext* ctx, R_RenderTarget target){
-	
-}
+// rendering api functions
+void soft_r_init(R_RenderContext* ctx){}
+void soft_r_begin_frame(R_RenderContext* ctx, R_RenderTarget target){}
 
 void soft_r_submit_commands(R_RenderCommand* cmd, U64 count){
-
+	for EachIndex(idx, count){
+		R_RenderCommand* curr_cmd = cmd[idx];
+		switch(curr_cmd.type){
+			case R_RenderCommandType_Line:{
+				soft_r_draw_line(curr_cmd->line.p0, 
+			 				curr_cmd->line.p1, 
+			 				curr_cmd->color );			
+			}break;
+			case R_RenderCommandType_Triangle:{}break;
+			case R_RenderCommandType_Quad:{}break;
+			default:{
+				LogErr("Unknown render command");
+			}break;
+		}
+	}
 }
-void soft_r_end_frame(R_RenderContext* ctx){
 
-}
-
-void soft_r_close(R_RenderContext* ctx){
-
-}
+void soft_r_end_frame(R_RenderContext* ctx){}
+void soft_r_close(R_RenderContext* ctx){}
 
 /*
 // This method uses Midpoint circle algorithm for quickly drawing a circle

@@ -2,6 +2,46 @@
 #define BASE_MATH_H
 
 ///////////////////////////////////////
+/// cjk: Math Helper Functions 
+
+#define sqrt_f32(x)			sqrtf(x)
+#define cbrt_f32(x)			cbrtf(x)
+#define mod_f32(a, b)			fmodf((a), (b))
+#define pow_f32(a, b)			powf((a), (b))
+#define ceil_f32(x)			ceilf(x)
+#define floor_f32(x)			floorf(x)
+#define round_f32(x)			roundf(x)
+#define abs_f32(x)			fabsf(x)
+#define radians_from_turns_f32(x)	((x) * (2 * pi32))
+#define turns_from_radians_f32(x)	((x) / (2 * pi32))
+#define degrees_from_turns_f32(x)	((x) * F32Lit(360.0))
+#define turns_from_degrees_f32(x)	((x) / F32Lit(360.0))
+#define degrees_from_radians_f32(x)	(degrees_from_turns_f32(turns_from_radians_f32((x)))
+#define radians_from_degrees_f32(x)	(radians_from_turns_f32(turns_from_degrees_f32((x)))
+#define sin_f32(x)			sinf(radians_from_turns_f32(x))
+#define cos_f32(x)			cosf(radians_from_turns_f32(x))
+#define tan_f32(x)			tanf(radians_from_turns_f32(x))
+
+#define sqrt_f64(x)			sqrt(x)
+#define cbrt_f64(x)			cbrt(x)
+#define mod_f64(a, b)			fmod((a), (b))
+#define pow_f64(a, b)			pow((a), (b))
+#define ceil_f64(x)			ceil(x)
+#define floor_f64(x)			floor(x)
+#define round_f64(x)			round(x)
+#define abs_f64(x)			fabs(x)
+#define radians_from_turns_f64(x)	((x) * (2 * pi32))
+#define turns_from_radians_f64(x)	((x) / (2 * pi32))
+#define degrees_from_turns_f64(x)	((x) * F64Lit(360.0))
+#define turns_from_degrees_f64(x)	((x) / F64Lit(360.0))
+#define degrees_from_radians_f64(x)	(degrees_from_turns_f64(turns_from_radians_f64((x)))
+#define radians_from_degrees_f64(x)	(radians_from_turns_f64(turns_from_degrees_f64((x)))
+#define sin_f64(x)			sin(radians_from_turns_f64(x))
+#define cos_f64(x)			cos(radians_from_turns_f64(x))
+#define tan_f64(x)			tan(radians_from_turns_f64(x))
+
+
+///////////////////////////////////////
 /// cjk: Point Type Definitions 
 
 typedef union {
@@ -142,8 +182,6 @@ typedef union {
 #define Vec4_F32(x, y, z)	vec_4f32((x), (y), (z))
 #define Vec4_F64(x, y, z)	vec_4f64((x), (y), (z))
 
-
-
 Vec2F32 vec_2f32(F32 x, F32 y);
 Vec2F64 vec_2f64(F64 x, F64 y);
 
@@ -161,6 +199,48 @@ F64 dot_vec3f64(Vec3F64 v1, Vec3F64 v2);
 
 F64 dot_vec4f32(Vec4F32 v1, Vec4F32 v2);
 F64 dot_vec4f64(Vec4F64 v1, Vec4F64 v2);
+
+///////////////////////////////////////
+/// cjk: Matrix Definitions
+
+typedef union {
+	struct {
+		F32 a11, a12, a13;
+		F32 a21, a22, a23;
+		F32 a31, a32, a33;
+	};
+	F32 m[3][3];
+} Mat3x3F32;
+
+typedef union {
+	struct {
+		F32 a11, a12, a13, a14;
+		F32 a21, a22, a23, a24;
+		F32 a31, a32, a33, a34;
+		F32 a41, a42, a43, a44;
+	};
+	F32 m[4][4];
+} Mat3x3F32;
+
+// matrix functions
+Mat3x3F32 mat_3x3f32(F32 diagonal);
+Mat3x3F32 make_translate_3x3f32(Vec2F32 delta);
+Mat3x3F32 make_scale_3x3f32(Vec2F32 scale);
+Mat3x3F32 mul_3x3f32(Mat3x3F32 a, Mat3x3F32 b);
+
+Mat4x4F32 mat_4x4f32(F32 diagonal);
+Mat4x4F32 make_translate_4x4f32(Vec3F32 delta);
+Mat4x4F32 make_scale_4x4f32(Vec3F32 scale);
+Mat4x4F32 make_perspective_4x4f32(F32 fov, F32 aspect_ratio, F32 near_z, F32 far_z);
+Mat4x4F32 make_orthographic_4x4f32(F32 left, F32 right, F32 bottom, F32 top, F32 near_z, F32 far_z);
+Mat4x4F32 make_look_at_4x4f32(Vec3F32 eye, Vec3F32 center, Vec3F32 up);
+Mat4x4F32 make_rotate_4x4f32(Vec3F32 axis, F32 turns);
+Mat4x4F32 mul_4x4f32(Mat4x4F32 a, Mat4x4F32 b);
+Mat4x4F32 scale_4x4f32(Mat4x4F32 m, F32 scale);
+Mat4x4F32 inverse_4x4f32(Mat4x4F32 m);
+Mat4x4F32 derotate_4x4f32(Mat4x4F32 mat);
+Mat4x4F32 transpose_4x4f32(Mat4x4F32 mat);
+
 
 
 ///////////////////////////////////////

@@ -14,12 +14,16 @@ void sr_draw_rect(RectF32 rect, ColorRGBA color);
 B32 sr_is_point_in_triangle(Vec2F32 point, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3);
 void sr_draw_filled_triangle(Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color);
 
+// camera projections
+vec2f32 soft_r_orthographic_projection(vec3f32 vec, r_camera camera);
+vec2f32 soft_r_perspective_projection(vec3f32 vec, r_camera camera);
+
 // rendering api functions
-static void soft_r_init(R_RenderContext* ctx);
-static void soft_r_begin_frame(R_RenderContext* ctx, R_RenderTarget target);
-static void soft_r_submit_commands(R_RenderCommand* cmd, U64 count);
-static void soft_r_end_frame(R_RenderContext* ctx);
-static void soft_r_close(R_RenderContext* ctx);
+void soft_r_init(R_RenderContext* ctx);
+void soft_r_begin_frame(R_RenderContext* ctx, R_RenderTarget target);
+void soft_r_submit_commands(R_RenderCommand* cmd, U64 count);
+void soft_r_end_frame(R_RenderContext* ctx);
+void soft_r_close(R_RenderContext* ctx);
 
 
 #endif // SOFTWARE_RENDERER_H 
