@@ -1,8 +1,6 @@
 #ifndef SOFTWARE_RENDERER_H
 #define SOFTWARE_RENDERER_H
 
-#include <math.h>
-
 // This method uses Bresenham's line algorithm
 // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm  
 // https://groups.csail.mit.edu/graphics/classes/6.837/F02/lectures/6.837-7_Line.pdf
@@ -15,8 +13,8 @@ B32 sr_is_point_in_triangle(Vec2F32 point, Vec2F32 v1, Vec2F32 v2, Vec2F32 v3);
 void sr_draw_filled_triangle(Vec2F32 v1, Vec2F32 v2, Vec2F32 v3, ColorRGBA color);
 
 // camera projections
-vec2f32 soft_r_orthographic_projection(vec3f32 vec, r_camera camera);
-vec2f32 soft_r_perspective_projection(vec3f32 vec, r_camera camera);
+Vec2F32 soft_r_orthographic_projection(Vec3F32 vec, R_RenderCamera camera);
+Vec2F32 soft_r_perspective_projection(Vec3F32 vec, R_RenderCamera camera);
 
 // rendering api functions
 void soft_r_init(R_RenderContext* ctx);

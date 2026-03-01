@@ -65,21 +65,8 @@ typedef struct{
 } R_RenderTarget;
 
 // forward declare R_RenderContext;
-typedef struct R_RenderContext R_RenderContext;
-
-typedef struct{
-	void (*r_init_backend)(R_RenderContext* ctx);	
-	void (*r_begin_frame)(R_RenderContext *ctx, R_RenderTarget target);	
-	void (*r_submit_commands)(R_RenderCommand *cmd, U64 count);	
-	void (*r_end_frame)(R_RenderContext *ctx);	
-	void (*r_close_backend)(R_RenderContext *ctx);	
-}R_BackendInterface;
-
-
-struct R_RenderContext{
+typedef struct R_RenderContext{
 	R_RenderingBackend backend;	
-	R_BackendInterface api;	
-
 	R_RenderCamera camera;	
 
 	R_RenderCommand* command_queue;
@@ -87,9 +74,8 @@ struct R_RenderContext{
 	U64 count; 
 	
 	R_RenderTarget target;
-
 	void* backend_data;
-};
+} R_RenderContext;
 
 global R_RenderContext* glb_r_context = NULL;
 
@@ -108,5 +94,12 @@ void r_end_frame();
 void r_draw_line(Vec3F32 p0, Vec3F32 p1, ColorRGBA c);
 void r_draw_triangle(Vec3F32 p0, Vec3F32 p1, Vec3F32 p2, ColorRGBA c);
 void r_draw_quad(Vec3F32 p0, Vec3F32 p1, Vec3F32 p2, Vec3F32 p3, ColorRGBA c);
+
+// rendering hooks
+void r_backend_init(R_RenderContext* ctx);
+void r_backend_begin_frame(R_RenderContext* ctx, R_RenderTarget target);
+void r_backend_submit_commands(R_RenderCommand *cmd, U64 count);
+void r_backend_end_frame(R_RenderContext* ctx);
+void r_backend_close(R_RenderContext* ctx);
 
 #endif //RENDERER_H

@@ -28,29 +28,8 @@ R_RenderContext* r_init_render(Arena* arena, R_RenderingBackend type){
 
 	r_set_global_render_context(ctx);
 
-	switch(type){
-		case R_RenderingBackend_Software:{
-			ctx->api.r_init_backend = soft_r_init;
-			ctx->api.r_begin_frame = soft_r_begin_frame;
-			ctx->api.r_submit_commands = soft_r_submit_commands;
-			ctx->api.r_end_frame = soft_r_end_frame;
-			ctx->api.r_init_backend = soft_r_close;
-		}break;
-		case R_RenderingBackend_Vulkan:{
-			NotImplemented;
-		}break;
-		case R_RenderingBackend_OpenGL:{
-			NotImplemented;
-		}break;
-		default:{
-			LogError("Rendering backend not recognized");
-			InvalidPath;
-		}
-	}
-	
-	if(ctx->api.r_init_backend){
-		ctx->api.r_init_backend(ctx);
-	}
+	r_backend_init(ctx);
+
 	return ctx;
 }
 
@@ -60,13 +39,13 @@ void r_begin_frame(R_RenderTarget target){
 	
 	ctx->count = 0; 
 
-	ctx->api.r_begin_frame(ctx, target);
+	r_backend_begin_frame(ctx, target);
 }
 
 void r_end_frame(){
 	R_RenderContext* ctx = r_get_global_render_context();
-	ctx->api.r_submit_commands(ctx->command_queue, ctx->count);
-	ctx->api.r_end_frame(ctx);
+	r_backend_submit_commands(ctx->command_queue, ctx->count);
+	r_backend_end_frame(ctx);
 }
 
 // basic primitive drawing

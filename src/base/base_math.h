@@ -1,6 +1,8 @@
 #ifndef BASE_MATH_H
 #define BASE_MATH_H
 
+#include <math.h>
+
 ///////////////////////////////////////
 /// cjk: Math Helper Functions 
 

@@ -96,33 +96,34 @@ void soft_r_draw_rect(RectF32 rect, ColorRGBA color){
 }
 
 // camera projections
-Vec2F32 soft_r_orthographic_projection(Vec3F32 vec, R_Camera camera);
-Vec2F32 soft_r_perspective_projection(Vec3F32 vec, R_Camera camera);
+Vec2F32 soft_r_orthographic_projection(Vec3F32 vec, R_RenderCamera camera);
+Vec2F32 soft_r_perspective_projection(Vec3F32 vec, R_RenderCamera camera);
 
-// rendering api functions
-void soft_r_init(R_RenderContext* ctx){}
-void soft_r_begin_frame(R_RenderContext* ctx, R_RenderTarget target){}
 
-void soft_r_submit_commands(R_RenderCommand* cmd, U64 count){
+// rendering hook functions
+void r_backend_init(R_RenderContext* ctx){}
+void r_backend_begin_frame(R_RenderContext* ctx, R_RenderTarget target){}
+
+void r_backend_submit_commands(R_RenderCommand* cmd, U64 count){
 	for EachIndex(idx, count){
-		R_RenderCommand* curr_cmd = cmd[idx];
+		R_RenderCommand curr_cmd = cmd[idx];
 		switch(curr_cmd.type){
 			case R_RenderCommandType_Line:{
-				soft_r_draw_line(curr_cmd->line.p0, 
-			 				curr_cmd->line.p1, 
-			 				curr_cmd->color );			
+				soft_r_draw_line(curr_cmd.line.p0, 
+			 				curr_cmd.line.p1, 
+			 				curr_cmd.color );			
 			}break;
 			case R_RenderCommandType_Triangle:{}break;
 			case R_RenderCommandType_Quad:{}break;
 			default:{
-				LogErr("Unknown render command");
+				LogWarning("Unknown render command");
 			}break;
 		}
 	}
 }
 
-void soft_r_end_frame(R_RenderContext* ctx){}
-void soft_r_close(R_RenderContext* ctx){}
+void r_backend_end_frame(R_RenderContext* ctx){}
+void r_backend_close(R_RenderContext* ctx){}
 
 /*
 // This method uses Midpoint circle algorithm for quickly drawing a circle

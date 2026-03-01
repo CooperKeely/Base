@@ -185,8 +185,31 @@ Mat4x4F32 make_scale_4x4f32(Vec3F32 scale){
 
 }
 
-Mat4x4F32 make_perspective_4x4f32(F32 fov, F32 aspect_ratio, F32 near_z, F32 far_z);
-Mat4x4F32 make_orthographic_4x4f32(F32 left, F32 right, F32 bottom, F32 top, F32 near_z, F32 far_z);
+Mat4x4F32 make_perspective_4x4f32(F32 fov, F32 aspect_ratio, F32 near_z, F32 far_z){
+		
+}
+
+Mat4x4F32 make_orthographic_4x4f32(F32 left, F32 right, F32 bottom, F32 top, F32 near_z, F32 far_z){
+	// translation values 
+	F32 trans_x = -(right + left) / (right - left);
+	F32 trans_y = -(top + bottom) / (top - bottom);
+	F32 trans_z = -(far_z + near_z) / (far_z - near_z);
+	
+	// scale values 
+	F32 scale_x = F32Lit(2.0) / (right - left);
+	F32 scale_y = F32Lit(2.0) / (top - bottom);
+	F32 scale_z = F32Lit(2.0) / (far_z - near_z);
+
+	return (Mat4x4F32) {
+		.m = {
+			{scale_x, 0.f, 	   0.f,     trans_x},
+			{0.f,	  scale_y, 0.f,     trans_y},
+			{0.f, 	  0.f, 	   scale_z, trans_z},
+			{0.f, 	  0.f,     0.f,     1.f}
+		}
+	};
+}
+
 Mat4x4F32 make_look_at_4x4f32(Vec3F32 eye, Vec3F32 center, Vec3F32 up);
 Mat4x4F32 make_rotate_4x4f32(Vec3F32 axis, F32 turns);
 
@@ -203,7 +226,8 @@ Mat4x4F32 mul_4x4f32(Mat4x4F32 a, Mat4x4F32 b){
 }
 
 Mat4x4F32 scale_4x4f32(Mat4x4F32 mat, F32 scale){
-	Mat4x4F32 scale_mat = make_scale_4x4f32(scale);
+	Vec3F32 scale_vec = Vec3_F32(scale, scale, scale);
+	Mat4x4F32 scale_mat = make_scale_4x4f32(scale_vec);
 	return mul_4x4f32(scale_mat, mat);
 }
 Mat4x4F32 inverse_4x4f32(Mat4x4F32 m);
