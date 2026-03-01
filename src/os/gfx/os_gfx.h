@@ -1,18 +1,13 @@
 #ifndef BASE_OS_GFX_H
 #define BASE_OS_GFX_H
 
-#define MAX_KEYBOARD_KEYS 512 
-#define MAX_KEY_PRESSED_QUEUE 16 
-#define MAX_CHAR_PRESSED_QUEUE 16 
-
-#define MAX_MOUSE_BUTTONS 8
-
 
 ///////////////////////////////////////
 /// cjk: Window API Definitions 
 
 typedef U64 OS_GFX_WindowConfigFlag;
 enum{
+	OS_GFX_WindowConfigFlag_None		= 0,
 	OS_GFX_WindowConfigFlag_Fullscreen 	= (1<<0),
 	OS_GFX_WindowConfigFlag_Resizeable	= (1<<1),
 	OS_GFX_WindowConfigFlag_Undecorated	= (1<<2),
@@ -22,111 +17,45 @@ enum{
 	OS_GFX_WindowConfigFlag_Unfocused	= (1<<6),
 	OS_GFX_WindowConfigFlag_TopMost		= (1<<7),
 	OS_GFX_WindowConfigFlag_AlwaysRun	= (1<<8),
+	OS_GFX_WindowConfigFlag_COUNT
 };
 
 typedef enum{
-	OS_Event_None,
-	OS_Event_MouseEnter,
-	OS_Event_MouseLeave,
-	OS_Event_Destroy,
-	OS_Event_Client,
-	OS_Event_Unmap,
-	OS_Event_Map,
-	OS_Event_GainFocus,
-	OS_Event_LostFocus,
-	OS_Event_Exposure,
-	OS_Event_KeyPress,
-	OS_Event_KeyRelease,
-	OS_Event_ButtonPress,
-	OS_Event_ButtonRelease,
+	OS_GFX_PixelFormat_None = 0,	
+	OS_GFX_PixelFormat_RGB_24,
+	OS_GFX_PizelFormat_BGR_24,
+	OS_GFX_PixelFormat_RGBA_32,
+	OS_GFX_PixelFormat_BGRA_32,
+	OS_GFX_PixelFormat_BGR_32,
+	OS_GFX_PixelFormat_COUNT
+}OS_GFX_PixelFormat;
 
-	OS_Event_MouseMotion,
-	OS_Event_KeymapChange,
-	OS_Event_Mapping,
-	OS_Event_Visibility,
 
-	OS_Event_Configure,
-	OS_Event_Gravity,
+typedef struct{
+	F32 double_click_time;
+	F32 default_refresh_rate; 
+	F32 
+}OS_GFX_ConfigValues;
 
-	XCB_REPARENT_NOTIFY
-	XCB_PROPERTY_NOTIFY
-
-	XCB_SELECTION_CLEAR
-	XCB_SELECTION_REQUEST
-	XCB_SELECTION_NOTIFY
-
-	XCB_CIRCULATE_NOTIFY
-	XCB_CIRCULATE_REQUEST
-	XCB_GRAPHICS_EXPOSURE:
-	XCB_COLORMAP_NOTIFY
-	XCB_CONFIGURE_REQUEST
-	XCB_CREATE_NOTIFY
-
-} OS_Event;
+typedef OS_Handle OS_Window;
 
 typedef struct {
-	struct{
-		Str8 title;
-		OS_GFX_WindowConfigFlag flags;
-		B32 ready;
-		B32 should_close;
-		B32 resized_last_frame;
-		B32 event_waiting;
+	Str8 title;
+	OS_GFX_WindowConfigFlag flags;
+	OS_GFX_PizelFormat pixel_format;
 
-		Pnt2U32 display_size;
-		Pnt2U32 pending_size;
-		Pnt2U32 screen_size;
-		Pnt2U32 position;
-		Pnt2U32 previous_screen_size;
-		Pnt2U32 previous_position;
+	Pnt2U32 display_size;
+	Pnt2U32 screen_size;
+	Pnt2U32 position;
+	Pnt2U32 previous_screen_size;
+	Pnt2U32 previous_position;
 
-		Pnt2U32 screen_size_min;
-		Pnt2U32 screen_size_max;
+	Pnt2U32 screen_size_min;
+	Pnt2U32 screen_size_max;
 
-		void* frame_data; 
-	}window;
-	struct{
-		struct{
-			U32 exit_key;
-			U8 current_key_state[MAX_KEYBOARD_KEYS];
-			U8 previous_key_state[MAX_KEYBOARD_KEYS];
-			
-			U32 key_pressed_queue[MAX_KEY_PRESSED_QUEUE];
-			U32 key_pressed_queue_count;
-
-			U32 char_pressed_queue[MAX_CHAR_PRESSED_QUEUE];
-			U32 char_pressed_queue_count;
-		}keyboard;
-		struct{
-			Pnt2U32 offset;
-			Pnt2U32 current_position;
-			Pnt2U32 previous_position;
-			Pnt2U32 locked_position;
-
-			U32 cursor;
-			B32 cursor_hidden;
-			B32 cursor_locked;
-			B32 cursor_on_screen;
-
-			U8 current_button_state[MAX_MOUSE_BUTTONS];
-			U8 previous_button_state[MAX_MOUSE_BUTTONS];
-			Vec2F32 current_wheel_move;
-			Vec2F32 previous_wheel_move;
-		}mouse;
-	}input;
-
-	struct{
-		U64 current; // in micro seconds
-		U64 previous;
-
-		F64 update;
-		F64 draw;
-		F64 frame;
-		F64 target;
-
-		U64 frame_counter;
-	}time;
+	OS_Window window;	
 }OS_GFX_Context;
+
 
 global OS_GFX_Context* glb_os_gfx_context;
 
@@ -138,10 +67,6 @@ void os_gfx_close_platform(void);
 void os_gfx_set_global_context(OS_GFX_Context* ctx);	
 OS_GFX_Context* os_gfx_get_current_context();
 
-
-// Begin and end drawing
-void os_gfx_begin(void);
-void os_gfx_end(void);
 void os_gfx_paint_pixel(U32 width, U32 height, ColorRGBA c);
 
 // window helper functions
@@ -187,30 +112,15 @@ void os_gfx_enable_cursor(void);
 void os_gfx_disable_cursor(void);                                   
 B32 os_gfx_is_cursor_on_screen(void);                                
 
-// Timing-related functions
-void os_gfx_set_target_fps(U32 fps);                       // Set target FPS (maximum)
-F64 os_gfx_get_frame_time(void);                         // Get time in seconds for last frame drawn (delta time)
-F64 os_gfx_get_time(void);                             // Get elapsed time in seconds since Init_Window()
-U32 os_gfx_get_fps(void);                                 // Get current FPS
-
+// 
 void os_gfx_swap_screen_buffer(void);                      // Swap back buffer with front buffer (screen drawing)
 void os_gfx_poll_input_events(void);                       // Register all input events
 void* os_gfx_get_current_frame_buffer(void);
 void os_gfx_reset_frame_buffers(void);
 
+
 ///////////////////////////////////////
 /// cjk: Input Handeling API Definitions 
-
-typedef enum{
-	OS_VInput_Modifier_None 		= 0,
-	OS_VInput_Modifier_Shift 		= (1<<0),
-	OS_VInput_Modifier_Function 		= (1<<1),
-	OS_VInput_Modifier_Control 		= (1<<2),
-	OS_VInput_Modifier_Super 		= (1<<3),
-	OS_VInput_Modifier_Alt 			= (1<<4),
-	OS_VInput_Modifier_CapsLock 		= (1<<5),
-	OS_VInput_Modifier_COUNT
-}OS_VInput_Modifier;
 
 // virtual key x macro list
 // variable name, string, virtual keycode, base modifiers
@@ -356,6 +266,17 @@ typedef enum{
 	X(LeftBrace,	"{", 		OS_VInput_Modifier_Shift) \
 	X(RightBrace,	"}", 		OS_VInput_Modifier_Shift) \
 
+typedef enum{
+	OS_VInput_Modifier_None 		= 0,
+	OS_VInput_Modifier_Shift 		= (1<<0),
+	OS_VInput_Modifier_Function 		= (1<<1),
+	OS_VInput_Modifier_Control 		= (1<<2),
+	OS_VInput_Modifier_Super 		= (1<<3),
+	OS_VInput_Modifier_Alt 			= (1<<4),
+	OS_VInput_Modifier_CapsLock 		= (1<<5),
+	OS_VInput_Modifier_COUNT
+}OS_VInput_Modifier;
+
 
 typedef enum{
 #define X(name, str, mod) Glue(OS_VKey_, name),
@@ -379,17 +300,8 @@ read_only OS_VInput_Modifier OS_VKey_Modifiers[] = {
 OS_VKey os_gfx_get_resolved_key(OS_VKey key, OS_VInput_Modifier mod);
 OS_VKey os_gfx_is_alpha_numeric(OS_VKey key, OS_VInput_Modifier mod);
 
-// Input-related functions: keyboard
-B32 os_gfx_is_key_pressed(OS_VKey key);                             // Check if a key has been pressed once
-B32 os_gfx_is_key_pressed_repeat(OS_VKey key);                       // Check if a key has been pressed again
-B32 os_gfx_is_key_down(OS_VKey key);                                // Check if a key is being pressed
-B32 os_gfx_is_key_released(OS_VKey key);                            // Check if a key has been released once
-B32 os_gfx_is_key_up(OS_VKey key);                                  // Check if a key is NOT being pressed
-OS_VKey os_gfx_get_key_pressed(void);                                // Get key pressed (keycode), call it multiple times for keys queued, returns 0 when the queue is empty
-OS_VKey os_gfx_get_char_pressed(void);                               // Get char pressed (unicode), call it multiple times for chars queued, returns 0 when the queue is empty
-const U8* os_gfx_get_key_name(OS_VKey key);                        	// Get name of a QWERTY key on the current keyboard layout 
-void os_gfx_set_exit_key(OS_VKey key, OS_VInput_Modifier mod);       // Set a custom key to exit program (default is ESC)
 
+// Input-related functions: mouse 
 
 #define OS_VBUTTON_LIST \
 	X(Mouse1,	"Mouse1", 	OS_VInput_Modifier_None) \
@@ -418,20 +330,83 @@ read_only OS_VInput_Modifier OS_VMouse_Modifiers[] = {
 	OS_VBUTTON_LIST
 #undef X
 };
-// Input-related functions: mouse
-B32 os_gfx_is_mouse_button_pressed(OS_VButton button);                  // Check if a mouse button has been pressed once
-B32 os_gfx_is_mouse_button_down(OS_VButton button);                     // Check if a mouse button is being pressed
-B32 os_gfx_is_mouse_button_released(OS_VButton button);                 // Check if a mouse button has been released once
-B32 os_gfx_is_mouse_button_up(OS_VButton button);                       // Check if a mouse button is NOT being pressed
-U32 os_gfx_get_mouse_x(void);                                    // Get mouse position X
-U32 os_gfx_get_mouse_y(void);                                    // Get mouse position Y
-Pnt2U32 os_gfx_get_mouse_position(void);                         // Get mouse position XY
-Vec2F32 os_gfx_get_mouse_delta(void);                            // Get mouse delta between frames
-void os_gfx_set_mouse_position(U32 x, U32 y);                    // Set mouse position XY
-void os_gfx_set_mouse_offset(U32 offset_X, U32 offset_Y);          // Set mouse offset
-F32 os_gfx_get_mouse_wheel_move(void);                          // Get mouse wheel movement for X or Y, whichever is larger
-Vec2F32 os_gfx_get_mouse_wheel_move_v(void);                       // Get mouse wheel movement for both X and Y
-void os_gfx_set_mouse_cursor(U32 cursor);                        // Set mouse cursor
 
+
+///////////////////////////////////////
+/// cjk: OS_Event api 
+
+typedef enum{
+	OS_EventType_None,
+	
+	// Window related events
+	OS_EventType_Window_Shown,
+	OS_EventType_Window_Hidden,
+	OS_EventType_Window_Redraw,
+	OS_EventType_Window_FocusGained,
+	OS_EventType_Window_FocusLost,
+	OS_EventType_Window_Close,
+	OS_EventType_Window_Resize,
+	OS_EventType_Window_Move,
+
+	// Keyboard related events
+	OS_EventType_Key_Press,
+	OS_EventType_Key_Release,
+	OS_EventType_Key_MapChange,
+	
+	// Mouse related events
+	OS_EventType_Mouse_EnterWindow,
+	OS_EventType_Mouse_LeaveWindow,
+	OS_EventType_Mouse_Motion,
+	OS_EventType_Mouse_Scroll,
+	OS_EventType_Mouse_Press,
+	OS_EventType_Mouse_Release,
+
+	// System updates
+	OS_EventType_System_ClipboardUpdate,
+	OS_EventType_System_DPIChange,
+	OS_EventType_System_DropFile,
+	OS_EventType_System_Quit,
+
+	OS_EventType_COUNT
+} OS_EventType;
+
+typedef struct{
+	Pnt2U32 location;
+	Vec2F32 scroll_vector;
+	OS_VButton button;
+	OS_VInput_Modifier mod;
+} OS_Event_Mouse;
+
+typedef struct{
+	OS_VKey key;
+	B32 is_repeat;
+	OS_VInput_Modifier mod;
+} OS_Event_Key;
+
+typedef union{
+	Pnt2U32 location; 		
+	Rnt2U32 size;
+} OS_Event_Window;
+
+typedef union{
+	OS_Handle clip_board;
+	OS_Handle file_drop;
+	U64 new_dpi;
+} OS_Event_System;
+
+typedef struct{
+	OS_EventType type;
+	OS_Window window;
+	U64 time_stamp;	
+
+	union{
+		OS_Event_Key key_event;
+		OS_Event_Mouse mouse_event;
+		OS_Event_Window window_event;
+		OS_Event_System system_event;
+	};
+}OS_Event;
+
+B32 os_gfx_poll_input_events(OS_Event* event);
 
 #endif // BASE_OS_GFX
