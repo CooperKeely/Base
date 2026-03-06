@@ -26,7 +26,7 @@ U8 upper_from_char(const U8 c) {
 
 Str8 str8(U8 *str, U64 length) {
 	Assert(str != NULL);
-	return (Str8){str, length};
+	return (Str8){length, str};
 }
 
 void str8_printf(FILE *file_ptr, const char *format, ...) {
@@ -55,30 +55,30 @@ Str8 str8_pushf(Arena *arena, const char *format, ...) {
 	arena_pop(arena, 1);
 
 	va_end(args);
-	return (Str8){ptr, len};
+	return str8(ptr, len);
 }
 
 Str8 str8_skip_last_slash(Str8 str) {
 	Assert(str.size > 0);
-	Assert(str.str);
+	Assert(str.data);
 
-	U8 *ptr = str.str + str.size - 1;
-	for (; ptr >= str.str; ptr -= 1) {
+	U8 *ptr = str.data + str.size - 1;
+	for (; ptr >= str.data; ptr -= 1) {
 		if (char_is_slash(*ptr)) break;
 	}
 
-	if (ptr >= str.str) {
+	if (ptr >= str.data) {
 		ptr += 1;
-		str.size = (U64)(str.str + str.size - ptr);
-		str.str = ptr;
+		str.size = (U64)(str.data + str.size - ptr);
+		str.data = ptr;
 	}
 	return str;
 }
 
-U8 str8_get(Str8 string, U64 idx) {
-	Assert(string.str);
-	Assert(idx < string.size);		
-	return string.str[idx];
+U8 str8_get(Str8 str, U64 idx) {
+	Assert(str.data);
+	Assert(idx < str.size);		
+	return str.data[idx];
 }
 
 Str8 s64_to_str8(Arena* arena, S64 integer){
@@ -96,16 +96,16 @@ Str8 s64_to_str8(Arena* arena, S64 integer){
 
 	if(is_negative) digits ++;
 	Str8 result = (Str8){
-		.str = ArenaPushArrayZero(arena, U8, digits),
+		.data = ArenaPushArrayZero(arena, U8, digits),
 		.size = digits 
 	};
 
-	if(is_negative) result.str[0] = '-';
+	if(is_negative) result.data[0] = '-';
 
 	for EachIndex(i, result.size){
 		if(is_negative && i == 0) continue;
 		U64 digit = (abs_val/divide_by) % 10;
-		result.str[i] = (char)(digit + 48);
+		result.data[i] = (char)(digit + 48);
 		divide_by /= 10;
 	}	
 
@@ -113,22 +113,22 @@ Str8 s64_to_str8(Arena* arena, S64 integer){
 }
 
 S64 str8_to_s64(Str8 str){
-	Assert(str.str);
+	Assert(str.data);
 	if(str.size == 0) return 0;	
 
 	S64 ret = 0;
 	U64 i = 0;
 	S64 sign = 1;
 
-	if(str.str[0] == '-'){
+	if(str.data[0] == '-'){
 		sign = -1;
 		i = 1;
-	}else if(str.str[0] == '+'){
+	}else if(str.data[0] == '+'){
 		i = 1;
 	}
 	
 	for(; i < str.size; i ++){
-		U8 c = str.str[i];
+		U8 c = str.data[i];
 		if(char_is_digit(c)){
 			ret = (ret * 10) + (c - '0');
 		} else InvalidPath; // invalid char
@@ -165,7 +165,7 @@ F32 str8_to_f32(Str8 str){
 		F32 divisor = F32Lit(1.0);
 		for EachIndex(i, dec_slice.size) divisor *= F32Lit(10.0);
 
-		if(str.str[0] == '-') ret -= dec / divisor;
+		if(str.data[0] == '-') ret -= dec / divisor;
 		else ret += dec / divisor;
 	}
 
@@ -202,23 +202,23 @@ U64 cstring_length(const char *c) {
 
 Str8 cstring_to_str8(const char *c) {
 	Assert(c);
-	Str8 ret = {(U8*)c, cstring_length(c)};
+	Str8 ret = str8((U8*)c, cstring_length(c));
 	return ret; 
 }
 
 char* str8_to_cstring(Arena* arena, Str8 str){
 	Assert(arena);
 	Assert(str.size > 0);
-	Assert(str.str);
+	Assert(str.data);
 
 	char* cstring = ArenaPushArrayZero(arena, char,str.size + 1);
-	MemoryCopy(cstring, str.str, str.size);
+	MemoryCopy(cstring, str.data, str.size);
 	cstring[str.size] = '\0';
 	return cstring;	
 }
 
 S64 str8_find_first_char(Str8 str, U8 c){
-	Assert(str.str);
+	Assert(str.data);
 	for EachIndex(idx, str.size){
 		if (str8_get(str, idx) == c) return idx;
 	}
@@ -226,7 +226,7 @@ S64 str8_find_first_char(Str8 str, U8 c){
 }
 
 S64 str8_find_first_digit(Str8 str){
-	Assert(str.str);
+	Assert(str.data);
 	for EachIndex(idx, str.size){
 		U8 chr = str8_get(str, idx);
 		if (char_is_digit(chr)) return idx;
@@ -240,10 +240,10 @@ Str8 str8_concat(Arena *arena, Str8 s1, Str8 s2) {
 	U64 new_size = s1.size + s2.size;
 	U8 *character_buffer = ArenaPushArrayZero(arena, U8, new_size);
 
-	MemoryCopy(character_buffer, s1.str, s1.size);
-	MemoryCopy(character_buffer + s1.size, s2.str, s2.size);
+	MemoryCopy(character_buffer, s1.data, s1.size);
+	MemoryCopy(character_buffer + s1.size, s2.data, s2.size);
 
-	return (Str8){ .str = character_buffer, .size = new_size};
+	return (Str8){ .data = character_buffer, .size = new_size};
 }
 
 Str8 str8_copy(Arena* arena, Str8 str){
@@ -251,7 +251,7 @@ Str8 str8_copy(Arena* arena, Str8 str){
 
 	Str8 result = {0};
 	result.size = str.size;
-	result.str = ArenaPushArrayZero(arena, U8, str.size);
+	result.data = ArenaPushArrayZero(arena, U8, str.size);
 	MemoryCopyStr8(result, str);
 	return result;
 }
@@ -260,34 +260,34 @@ Str8 str8_substr(Str8 s1, Rng1U64 range) {
 	range.min = ClampTop(range.min, s1.size);
 	range.max = ClampTop(range.max, s1.size);
 
-	s1.str += range.min;
+	s1.data += range.min;
 	s1.size = dim_r1u64(range);
 	return s1;
 }
 
 Str8 str8_get_slice(Str8 s1, U64 start_idx, U64 size){
-	Assert(s1.str);
+	Assert(s1.data);
 	Assert(start_idx + size <= s1.size);
 	
 	Str8 string_slice;
-	string_slice.str = &s1.str[start_idx];
+	string_slice.data = &s1.data[start_idx];
 	string_slice.size = size;
 	
 	return string_slice;
 }
 
 Str8 str8_trim_whitespace(Str8 str){
-	Assert(str.str);
+	Assert(str.data);
 	if(str.size == 0) return str;
 
-	U8* first = str.str;
-	U8* last = str.str + str.size;
+	U8* first = str.data;
+	U8* last = str.data + str.size;
 	
 	while(last < first && !char_is_space(*first)) first++;
 	while(first < last && !char_is_space(*last)) last--;
 
 	Str8 result;
-	result.str = first;
+	result.data = first;
 	result.size = last - first;
 	return result;
 }
@@ -297,15 +297,15 @@ B32 str8_cmp(Str8 s1, Str8 s2) {
 	if (s1.size != s2.size) return BASE_FALSE;
 	if (s1.size == 0) return BASE_TRUE;
 
-	Assert(s1.str && s2.str);
-	return MemoryMatch(s1.str, s2.str, s1.size);
+	Assert(s1.data && s2.data);
+	return MemoryMatch(s1.data, s2.data, s1.size);
 }
 
 B32 str8_match(Str8 s1, Str8 s2, Str8_MatchFlags flags) {
 	B32 result = 1;
 
 	if (s1.size == s2.size && (flags == 0)) {
-		return MemoryMatch(s1.str, s2.str, s1.size);
+		return MemoryMatch(s1.data, s2.data, s1.size);
 	}
 
 	else if (s1.size == s2.size || (flags & Str8_MatchRightSideSloppy)) {
@@ -314,8 +314,8 @@ B32 str8_match(Str8 s1, Str8 s2, Str8_MatchFlags flags) {
 		U64 size = Min(s1.size, s2.size);
 
 		for EachIndex(i, size) {
-			U8 s1_char = s1.str[i];
-			U8 s2_char = s2.str[i];
+			U8 s1_char = s1.data[i];
+			U8 s2_char = s2.data[i];
 
 			if (case_insensitive) {
 				s1_char = upper_from_char(s1_char);
@@ -375,7 +375,7 @@ Str8Node *str8_list_push_node_front(Str8List *list, Str8Node *node) {
 Str8Node* str8_list_push(Arena *arena, Str8List *list, Str8 string) {
 	Assert(arena);
 	Assert(list);
-	Assert(string.str);
+	Assert(string.data);
 
 	Str8Node *node = ArenaPushStructZero(arena, Str8Node);
 	node->string = string;
@@ -396,8 +396,8 @@ Str8Node *str8_list_push_front(Arena *arena, Str8List *list, Str8 string) {
 Str8List* str8_tokenize_list(Arena *arena, Str8 string, Str8 delimiters) {
 	Assert(arena != NULL);
 	Assert(delimiters.size > 0);
-	Assert(string.str);
-	Assert(delimiters.str);
+	Assert(string.data);
+	Assert(delimiters.data);
 
 	Str8List* list = ArenaPushStructZero(arena, Str8List);
 	U64 cursor = 0;

@@ -23,7 +23,7 @@ enum{
 typedef enum{
 	OS_GFX_PixelFormat_None = 0,	
 	OS_GFX_PixelFormat_RGB_24,
-	OS_GFX_PizelFormat_BGR_24,
+	OS_GFX_PixelFormat_BGR_24,
 	OS_GFX_PixelFormat_RGBA_32,
 	OS_GFX_PixelFormat_BGRA_32,
 	OS_GFX_PixelFormat_BGR_32,
@@ -33,8 +33,8 @@ typedef enum{
 
 typedef struct{
 	F32 double_click_time;
+	F32 caret_blink_time;
 	F32 default_refresh_rate; 
-	F32 
 }OS_GFX_ConfigValues;
 
 typedef OS_Handle OS_Window;
@@ -42,7 +42,7 @@ typedef OS_Handle OS_Window;
 typedef struct {
 	Str8 title;
 	OS_GFX_WindowConfigFlag flags;
-	OS_GFX_PizelFormat pixel_format;
+	OS_GFX_PixelFormat pixel_format;
 
 	Pnt2U32 display_size;
 	Pnt2U32 screen_size;
@@ -112,7 +112,6 @@ void os_gfx_enable_cursor(void);
 void os_gfx_disable_cursor(void);                                   
 B32 os_gfx_is_cursor_on_screen(void);                                
 
-// 
 void os_gfx_swap_screen_buffer(void);                      // Swap back buffer with front buffer (screen drawing)
 void os_gfx_poll_input_events(void);                       // Register all input events
 void* os_gfx_get_current_frame_buffer(void);
@@ -121,6 +120,18 @@ void os_gfx_reset_frame_buffers(void);
 
 ///////////////////////////////////////
 /// cjk: Input Handeling API Definitions 
+
+typedef enum{
+	OS_VInput_Modifier_None 		= 0,
+	OS_VInput_Modifier_Shift 		= (1<<0),
+	OS_VInput_Modifier_Function 		= (1<<1),
+	OS_VInput_Modifier_Control 		= (1<<2),
+	OS_VInput_Modifier_Super 		= (1<<3),
+	OS_VInput_Modifier_Alt 			= (1<<4),
+	OS_VInput_Modifier_CapsLock 		= (1<<5),
+	OS_VInput_Modifier_COUNT
+}OS_VInput_Modifier;
+
 
 // virtual key x macro list
 // variable name, string, virtual keycode, base modifiers
@@ -132,12 +143,12 @@ void os_gfx_reset_frame_buffers(void);
 	X(Backspace,	"Backspace", 	OS_VInput_Modifier_None) \
 	X(CapsLock,	"CapsLock", 	OS_VInput_Modifier_None) \
 	X(Super,	"Super", 	OS_VInput_Modifier_None) \
-
+								 \
 	X(UpArrow,	"UpArrow", 	OS_VInput_Modifier_None) \
 	X(DownArrow,	"DownArrow", 	OS_VInput_Modifier_None) \
 	X(LeftArrow,	"LeftArrow", 	OS_VInput_Modifier_None) \
 	X(RightArrow,	"RightArrow", 	OS_VInput_Modifier_None) \
-
+								 \
 	X(Alt_R,	"Alt_R", 	OS_VInput_Modifier_None) \
 	X(Alt_L,	"Alt_L", 	OS_VInput_Modifier_None) \
 	X(Ctrl_R,	"Ctrl_R", 	OS_VInput_Modifier_None) \
@@ -145,7 +156,7 @@ void os_gfx_reset_frame_buffers(void);
 	X(Shift_R,	"Shift_R", 	OS_VInput_Modifier_None) \
 	X(Shift_L,	"Shift_L", 	OS_VInput_Modifier_None) \
 	X(Function,	"Function", 	OS_VInput_Modifier_None) \
-	
+								 \
 	X(F1,		"F1", 		OS_VInput_Modifier_None) \
 	X(F2,		"F2", 		OS_VInput_Modifier_None) \
 	X(F3,		"F3", 		OS_VInput_Modifier_None) \
@@ -158,14 +169,14 @@ void os_gfx_reset_frame_buffers(void);
 	X(F10,		"F10", 		OS_VInput_Modifier_None) \
 	X(F11,		"F11", 		OS_VInput_Modifier_None) \
 	X(F12,		"F12", 		OS_VInput_Modifier_None) \
-	
+								 \
 	X(Insert,	"Ins", 		OS_VInput_Modifier_None) \
 	X(Delete,	"Del", 		OS_VInput_Modifier_None) \
 	X(PageDown,	"PgDn", 	OS_VInput_Modifier_None) \
 	X(PageUp,	"PgUp", 	OS_VInput_Modifier_None) \
 	X(Home,		"Home", 	OS_VInput_Modifier_None) \
 	X(End,		"End", 		OS_VInput_Modifier_None) \
-	
+								 \
 	X(A,		"A", 		OS_VInput_Modifier_Shift) \
 	X(B,		"B", 		OS_VInput_Modifier_Shift) \
 	X(C,		"C", 		OS_VInput_Modifier_Shift) \
@@ -192,7 +203,7 @@ void os_gfx_reset_frame_buffers(void);
 	X(X,		"X", 		OS_VInput_Modifier_Shift) \
 	X(Y,		"Y", 		OS_VInput_Modifier_Shift) \
 	X(Z,		"Z", 		OS_VInput_Modifier_Shift) \
-
+								  \
 	X(a,		"a", 		OS_VInput_Modifier_None) \
 	X(b,		"b", 		OS_VInput_Modifier_None) \
 	X(c,		"c", 		OS_VInput_Modifier_None) \
@@ -219,7 +230,7 @@ void os_gfx_reset_frame_buffers(void);
 	X(x,		"x", 		OS_VInput_Modifier_None) \
 	X(y,		"y", 		OS_VInput_Modifier_None) \
 	X(z,		"z", 		OS_VInput_Modifier_None) \
-
+								 \
 	X(1,		"1", 		OS_VInput_Modifier_None) \
 	X(2,		"2", 		OS_VInput_Modifier_None) \
 	X(3,		"3", 		OS_VInput_Modifier_None) \
@@ -230,7 +241,7 @@ void os_gfx_reset_frame_buffers(void);
 	X(8,		"8", 		OS_VInput_Modifier_None) \
 	X(9,		"9", 		OS_VInput_Modifier_None) \
 	X(0,		"0", 		OS_VInput_Modifier_None) \
-
+								 \
 	X(Exclamation,	"!", 		OS_VInput_Modifier_Shift) \
 	X(At,		"@", 		OS_VInput_Modifier_Shift) \
 	X(Pound,	"#", 		OS_VInput_Modifier_Shift) \
@@ -241,7 +252,7 @@ void os_gfx_reset_frame_buffers(void);
 	X(Star,		"*", 		OS_VInput_Modifier_Shift) \
 	X(LeftParen,	"(", 		OS_VInput_Modifier_Shift) \
 	X(RightParen,	")", 		OS_VInput_Modifier_Shift) \
-
+								  \
 	X(Comma,	",", 		OS_VInput_Modifier_None) \
 	X(Period,	".", 		OS_VInput_Modifier_None) \
 	X(ForwardSlash,	"/", 		OS_VInput_Modifier_None) \
@@ -253,7 +264,7 @@ void os_gfx_reset_frame_buffers(void);
 	X(Equal,	"=", 		OS_VInput_Modifier_None) \
 	X(LeftBracket,	"[", 		OS_VInput_Modifier_None) \
 	X(RightBracket,	"]", 		OS_VInput_Modifier_None) \
-
+								 \
 	X(LessThan,	"<", 		OS_VInput_Modifier_Shift) \
 	X(GreaterThan,	">", 		OS_VInput_Modifier_Shift) \
 	X(QuestionMark,	"?", 		OS_VInput_Modifier_Shift) \
@@ -267,26 +278,14 @@ void os_gfx_reset_frame_buffers(void);
 	X(RightBrace,	"}", 		OS_VInput_Modifier_Shift) \
 
 typedef enum{
-	OS_VInput_Modifier_None 		= 0,
-	OS_VInput_Modifier_Shift 		= (1<<0),
-	OS_VInput_Modifier_Function 		= (1<<1),
-	OS_VInput_Modifier_Control 		= (1<<2),
-	OS_VInput_Modifier_Super 		= (1<<3),
-	OS_VInput_Modifier_Alt 			= (1<<4),
-	OS_VInput_Modifier_CapsLock 		= (1<<5),
-	OS_VInput_Modifier_COUNT
-}OS_VInput_Modifier;
-
-
-typedef enum{
 #define X(name, str, mod) Glue(OS_VKey_, name),
-	OS_VKEY_LIST
+	OS_VKEY_LIST 
 #undef X
 	OS_VKey_COUNT,
 }OS_VKey;
 
-read_only U8* OS_VKey_Strings[] = {
-#define X(name, str, mod) str,
+read_only Str8 OS_VKey_Strings[] = {
+#define X(name, str, mod) Str8Comp(str),
 	OS_VKEY_LIST
 #undef X
 };
@@ -319,8 +318,8 @@ typedef enum{
 	OS_VButton_COUNT,
 }OS_VButton;
 
-read_only U8* OS_VButton_Strings[] = {
-#define X(name, str, mod) str,
+read_only Str8 OS_VButton_Strings[] = {
+#define X(name, str, mod) Str8Comp(str),
 	OS_VBUTTON_LIST
 #undef X
 };
@@ -385,7 +384,7 @@ typedef struct{
 
 typedef union{
 	Pnt2U32 location; 		
-	Rnt2U32 size;
+	Pnt2U32 size;
 } OS_Event_Window;
 
 typedef union{

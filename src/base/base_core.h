@@ -220,7 +220,8 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 
 #define MemoryCopyStruct(dest, src) MemoryCopy((dest), (src), sizeof(*(dest)))
 #define MemoryCopyArray(dest, src) MemoryCopy((dest), (src), sizeof(dest))
-#define MemoryCopyStr8(dest, src) MemoryCopy((dest).str, (src).str, (src).size)
+#define MemoryCopyStr8(dest, src) MemoryCopy((dest).data, (src).data, (src).size)
+#define MemoryCopyBuffer(dest, src) MemoryCopy((dest).data, (src).data, (src).size)
 
 #define MemoryZero(dest, num_bytes) memset((dest), 0, (num_bytes))
 #define MemoryZeroStruct(src) MemoryZero((src), sizeof(*(src)))
@@ -350,6 +351,15 @@ global const U8 min_U8 = 0x00;
 global const S8 min_S8 = 0x80;
 
 global const F32 pi32 = F32Lit(3.1415926535897);
+
+
+///////////////////////////////////////
+/// cjk: Buffer 
+
+typedef struct {
+	U64 size;
+	U8* data;
+}Buffer;
 
 ///////////////////////////////////////
 /// cjk: Time Definitions

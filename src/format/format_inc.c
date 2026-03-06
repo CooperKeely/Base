@@ -1,3 +1,4 @@
+#include "tokenizer.c"
 
 #ifdef FORMAT_OBJ_ENABLE
 # include "obj/obj.c"

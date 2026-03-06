@@ -199,9 +199,9 @@ void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app) {
 		
 		Str8 host_name = cstring_to_str8(char_buf); 
 		
-		sys_info->machine_name.size = host_name.size;
-		sys_info->machine_name.str = ArenaPushArrayZero(os_state.arena, U8, host_name.size);
-		MemoryCopyStr8(sys_info->machine_name, host_name);	
+		U8* data = ArenaPushArrayZero(os_state.arena, U8, host_name.size);
+		sys_info->machine_name = str8(data, host_name.size);
+		MemoryCopyStr8(sys_info->machine_name, host_name);
 	}
 	
 	// dynamically allocated process info	

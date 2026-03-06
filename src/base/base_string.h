@@ -10,13 +10,11 @@ enum {
 	Str8_MatchCaseInsensitive = (1 << 1),
 };
 
-typedef struct {
-	U8 *str;
-	U64 size;
-} Str8;
+typedef Buffer Str8;
 
 #define Str8Lit(S) str8((U8 *)(S), sizeof(S) - 1)
-#define Str8VArg(s) (U32)(s).size, (s).str
+#define Str8Comp(s) {sizeof(s) - 1, (U8*)(s)}
+#define Str8VArg(s) (U32)(s).size, (s).data
 
 // C string helpers
 U64 cstring_length(const char *c);

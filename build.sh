@@ -91,10 +91,16 @@ if [ -v main ]; then
 	echo ""
 	$compile ../src/main.c $compile_link $link_os_gfx $out app 
 	echo ""
+elif [ -v token ]; then 
+	didbuild=1 
+	echo ""
+	$compile ../src/token_main.c $compile_link $link_os_gfx $out app 
+	echo ""
 fi
 
 if [ ! -v didbuild ]; then
 	echo "[Warning: no valid build target specified]"
+	exit 1
 fi
 
 cd ..
