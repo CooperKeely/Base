@@ -54,7 +54,10 @@ gcc_link="-lm -ldl -lrt"
 gcc_out="-o"
 
 # --- Per-Build Settings
-link_os_gfx="-lxcb -lxcb-shm -lxcb-image -lxcb-icccm"
+link_os_linux_x11_gfx="-lxcb -lxcb-shm -lxcb-image -lxcb-icccm"
+link_os_linux_wayland_gfx="-lwayland-client"
+
+link_os_gfx="$link_os_linux_wayland_gfx"
 
 # --- Choose Compile/Link lines
 if [ -v gcc ];			then compile_debug="$gcc_debug"; fi

@@ -8,13 +8,9 @@
 
 #include "base/base_inc.h"
 #include "os/os_inc.h"
-#include "format/format_inc.h"
-#include "renderer/renderer_inc.h"
 
 #include "base/base_inc.c"
 #include "os/os_inc.c"
-#include "format/format_inc.c"
-#include "renderer/renderer_inc.c"
 
 
 void os_file_props_test(){

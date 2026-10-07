@@ -1,24 +1,30 @@
-
 #include "core/os_core.c"
 
-#ifdef OS_LINUX
+#if defined(OS_LINUX)
 # include "core/os_linux/os_linux.c"
-#elifdef OS_WINDOWS
+#elif defined(OS_WINDOWS)
 # include "core/os_windows/os_windows.c"
-#elifdef OS_MACOS
+#elif defined(OS_MACOS)
 # include "core/os_macos/os_macos.c"
+#else
+# error "No OS core specified" 
 #endif
 
-#ifdef OS_GFX_ENABLE 
+#if defined(OS_GFX_ENABLE)
 # include "gfx/os_gfx.c"
-# ifdef OS_LINUX_WAYLAND
+# if defined(OS_LINUX_WAYLAND) && defined(OS_LINUX)
+#  undef global
 #  include "gfx/os_linux/wayland/os_linux_wayland_gfx.c"
-# elifdef OS_LINUX_X11
+#  define global static
+# elif defined(OS_LINUX_X11) && defined(OS_LINUX)
 #  include "gfx/os_linux/x11/os_linux_x11_gfx.c"
-# elifdef OS_WINDOWS
+# elif defined(OS_WINDOWS)
 #  include "core/os_windows/os_windows_gfx.c"
-# elifdef OS_MACOS
+# elif defined(OS_MACOS)
 #  include "core/os_macos/os_macos_gfx.c"
+# else
+#  error "No OS graphics specified"
 # endif
 #endif
+
 
