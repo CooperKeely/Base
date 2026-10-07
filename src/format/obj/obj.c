@@ -23,7 +23,7 @@ FMT_OBJ_Object* fmt_obj_object_init(Arena *arena, Str8 file_path){
 		// get a slice of the line
 		Str8 line_slice = str8(&file_buf[i], end-i);
 		line_slice = str8_trim_whitespace(line_slice);	
-		if(line_slice.size == 0 || line_slice.str[0] == '#') goto next_line;		
+		if(line_slice.size == 0 || line_slice.data[0] == '#') goto next_line;		
 
 		// parse prefix 
 		S64 first_space = str8_find_first_char(line_slice, ' ');
@@ -64,8 +64,8 @@ FMT_OBJ_Object* fmt_obj_object_init(Arena *arena, Str8 file_path){
 }
 
 void fmt_obj_parse_file(FMT_OBJ_Object* obj_file){
-
-	OS_Handle fd = obj_file->file_handle;
+	OS_Handle fd;
+	fd.u64[0] = obj_file->file_handle.u64[0];
 	OS_FileProperties file_props = os_properties_from_file_handle(fd);
 	U8* file_buf = os_file_map_view_open(fd, OS_AccessFlag_Read, Rng1_U64(0, file_props.size));
 
@@ -165,7 +165,7 @@ FMT_OBJ_Line fmt_obj_parse_line(Str8 line){
 }
 
 FMT_OBJ_Line fmt_obj_parse_vertex(Str8 line){
-	Assert(line.str);
+	Assert(line.data);
 	Assert(line.size > 0);
 
 	FMT_OBJ_Line ret = {0};
@@ -223,7 +223,7 @@ FMT_OBJ_Line fmt_obj_parse_texture(Str8 line){
 }
 
 FMT_OBJ_Line fmt_obj_parse_normal(Str8 line){
-	Assert(line.str);
+	Assert(line.data);
 	Assert(line.size > 0);
 	FMT_OBJ_Line ret = {0};
 
@@ -250,7 +250,7 @@ FMT_OBJ_Line fmt_obj_parse_normal(Str8 line){
 }
 
 FMT_OBJ_Line fmt_obj_parse_face(Str8 line){
-	Assert(line.str);
+	Assert(line.data);
 	Assert(line.size > 0);
 	FMT_OBJ_Line ret = {0};
 
@@ -277,7 +277,7 @@ FMT_OBJ_Line fmt_obj_parse_face(Str8 line){
 }
 
 FMT_OBJ_FaceCorner fmt_obj_parse_face_corner(Str8 corner_str){
-	Assert(corner_str.str);
+	Assert(corner_str.data);
 
 	FMT_OBJ_FaceCorner ret = {0};
 	if(corner_str.size == 0) return ret;	

@@ -72,7 +72,10 @@ typedef struct {
 	OS_FileProperties props;
 } OS_FileInfo;
 
-typedef U64 OS_Handle;
+
+typedef struct {
+	U64 u64[1]; 
+} OS_Handle;
 
 typedef struct{
 	OS_SystemInfo sys_info;
@@ -94,8 +97,13 @@ typedef struct{
 
 global OS_State os_state = {0};
 
+
 // OS entry point
 void os_entry_point(U64 argc, U8 **argv, OS_ApplicationEntryPoint* app);
+
+// Handle
+#define OS_HANDLE_ZERO ((OS_HANDLE){0})
+force_inline B32 os_handle_is_zero(OS_Handle handle);
 
 // File operations
 OS_Handle os_file_open(Str8 path, OS_AccessFlags props);

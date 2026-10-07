@@ -2,9 +2,7 @@
 #define RENDERER_INC_C 
 
 # include "renderer.c"
-# if defined(RENDERER_SOFTWARE_ENABLE)
-#  include "software/software_renderer.c"
-# elif  defined(RENDERER_VULKAN_ENABLE)
+# if  defined(RENDERER_VULKAN_ENABLE)
 #  include "vulkan/vulkan_renderer.c"
 # else
 #  error "No renderer selected"

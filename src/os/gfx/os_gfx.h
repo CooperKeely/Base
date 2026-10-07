@@ -37,83 +37,44 @@ typedef struct{
 	F32 default_refresh_rate; 
 }OS_GFX_ConfigValues;
 
-typedef OS_Handle OS_Window;
-
 typedef struct {
 	Str8 title;
 	OS_GFX_WindowConfigFlag flags;
 	OS_GFX_PixelFormat pixel_format;
 
-	Pnt2U32 display_size;
+	Vec2F32 display_size;
+	Vec2F32 window_size;
+	Vec2F32 previous_window_size;
+
+	Vec2F32 position;
+	Vec2F32 previous_position;
+
+	Vec2F32 window_size_min;
+	Vec2F32 window_size_max;
+
+	F32 current_dpi;
+
 	Pnt2U32 screen_size;
-	Pnt2U32 position;
-	Pnt2U32 previous_screen_size;
-	Pnt2U32 previous_position;
+	U32* screen_pixels;
+	U32 stride;
 
-	Pnt2U32 screen_size_min;
-	Pnt2U32 screen_size_max;
-
-	OS_Window window;	
+	OS_Handle platform_window_handle;	
 }OS_GFX_Context;
 
-
-global OS_GFX_Context* glb_os_gfx_context;
+// forward struct definitions
+typedef struct OS_Event OS_Event;
 
 // Open and closing window
-OS_GFX_Context* os_gfx_init_window(Arena* arena, U32 x, U32 y, U32 width, U32 height, Str8 window_name);
-void os_gfx_close_window(void);
-void os_gfx_init_platform(Arena* arena);
-void os_gfx_close_platform(void);
-void os_gfx_set_global_context(OS_GFX_Context* ctx);	
-OS_GFX_Context* os_gfx_get_current_context();
 
-void os_gfx_paint_pixel(U32 width, U32 height, ColorRGBA c);
+void os_gfx_init_platform(Arena* arena, OS_GFX_Context* ctx);
+void os_gfx_close_platform(OS_GFX_Context* ctx);
 
-// window helper functions
-B32 os_gfx_window_should_close(void);
-B32 os_gfx_is_window_ready(void);
-B32 os_gfx_is_window_fullscreen(void);
-B32 os_gfx_is_window_hidden(void);
-B32 os_gfx_is_window_minimized(void);
-B32 os_gfx_is_window_maximized(void);
-B32 os_gfx_is_window_focused(void);
-B32 os_gfx_is_window_resized(void);
-
-// window state options
-B32 os_gfx_is_window_state(U64 flag);
-void os_gfx_set_window_state(OS_GFX_WindowConfigFlag flags);
-void os_gfx_clear_window_state(OS_GFX_WindowConfigFlag flags);
-
-// set window options
-void os_gfx_toggle_fullscreen(void);
-void os_gfx_maximize_window(void);
-void os_gfx_minimize_window(void);
-void os_gfx_restore_window(void);
-void os_gfx_set_window_icon(); // TODO: (cjk): specify a parameter to take an image 
-void os_gfx_set_window_title(Str8 title);
-void os_gfx_set_window_position(U32 x, U32 y);
-void os_gfx_set_window_min_size(U32 width, U32 height);
-void os_gfx_set_window_max_size(U32 width, U32 height);
-void os_gfx_set_window_size(U32 width, U32 height);
-void os_gfx_set_window_focused(void);
-
-// get window options
-U32 os_gfx_get_screen_width(void);
-U32 os_gfx_get_screen_height(void);
-U32 os_gfx_get_display_width(void);
-U32 os_gfx_get_display_height(void);
-Pnt2U32 os_gfx_get_window_position(void);
-
-// Cursor-related functions
-void os_gfx_show_cursor(void);                                      
-void os_gfx_hide_cursor(void);                                      
-B32 os_gfx_is_cursor_hidden(void);                                  
-void os_gfx_enable_cursor(void);                                    
-void os_gfx_disable_cursor(void);                                   
-B32 os_gfx_is_cursor_on_screen(void);                                
+OS_GFX_Context* os_gfx_init_window(Arena* arena, F32 x, F32 y, F32 width, F32 height, Str8 window_name);
+void os_gfx_close_window(OS_GFX_Context* ctx);
 
 void os_gfx_swap_screen_buffer(void);                      // Swap back buffer with front buffer (screen drawing)
-void os_gfx_poll_input_events(void);                       // Register all input events
+B32 os_gfx_poll_input_events(OS_Event* event);
+
 void* os_gfx_get_current_frame_buffer(void);
 void os_gfx_reset_frame_buffers(void);
 
@@ -370,7 +331,7 @@ typedef enum{
 } OS_EventType;
 
 typedef struct{
-	Pnt2U32 location;
+	Vec2F32 location;
 	Vec2F32 scroll_vector;
 	OS_VButton button;
 	OS_VInput_Modifier mod;
@@ -383,19 +344,19 @@ typedef struct{
 } OS_Event_Key;
 
 typedef union{
-	Pnt2U32 location; 		
-	Pnt2U32 size;
+	Vec2F32 location; 		
+	Vec2F32 size;
 } OS_Event_Window;
 
 typedef union{
 	OS_Handle clip_board;
 	OS_Handle file_drop;
-	U64 new_dpi;
+	F32 new_dpi;
 } OS_Event_System;
 
-typedef struct{
+struct OS_Event{
 	OS_EventType type;
-	OS_Window window;
+	OS_Handle window;
 	U64 time_stamp;	
 
 	union{
@@ -404,8 +365,7 @@ typedef struct{
 		OS_Event_Window window_event;
 		OS_Event_System system_event;
 	};
-}OS_Event;
+};
 
-B32 os_gfx_poll_input_events(OS_Event* event);
 
 #endif // BASE_OS_GFX

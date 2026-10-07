@@ -1,11 +1,8 @@
 ///////////////////////////////////////
 /// cjk: Window API Functions 
 
-void os_gfx_init_platform(Arena* arena){
+void os_gfx_init_platform(Arena* arena, OS_GFX_Context* ctx){
 	OS_LNX_GFX_Context* lnx_ctx = ArenaPushStructZero(arena, OS_LNX_GFX_Context);
-	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
-
-	os_lnx_gfx_set_current_global_context(lnx_ctx);
 
 	U32 value_mask = 0;
 	U32 value_list[2];
@@ -105,17 +102,13 @@ void os_gfx_init_platform(Arena* arena){
 	free(protocols_reply);
 	free(delete_reply);	
 
-	os_gfx_reset_frame_buffers();
-
 	// map the window
 	xcb_map_window(lnx_ctx->connection, lnx_ctx->window);
 	xcb_flush(lnx_ctx->connection);
-	
-	while(!os_gfx_is_window_ready()) os_gfx_poll_input_events();
 
 }
 
-void os_gfx_close_platform(void){
+void os_gfx_close_platform(OS_GFX_Context* ctx){
 	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
 
 	for EachIndex(idx, 2){
@@ -134,18 +127,9 @@ void os_gfx_close_platform(void){
 	if(lnx_ctx->connection) xcb_disconnect(lnx_ctx->connection);
 }
 
-void os_lnx_gfx_set_current_global_context(OS_LNX_GFX_Context* ctx){
-	glb_os_lnx_gfx_context = ctx;
-}
 
-OS_LNX_GFX_Context* os_lnx_gfx_get_current_global_context(){
-	return glb_os_lnx_gfx_context;
-}
-
-
-void os_gfx_reset_frame_buffers(void){
+void os_gfx_reset_frame_buffers(OS_GFX_Context* ctx){
 	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
-	OS_GFX_Context* ctx = os_gfx_get_current_global_context();
 	lnx_ctx->current_frame_buffer = 0;
 
 	for EachIndex(idx, 2){
@@ -224,24 +208,6 @@ void os_gfx_swap_screen_buffer(void){
 	ctx->window.frame_data = lnx_ctx->frame_buffer[lnx_ctx->current_frame_buffer]->data;
 }
 
-void os_gfx_paint_pixel(U32 width, U32 height, ColorRGBA c){
-	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
-	xcb_image_t* image = lnx_ctx->frame_buffer[lnx_ctx->current_frame_buffer];
-
-	U32* pixels = (U32*) image->data;
-	U32 stride = image->width;
-	U32 color = color_rgba_to_bgra(c).c;
-
-	Assert(0 <= width && width < image->width);
-	Assert(0 <= height && height < image->height);
-
-	if(width <= os_gfx_get_screen_width() && height <= os_gfx_get_screen_height()){
-		pixels[height * stride + width] = color;
-	}else{
-		LogError("pixel write out of bounds");
-	}
-}
-
 // window state options
 void os_gfx_set_window_size(U32 w, U32 h){
 
@@ -274,13 +240,6 @@ void os_gfx_set_window_size(U32 w, U32 h){
 		ctx->window.screen_size.x = new_width;
 		ctx->window.screen_size.y = new_height;
 	}
-}
-
-
-
-void* os_gfx_get_window_handle(void){
-	OS_LNX_GFX_Context* lnx_ctx = os_lnx_gfx_get_current_global_context();
-	return &lnx_ctx->window;
 }
 
 void os_gfx_toggle_fullscreen(void){

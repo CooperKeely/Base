@@ -265,7 +265,8 @@ OS_Handle os_file_open(Str8 path, OS_AccessFlags flags) {
 	int fd = open(cstr_file_path, open_flags);
 	Assert(fd != -1);
 
-	OS_Handle handle = fd;
+	OS_Handle handle;
+	handle.u64[0] = fd;
 	arena_release(temp);
 	return handle;
 
@@ -279,7 +280,7 @@ OS_Handle os_file_open(Str8 path, OS_AccessFlags flags) {
 }
 
 void os_file_close(OS_Handle file_handle) {
-	S32 err = close(file_handle);
+	S32 err = close(file_handle.u64[0]);
 	Assert(err != -1);
 }
 
@@ -290,10 +291,10 @@ S64 os_file_read_data(OS_Handle file_handle, Rng1U64 range, void *out_data) {
 	S32 result = 0;
 	Assert(count != 0);
 
-	result = lseek(file_handle, offset, SEEK_SET);
+	result = lseek(file_handle.u64[0], offset, SEEK_SET);
 	Assert(result != -1);
 
-	result = read(file_handle, out_data, count);
+	result = read(file_handle.u64[0], out_data, count);
 	Assert(result != -1);
 
 	return result;
@@ -304,7 +305,7 @@ OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
 	struct stat statbuf;
 
 	ScratchArenaScope(scratch, 0, 0){
-		S32 err = fstat(file_handle, &statbuf);
+		S32 err = fstat(file_handle.u64[0], &statbuf);
 		Assert(err != -1);	
 
 		// time modified and created	
@@ -322,7 +323,7 @@ OS_FileProperties os_properties_from_file_handle(OS_Handle file_handle) {
 		
 		// file name
 		Str8 path = Str8Lit("/proc/self/fd/");
-		Str8 fd = s64_to_str8(scratch.arena, file_handle); 
+		Str8 fd = s64_to_str8(scratch.arena, file_handle.u64[0]); 
 		Str8 fd_path = str8_concat(scratch.arena, path, fd);
 		const char* cstr_fd_path = str8_to_cstring(scratch.arena, fd_path);
 		
@@ -379,8 +380,7 @@ B32 os_folder_path_exists(Str8 path) { NotImplemented; }
 
 // File map operations
 OS_Handle os_file_map_open(OS_Handle file_handle, OS_AccessFlags flags) {
-	OS_Handle map = file_handle;
-	return map;
+	return file_handle;
 }
 
 void os_file_map_close(OS_Handle map) {
@@ -388,7 +388,7 @@ void os_file_map_close(OS_Handle map) {
 }
 
 void* os_file_map_view_open(OS_Handle map, OS_AccessFlags flags, Rng1U64 range) {
-	Assert(map != 0);
+	Assert(!os_handle_is_zero(map));
 
 	int prot_flags = 0;
 	if(flags & OS_AccessFlag_Read)  prot_flags |= PROT_READ;
@@ -398,7 +398,7 @@ void* os_file_map_view_open(OS_Handle map, OS_AccessFlags flags, Rng1U64 range) 
 	if(flags & OS_AccessFlag_ShareRead) proc_mapping_flags |= MAP_SHARED;
 	else proc_mapping_flags |= MAP_PRIVATE;
 
-	void* addr = mmap(NULL, dim_r1u64(range), prot_flags, proc_mapping_flags, map, range.min);
+	void* addr = mmap(NULL, dim_r1u64(range), prot_flags, proc_mapping_flags, map.u64[0], range.min);
 	Assert(addr != MAP_FAILED);
 
 	return addr;	
@@ -406,7 +406,7 @@ void* os_file_map_view_open(OS_Handle map, OS_AccessFlags flags, Rng1U64 range) 
 }
 
 void os_file_map_view_close(OS_Handle map, void *ptr, Rng1U64 range) {
-	Assert(map != 0);
+	Assert(!os_handle_is_zero(map));
 	S32 err = munmap(ptr, dim_r1u64(range));
 	Assert(err != -1);
 }

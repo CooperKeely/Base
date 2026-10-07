@@ -22,3 +22,6 @@ struct OS_Stream{
 };
 
 
+force_inline B32 os_handle_is_zero(OS_Handle handle){
+	return handle.u64[0] == 0;
+}

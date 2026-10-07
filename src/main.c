@@ -2,7 +2,8 @@
 /// cjk: header files include
 
 #define OS_GFX_ENABLE
-#define RENDERER_SOFTWARE_ENABLE
+#define OS_LINUX_WAYLAND
+#define RENDERER_VULKAN_ENABLE
 #define FORMAT_OBJ_ENABLE
 
 #include "base/base_inc.h"
@@ -46,38 +47,12 @@ S32 entry_point(U64 argc, U8** argv){
 	(void) argv;
 	
 	Arena* arena = arena_alloc();
-	
-	// Load the object
-	FMT_OBJ_Object* obj_file = fmt_obj_object_init(arena, Str8Lit("./resources/african_head.obj"));
-	fmt_obj_parse_file(obj_file);
 
 	// Open the window
-	os_gfx_init_window(arena, 100, 100, 1000, 1000, Str8Lit("Software Renderer"));
-	r_init_render(arena, R_RenderingBackend_Software);
+	OS_GFX_Context* ctx = os_gfx_init_window(arena, 100, 100, 1000, 1000, Str8Lit("Software Renderer"));
 
-	os_gfx_set_target_fps(60);
 
-	while (!os_gfx_window_should_close()) {
-		os_gfx_begin();
-		
-		// TODO: (cjk): there must be a better way of doing this but to separate
-		// the os_gfx api and the rendering api this will do for now
-		R_RenderTarget target = {0}; 
-		target.width = os_gfx_get_screen_width();
-		target.height = os_gfx_get_screen_height();
-		target.stride = target.width * sizeof(ColorRGBA);
-		target.os_handle = os_gfx_get_window_handle();
-		target.buffer = os_gfx_get_current_frame_buffer();
-
-		r_begin_frame(target);
-
-		r_draw_background(COLOR_RED);
-		
-		r_end_frame();
-		os_gfx_end();
-	}
-
-	os_gfx_close_window();
+	os_gfx_close_window(ctx);
 	arena_release(arena);
 
 	return 0;
