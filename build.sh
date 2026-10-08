@@ -5,14 +5,23 @@ cd "$(dirname "$0")"
 
 # --- Unpack Arguments
 for arg in "$@"; do declare $arg='1'; done
-if 	[ ! -v release ];		then debug=1; fi
-if 	[ ! -v gcc ];			then clang=1; fi
+
+if 	[[ ! -v release  && ! -v profile ]] ;	
+	then debug=1; 
+elif	[ -v release ] 				
+	then unset debug; 
+fi
+
+if 	[ ! -v gcc ];				then clang=1; fi
+
+
 if      [[ -v gdb && -v run  ]];        then echo "[gdb and run are mutually exclusive]"; exit 1
 elif 	[[ -v gdb && ! -v asan  && ! -v run ]];      then echo "[gdb]"; fi
-if 	[ -v debug ];			then echo "[debug mode]"; fi
 if 	[[ -v asan && ! -v clang ]]; 	then echo "[asan requires clang]"; exit 1
 elif    [[ -v asan && -v clang ]];      then asan_flags="-fsanitize=address -fno-omit-frame-pointer"; echo "[asan enabled]";
 else 					asan_flags="";fi
+
+if 	[ -v debug ];			then echo "[debug mode]"; fi
 if 	[ -v release ];			then echo "[release mode]"; fi
 if 	[ -v profile ];			then echo "[profile mode]"; fi
 if 	[ -v cahe ];			then echo "[performing cache audit]"; fi
@@ -30,24 +39,18 @@ git_hash=$(git describe --always --dirty)
 git_hash_full=$(git rev-parse HEAD)
 
 # --- Compile/Link Definitions
+#-fno-omit-frame-pointer 
+clang_common="-I../src -I ../include -std=c99 -rdynamic -DBUILD_GIT_HASH=\"$git_hash\" -DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -Wall -Wextra -Wno-unused-function -Wno-unused-value -Wno-unused-variable -Wno-unused-parameter"
 
-clang_common="-I../src -I../include -std=c99 -rdynamic -DBUILD_GIT_HASH=\"$git_hash\" 
-		-DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -fno-omit-frame-pointer -Wall 
-		-Wextra -Wno-unused-function -Wno-unused-value -Wno-unused-variable 
-		-Wno-unused-parameter"
-
-clang_debug="$compiler ${asan_flags} -g -O0 ${clang_common} ${auto_compile_flags}"
+clang_debug="$compiler ${asan_flags} -g3 -O0 ${clang_common} ${auto_compile_flags}"
 clang_release="$compiler ${asan_flags} -g -O3 -DBUILD_DEBUG=0 ${clang_common} ${auto_compile_flags}"
 clang_profile="$compiler -pg -O0 -DBUILD_DEBUG=0 ${clang_common} ${auto_compile_flags}"
-clang_link="-lm -lrt -ldl"
+clang_link="-lm -ldl -lrt"
 clang_out="-o"
 
-gcc_common="-I../src -I../include -std=c99 -rdynamic -DBUILD_GIT_HASH=\"$git_hash\" 
-		-DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -Wall -Wextra 
-		-Wno-unused-function -Wno-unused-value -Wno-unused-variable 
-		-Wno-unused-parameter"
+gcc_common="-I../src -I../include -std=c99 -rdynamic -DBUILD_GIT_HASH=\"$git_hash\" -DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -Wall -Wextra -Wno-unused-function -Wno-unused-value -Wno-unused-variable -Wno-unused-parameter"
 
-gcc_debug="$compiler -g -O0 ${gcc_common} ${auto_compile_flags}"
+gcc_debug="$compiler -g3 -O0 ${gcc_common} ${auto_compile_flags}"
 gcc_release="$compiler -g -O3 -DBUILD_DEBUG=0 ${gcc_common} ${auto_compile_flags}"
 gcc_profile="$compiler -g -O3 -DBUILD_DEBUG=0 ${gcc_common} ${auto_compile_flags}"
 gcc_link="-lm -ldl -lrt"
@@ -60,19 +63,27 @@ link_os_linux_wayland_gfx="-lwayland-client"
 link_os_gfx="$link_os_linux_wayland_gfx"
 
 # --- Choose Compile/Link lines
-if [ -v gcc ];			then compile_debug="$gcc_debug"; fi
-if [ -v gcc ];			then compile_release="$gcc_release"; fi
-if [ -v gcc ];			then compile_profile="$gcc_profile"; fi
-if [ -v gcc ];			then compile_link="$gcc_link"; fi
-if [ -v gcc ];			then out="$gcc_out"; fi
-if [ -v clang ]; 		then compile_debug="$clang_debug"; fi
-if [ -v clang ]; 		then compile_release="$clang_release"; fi
-if [ -v clang ];		then compile_profile="$clang_profile"; fi
-if [ -v clang ]; 		then compile_link="$clang_link"; fi
-if [ -v clang ]; 		then out="$clang_out"; fi
-if [ -v debug ]; 		then compile="$compile_debug"; fi
-if [ -v release ];		then compile="$compile_release"; fi
-if [ -v profile ];		then compile="$compile_profile"; fi
+if [ -v gcc ]; then
+	compile_debug="$gcc_debug";
+	compile_release="$gcc_release";
+	compile_profile="$gcc_profile";
+	compile_link="$gcc_link";
+	out="$gcc_out";
+elif [ -v clang ]; then
+	 compile_debug="$clang_debug";
+ 	 compile_release="$clang_release";
+	 compile_profile="$clang_profile";
+ 	 compile_link="$clang_link";
+ 	 out="$clang_out";
+fi
+
+if [ -v release ]; then
+	compile="$compile_release";
+elif [ -v profile ]; then
+	compile="$compile_profile";
+else
+	compile="$compile_debug"; 
+fi
 
 # --- Prep directories
 mkdir -p src
@@ -88,16 +99,17 @@ if [ -v clean ]; then
 fi
 
 # --- Build Everything
-cd build
 if [ -v main ]; then 
 	didbuild=1 
 	echo ""
-	$compile ../src/main.c $compile_link $link_os_gfx $out app 
+	cmd="$compile src/main.c $compile_link $link_os_gfx $out build/app"
+	if [ -v verbose ]; then echo "[Command]: $cmd"; fi
+	$cmd
 	echo ""
 elif [ -v token ]; then 
 	didbuild=1 
 	echo ""
-	$compile ../src/token_main.c $compile_link $link_os_gfx $out app 
+	$compile src/token_main.c $compile_link $link_os_gfx $out build/app 
 	echo ""
 fi
 
