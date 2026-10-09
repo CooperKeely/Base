@@ -46,7 +46,8 @@ S32 entry_point(U64 argc, U8** argv){
 
 	// Open the window
 	OS_GFX_Context* ctx = os_gfx_init_window(arena, 100, 100, 1000, 1000, Str8Lit("Software Renderer"));
-
+	
+	for(;;);
 
 	os_gfx_close_window(ctx);
 	arena_release(arena);

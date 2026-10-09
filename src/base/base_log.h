@@ -3,6 +3,9 @@
 
 ///////////////////////////////////////
 /// cjk: Logging 
+#define LOG_FD_STDIN	STDIN_FILENO
+#define LOG_FD_STDOUT	STDOUT_FILENO 
+#define LOG_FD_STDERR	STDERR_FILENO 
 
 typedef U64 LOG_Level;
 enum{

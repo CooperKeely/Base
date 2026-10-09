@@ -30,6 +30,9 @@ typedef enum{
 	OS_GFX_PixelFormat_COUNT
 }OS_GFX_PixelFormat;
 
+// forward declare struct definitions
+typedef struct OS_Event OS_Event;
+typedef struct OS_GFX_PlatformContext OS_GFX_PlatformContext;
 
 typedef struct{
 	F32 double_click_time;
@@ -42,12 +45,8 @@ typedef struct {
 	OS_GFX_WindowConfigFlag flags;
 	OS_GFX_PixelFormat pixel_format;
 
-	Vec2F32 display_size;
 	Vec2F32 window_size;
-	Vec2F32 previous_window_size;
-
 	Vec2F32 position;
-	Vec2F32 previous_position;
 
 	Vec2F32 window_size_min;
 	Vec2F32 window_size_max;
@@ -58,12 +57,8 @@ typedef struct {
 	U32* screen_pixels;
 	U32 stride;
 
-	OS_Handle platform_window_handle;	
+	OS_GFX_PlatformContext* platform_context;
 }OS_GFX_Context;
-
-// forward struct definitions
-typedef struct OS_Event OS_Event;
-
 // Open and closing window
 
 void os_gfx_init_platform(Arena* arena, OS_GFX_Context* ctx);
@@ -72,11 +67,10 @@ void os_gfx_close_platform(OS_GFX_Context* ctx);
 OS_GFX_Context* os_gfx_init_window(Arena* arena, F32 x, F32 y, F32 width, F32 height, Str8 window_name);
 void os_gfx_close_window(OS_GFX_Context* ctx);
 
-void os_gfx_swap_screen_buffer(void);                      // Swap back buffer with front buffer (screen drawing)
-B32 os_gfx_poll_input_events(OS_Event* event);
+void os_gfx_swap_screen_buffer(OS_GFX_Context* ctx, OS_Event* event); 
+B32 os_gfx_poll_input_events(OS_GFX_Context* ctx, OS_Event* event);
 
-void* os_gfx_get_current_frame_buffer(void);
-void os_gfx_reset_frame_buffers(void);
+
 
 
 ///////////////////////////////////////
