@@ -3,6 +3,7 @@
 ///////////////////////////////////////
 /// cjk: OS API Definitions
 
+// TODO: move out uneeded os specific dependencies
 # include <fcntl.h>
 # include <errno.h>
 # include <sys/stat.h>
@@ -134,6 +135,7 @@ B32 os_make_directory(Str8 path);
 // System and process info
 Str8 os_get_current_path(Arena* arena);
 OS_SystemInfo os_get_system_info();
+Str8 os_get_env_variable(Str8 variable);
 
 // OS memory allocation
 void *os_reserve_memory(U64 size);

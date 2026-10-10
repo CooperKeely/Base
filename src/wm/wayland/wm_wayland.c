@@ -1,34 +1,17 @@
-static LOG_Context log_way = (LOG_Context){
-	.fd 		= LOG_FD_STDERR,
-	.level 		= LOG_Level_All,
-	.log_flags	= LOG_Option_TimeStamp | LOG_Option_Abort,
-	.category	= { sizeof("WAYLAND") - 1, "WAYLAND" },
-};
+///////////////////////////////////////
+/// cjk: Export Backend 
 
-// (cjk): listener structs 
+B32 wm_get_backend_handle(WM_Context* ctx, WM_BackendHandle* out_info){
+	out_info.info.platform.wayland->display = ctx->platform_context->wl_display;
+	out_info.info.platform.wayland->surface = ctx->platform_context->wl_surface;
+	return BASE_TRUE;
+}
 
-static void registry_handle_global(void* data, struct wl_registry *registry, U32 name, const char* interface, U32 version);
-static void registry_handle_global_remove(void* data, struct wl_registry* registry, U32 name);
-static void xdg_surface_configure(void* data, struct xdg_surface* xdg_surface, uint32_t serial);
-static void xdg_wm_base_ping(void* data, struct xdg_wm_base *xdg_wm_base, uint32_t serial);
+///////////////////////////////////////
+/// cjk: Register Listeners
 
-
-static const struct wl_registry_listener registry_listener = {
-	.global = registry_handle_global,
-	.global_remove = registry_handle_global_remove,
-};
-
-static const struct xdg_surface_listener xdg_surface_listener = {
-	.configure = xdg_surface_configure,
-};
-
-static const struct xdg_wm_base_listener xdg_wm_base_listener = {
-	.ping = xdg_wm_base_ping,
-};
-
-// (cjk): forward declared function definitions
 static void registry_handle_global(void* data, struct wl_registry *registry, U32 name, const char* interface, U32 version){
-	OS_GFX_PlatformContext* plat_ctx = (OS_GFX_PlatformContext*) data;
+	WM_PlatformContext* plat_ctx = (WM_PlatformContext*) data;
 	str8_printf(stdout,"interface : '%s', version: %d, name: %d\n", interface, version, name);
 
 	if (strcmp(interface, wl_compositor_interface.name) == 0) {
@@ -44,7 +27,7 @@ static void registry_handle_global(void* data, struct wl_registry *registry, U32
 static void registry_handle_global_remove(void* data, struct wl_registry* registry, U32 name) { }
 
 static void xdg_surface_configure(void* data, struct xdg_surface* xdg_surface, uint32_t serial){
-	OS_GFX_PlatformContext* platform_context = (OS_GFX_PlatformContext*) data;
+	WM_PlatformContext* platform_context = (WM_PlatformContext*) data;
 	
 	xdg_surface_ack_configure(xdg_surface, serial);
 }
@@ -55,7 +38,7 @@ static void xdg_wm_base_ping(void* data, struct xdg_wm_base *xdg_wm_base, uint32
 
 
 // (cjk): egl initializer
-void os_gfx_init_egl(OS_GFX_PlatformContext* ctx, U32 width, U32 height){
+void wm_init_egl(WM_PlatformContext* ctx, U32 width, U32 height){
 	EGLint major;
 	EGLint minor;
 	EGLConfig config;
@@ -97,15 +80,15 @@ void os_gfx_init_egl(OS_GFX_PlatformContext* ctx, U32 width, U32 height){
 	err = eglMakeCurrent(ctx->egl_display, ctx->egl_surface, ctx->egl_surface, ctx->egl_context);
 	if(!err) { LogCtxError(log_way, "Failed to make EGL context current"); }
 
-	gl_loader_load_opengl_extensions();	
+	gl_loader_init((GL_LoaderProc)eglGetProcAddress);	
 }
 
 // (cjk): api implementations
-void os_gfx_init_platform(Arena* arena, OS_GFX_Context* ctx){
+void wm_init_platform(Arena* arena, WM_Context* ctx){
 	Assert(ctx);
 
 	// initialize platform context
-	OS_GFX_PlatformContext* plat_ctx = ArenaPushStruct(arena, OS_GFX_PlatformContext);
+	WM_PlatformContext* plat_ctx = ArenaPushStruct(arena, WM_PlatformContext);
 	Assert(plat_ctx);
 
 	plat_ctx->wl_display = wl_display_connect(NULL);
@@ -140,17 +123,17 @@ void os_gfx_init_platform(Arena* arena, OS_GFX_Context* ctx){
 	wl_surface_commit(plat_ctx->wl_surface);
 	wl_display_roundtrip(plat_ctx->wl_display);
 
-	os_gfx_init_egl(plat_ctx, 100, 100);
+	wm_init_egl(plat_ctx, 100, 100);
 
 	// Clear the buffer and swap to commit the first frame to the compositor
-	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+	glClearColor(1.0f, 0.3f, 0.3f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 	eglSwapBuffers(plat_ctx->egl_display, plat_ctx->egl_surface);
 
 	ctx->platform_context = plat_ctx;
 }
 
-void os_gfx_close_platform(OS_GFX_Context* ctx){
+void wm_close_platform(WM_Context* ctx){
 	struct wl_display* display = ctx->platform_context->wl_display;
 	Assert(display);
 	wl_display_disconnect(display);

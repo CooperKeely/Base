@@ -435,6 +435,20 @@ OS_SystemInfo os_get_system_info() {
 	return os_state.sys_info;
 }
 
+Str8 os_get_env_variable(Str8 variable){
+	Str8 result = {0};
+	ScratchArenaScope(scratch, 0, 0){
+		char* c_variable = ArenaPushArrayZero(scratch.arena, char, variable.size + 1);
+		MemoryCopy(c_variable, variable.data, variable.size);
+		c_variable[variable.size] = '\0';
+	
+		char* env_variable = getenv(c_variable);
+		
+		if(env_variable) result = cstring_to_str8(env_variable);
+	}
+	return result;
+}
+
 // OS memory allocation
 void *os_reserve_memory(U64 size) { NotImplemented; }
 void os_commit_memory(void *ptr, U64 size) { NotImplemented; }
