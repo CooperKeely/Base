@@ -7,7 +7,7 @@
 
 #include "r_core.c"
 #if defined(RENDER_ENABLE_OPENGL)
-# include "opengl/r_opengl.h" 
+# include "opengl/r_opengl.c" 
 #elif defined(RENDER_ENABLE_VULKAN)
 # error "Vulkan not supported yet"
 #endif

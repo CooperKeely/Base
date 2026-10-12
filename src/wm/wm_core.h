@@ -11,17 +11,30 @@ enum{
 	WM_ConfigFlag_Fullscreen 	= (1<<0),
 	WM_ConfigFlag_Resizeable	= (1<<1),
 	WM_ConfigFlag_Undecorated	= (1<<2),
-	WM_ConfigFlag_Hidden	= (1<<3),
-	WM_ConfigFlag_Minimized	= (1<<4),
-	WM_ConfigFlag_Maximized	= (1<<5),
-	WM_ConfigFlag_Unfocused	= (1<<6),
-	WM_ConfigFlag_TopMost	= (1<<7),
-	WM_ConfigFlag_AlwaysRun	= (1<<8),
+	WM_ConfigFlag_Hidden		= (1<<3),
+	WM_ConfigFlag_Minimized		= (1<<4),
+	WM_ConfigFlag_Maximized		= (1<<5),
+	WM_ConfigFlag_Unfocused		= (1<<6),
+	WM_ConfigFlag_TopMost		= (1<<7),
+	WM_ConfigFlag_AlwaysRun		= (1<<8),
 	WM_ConfigFlag_COUNT
 };
 
 typedef struct WM_Event WM_Event;
 typedef struct WM_PlatformContext WM_PlatformContext;
+
+typedef struct{
+	U64 u64[1];
+} WM_Window;
+
+typedef struct{
+	U64 u64[1];
+} WM_Monitor;
+
+typedef struct{
+	WM_Monitor* buf;
+	U64 count;
+}WM_MonitorArray;
 
 typedef struct{
 	F32 double_click_time;
@@ -32,35 +45,20 @@ typedef struct{
 typedef struct {
 	Str8 title;
 	WM_ConfigFlag flags;
-	
-	Vec2F32 window_size;
 
+	WM_MonitorArray monitors;
+
+	Vec2F32 window_size;
 	Vec2F32 window_size_min;
 	Vec2F32 window_size_max;
 
 	F32 current_dpi;
 
+	ArenaFreeList event_arena;	
+
+
 	WM_PlatformContext* platform_context;
 }WM_Context;
-
-///////////////////////////////////////
-/// cjk: System Handle Export for Rendering API
-
-typedef struct{
-	U64 u64[1];
-} WM_Window;
-
-// Open and closing window
-
-// TODO: remove these functions
-void wm_init_platform(Arena* arena, WM_Context* ctx);
-void wm_close_platform(WM_Context* ctx);
-
-WM_Context* wm_init(Arena* arena, WM_ConfigFlag flags);
-WM_Window wm_create_window(WM_Context* wm_ctx, F32 width, F32 height, Str8 window_name);
-void wm_close_window(WM_Context* ctx);
-
-B32 wm_get_events(WM_Context* ctx, WM_Event* event);
 
 
 ///////////////////////////////////////
@@ -241,10 +239,6 @@ read_only WM_VInput_Modifier WM_VKey_Modifiers[] = {
 #undef X
 };
 
-WM_VKey wm_get_resolved_key(WM_VKey key, WM_VInput_Modifier mod);
-WM_VKey wm_is_alpha_numeric(WM_VKey key, WM_VInput_Modifier mod);
-
-
 // Input-related functions: mouse 
 
 #define WM_VBUTTON_TABLE \
@@ -314,40 +308,67 @@ typedef enum{
 	WM_EventType_COUNT
 } WM_EventType;
 
-typedef struct{
-	Vec2F32 location;
-	Vec2F32 scroll_vector;
-	WM_VButton button;
-	WM_VInput_Modifier mod;
-} WM_Event_Mouse;
-
-typedef struct{
-	WM_VKey key;
-	B32 is_repeat;
-	WM_VInput_Modifier mod;
-} WM_Event_Key;
-
-typedef union{
-	Vec2F32 location; 		
-	Vec2F32 size;
-} WM_Event_Window;
-
-typedef union{
-	OS_Handle clip_board;
-	OS_Handle file_drop;
-	F32 new_dpi;
-} WM_Event_System;
-
 struct WM_Event{
+	WM_Event* prev;
+	WM_Event* next;
+
 	WM_EventType type;
 	U64 time_stamp;	
+	
+	// mouse related event data 
+	Vec2F32 mouse_location;
+	Vec2F32 mouse_scroll_vector;
+	WM_VButton mouse_button;
+	WM_VInput_Modifier mouse_mod;
+	
+	// keybaord related event data 
+	WM_VKey key;
+	B32 key_is_repeat;
+	WM_VInput_Modifier key_mod;
 
-	union{
-		WM_Event_Key key_event;
-		WM_Event_Mouse mouse_event;
-		WM_Event_Window window_event;
-		WM_Event_System system_event;
-	};
+	// window related event data
+	Vec2F32 window_location;
+	Vec2F32 window_size;
+
+	// System related event data
+	OS_Handle system_clip_board;
+	OS_Handle system_file_drop;
+	F32 system_new_dpi;
 };
+
+
+///////////////////////////////////////
+/// cjk: Window Manager API
+
+///////////////////////////////////////
+/// cjk: General API Implemented Once 
+
+///////////////////////////////////////
+/// cjk: API Implemented Per OS
+
+WM_Context* wm_init(Arena* arena, WM_ConfigFlag flags);
+void wm_close(WM_Context* ctx);
+
+/// cjk: Window Manger window functions
+WM_Window wm_window_create(WM_Context* wm_ctx, F32 width, F32 height, Str8 window_name);
+void wm_window_close(WM_Context* ctx, WM_Window* window);
+
+void wm_window_set_title(WM_Context* ctx, WM_Window window, Str8 window_name);
+void wm_window_is_focused(WM_Context* ctx, WM_Window window);
+void wm_window_focus(WM_Context* ctx, WM_Window window);
+void wm_window_is_fullscreen(WM_Context* ctx, WM_Window window);
+void wm_window_set_fullscreen(WM_Context* ctx, WM_Window window);
+void wm_window_is_maximized(WM_Context* ctx, WM_Window window);
+void wm_window_set_maximized(WM_Context* ctx, WM_Window window);
+void wm_window_is_minimized(WM_Context* ctx, WM_Window window);
+void wm_window_set_minimized(WM_Context* ctx, WM_Window window);
+void wm_window_bring_to_front(WM_Context* ctx, WM_Window window);
+void wm_window_set_monitor(WM_Context* ctx, WM_Window window, WM_Monitor monitor);
+F32 wm_window_get_dpi(WM_Context* ctx, WM_Window window);
+void wm_window_(WM_Context* ctx, WM_Window window);
+
+/// cjk: Event functions
+B32 wm_event_get(WM_Context* ctx, WM_Event* event);
+
 
 #endif // WM_CORE_H 

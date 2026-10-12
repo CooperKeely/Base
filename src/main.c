@@ -1,4 +1,20 @@
 ///////////////////////////////////////
+/// cjk: TODO:
+/// [ ]: Add Arena Free List Implementation
+/// [ ]: Finish Window Mangager API
+/// 	- Add event list
+/// 	- depends on Arena free list
+/// [ ]: Finish Render Hardware Inferface API
+/// 	- https://www.youtube.com/watch?v=AvVgYcvaY0c 
+/// [ ]: Add Font Rendering
+/// 	- ttf file parsing
+/// [ ]: Add UI toolkit
+/// 	- Clay : https://github.com/nicbarker/clay
+/// 	- DearIMGUI : https://github.com/ocornut/imgui
+/// 	- https://www.youtube.com/watch?v=7Tr0ty9-yeQ&t=3974s
+
+
+///////////////////////////////////////
 /// cjk: header files include
 
 
@@ -8,36 +24,28 @@
 #define RENDER_ENABLE_OPENGL
 #include "render/r_inc.h"
 
-
-internal B32 frame(void* data){
-
-}
-
 S32 entry_point(U64 argc, U8** argv){
 	(void) argc;
 	(void) argv;
 	
-	Arena* arena = arena_alloc();
+	Arena* app_arena = arena_alloc();
+	Arena* frame_arena = arena_alloc();
 
-	// Open the window
-	// give the reference to the context when the user does
-	// wm_init();
-	// then on creation of the window we can pass the WM_Backend handle
-	// so they can easily just pass that to the rendering backend
-
-
-	WM_Context* wm_ctx = wm_init(arena, WM_ConfigFlag_Resizeable);
+	WM_Context* wm_ctx = wm_init(app_arena, WM_ConfigFlag_Resizeable);
 	WM_Window window = wm_create_window(wm_ctx, 1000, 1000, Str8Lit("Software Renderer"));
 
 	// Initialize Rendering Context
-	R_Context* r_ctx = r_init(arena, R_ConfigFlag_None);
+	R_Context* r_ctx = r_init(app_arena, R_ConfigFlag_None);
 	R_Handle r_handle = r_attach_to_window(r_ctx, window, 1000, 1000);	
 
 	B32 running = BASE_TRUE;
 	while(running){
-		WM_Event event;
-		while(wm_get_events(wm_ctx, &event)){
-			switch(event.type){
+		// reads the OS events into a doubly linked list using
+		WM_EventList events = wm_event_get_list(wm_ctx, window, frame_arena);
+
+		// traverse the doubly linked list
+		for(WM_Event e = event.head; e != NULL; e = e.next){
+			switch(e.type){
 				// Window related events
 				case WM_EventType_Window_Shown:{}break;
 				case WM_EventType_Window_Hidden:{}break;
@@ -65,22 +73,28 @@ S32 entry_point(U64 argc, U8** argv){
 				case WM_EventType_System_ClipboardUpdate:{}break;
 				case WM_EventType_System_DPIChange:{}break;
 				case WM_EventType_System_DropFile:{}break;
-				case WM_EventType_System_Quit:{}break;
+				case WM_EventType_System_Quit:{
+					running = BASE_FALSE;
+				}break;
 				default:{}break;
 			}	
 
 		}
 
-		r_begin_frame(r_ctx);
+		r_begin_frame(r_ctx, r_handle);
+		// rendering api must happen here
+		r_end_frame(r_ctx, r_handle);
+		r_submit_frame(r_ctx, r_handle);
 
-		r_end_frame(r_ctx);
-		r_submit_frame(r_ctx);
+		// de allocate all the frame related data
+		arena_pop_to(frame_arena, 0);
 	}
 
 	r_close(r_ctx);
 	wm_close(wm_ctx);
 
-	arena_release(arena);
+	arena_release(app_arena);
+	arena_release(frame_arena);
 
 	return 0;
 }
