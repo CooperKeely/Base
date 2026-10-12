@@ -2,7 +2,10 @@
 #define OS_LINUX_WAYLAND_GFX_H
 
 // wayland includes
+#undef global
 #include <wayland-client.h>
+#define global static
+
 #include <wayland-egl.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -17,7 +20,7 @@ static LOG_Context log_way = (LOG_Context){
 	.fd 		= LOG_FD_STDERR,
 	.level 		= LOG_Level_All,
 	.log_flags	= LOG_Option_TimeStamp | LOG_Option_Abort,
-	.category	= { sizeof("WAYLAND") - 1, "WAYLAND" },
+	.category	= { sizeof("WAYLAND") - 1, (U8*)"WAYLAND" },
 };
 
 struct WM_PlatformContext{
@@ -49,10 +52,12 @@ static void xdg_surface_configure(void* data, struct xdg_surface* xdg_surface, u
 static void xdg_wm_base_ping(void* data, struct xdg_wm_base *xdg_wm_base, uint32_t serial);
 
 
+#undef global
 static const struct wl_registry_listener registry_listener = {
 	.global = registry_handle_global,
 	.global_remove = registry_handle_global_remove,
 };
+#define global static
 
 static const struct xdg_surface_listener xdg_surface_listener = {
 	.configure = xdg_surface_configure,

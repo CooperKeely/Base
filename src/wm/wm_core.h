@@ -5,7 +5,7 @@
 ///////////////////////////////////////
 /// cjk: Window API Definitions 
 
-typedef U64 WM_WindowConfigFlag;
+typedef U64 WM_ConfigFlag;
 enum{
 	WM_ConfigFlag_None		= 0,
 	WM_ConfigFlag_Fullscreen 	= (1<<0),
@@ -20,7 +20,6 @@ enum{
 	WM_ConfigFlag_COUNT
 };
 
-// forward declare struct definitions
 typedef struct WM_Event WM_Event;
 typedef struct WM_PlatformContext WM_PlatformContext;
 
@@ -32,10 +31,9 @@ typedef struct{
 
 typedef struct {
 	Str8 title;
-	WM_WindowConfigFlag flags;
-
+	WM_ConfigFlag flags;
+	
 	Vec2F32 window_size;
-	Vec2F32 position;
 
 	Vec2F32 window_size_min;
 	Vec2F32 window_size_max;
@@ -45,58 +43,35 @@ typedef struct {
 	WM_PlatformContext* platform_context;
 }WM_Context;
 
-// Open and closing window
-void wm_init_platform(Arena* arena, WM_Context* ctx);
-void wm_close_platform(WM_Context* ctx);
-
-B32 wm_init(Arena* arena);
-WM_Context* wm_init_window(F32 x, F32 y, F32 width, F32 height, Str8 window_name);
-void wm_close_window(WM_Context* ctx);
-
-B32 wm_poll_input_events(WM_Context* ctx, WM_Event* event);
-
 ///////////////////////////////////////
 /// cjk: System Handle Export for Rendering API
 
-typedef U64 WM_Backend;
-enum{
-	WM_Backend_Wayland = 0,
-	WM_Backend_X11,
-	WM_Backend_Windows,
-	WM_Backend_COUNT
-};
+typedef struct{
+	U64 u64[1];
+} WM_Window;
 
+// Open and closing window
 
-typedef struct {
-	WM_Backend backend;
-	union{
-		struct{
-			OS_Handle hinstance;
-			OS_Handle hwnd;
-		} win;
-		struct{
-			OS_Handle display;
-			OS_Handle window;
-		} x11;
-		struct{
-			OS_Handle display;
-			OS_Handle surface;
-		} wayland;
-	}info;
-}WM_BackendHandle;
+// TODO: remove these functions
+void wm_init_platform(Arena* arena, WM_Context* ctx);
+void wm_close_platform(WM_Context* ctx);
 
-B32 wm_get_backend_handle(WM_Context* ctx, WM_BackendHandle* out_info);
+WM_Context* wm_init(Arena* arena, WM_ConfigFlag flags);
+WM_Window wm_create_window(WM_Context* wm_ctx, F32 width, F32 height, Str8 window_name);
+void wm_close_window(WM_Context* ctx);
+
+B32 wm_get_events(WM_Context* ctx, WM_Event* event);
 
 
 ///////////////////////////////////////
 /// cjk: Input Handeling API Definitions 
 
 typedef enum{
-	WM_VInput_Modifier_None 		= 0,
-	WM_VInput_Modifier_Shift 		= (1<<0),
+	WM_VInput_Modifier_None 	= 0,
+	WM_VInput_Modifier_Shift 	= (1<<0),
 	WM_VInput_Modifier_Function 	= (1<<1),
-	WM_VInput_Modifier_Control 		= (1<<2),
-	WM_VInput_Modifier_Super 		= (1<<3),
+	WM_VInput_Modifier_Control 	= (1<<2),
+	WM_VInput_Modifier_Super 	= (1<<3),
 	WM_VInput_Modifier_Alt 		= (1<<4),
 	WM_VInput_Modifier_CapsLock 	= (1<<5),
 	WM_VInput_Modifier_COUNT
@@ -365,7 +340,6 @@ typedef union{
 
 struct WM_Event{
 	WM_EventType type;
-	OS_Handle window;
 	U64 time_stamp;	
 
 	union{

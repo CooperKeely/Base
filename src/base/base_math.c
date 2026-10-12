@@ -186,7 +186,8 @@ Mat4x4F32 make_scale_4x4f32(Vec3F32 scale){
 }
 
 Mat4x4F32 make_perspective_4x4f32(F32 fov, F32 aspect_ratio, F32 near_z, F32 far_z){
-		
+	Mat4x4F32 m = {0};
+	return m;
 }
 
 Mat4x4F32 make_orthographic_4x4f32(F32 left, F32 right, F32 bottom, F32 top, F32 near_z, F32 far_z){

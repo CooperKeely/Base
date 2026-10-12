@@ -1,11 +1,7 @@
 ///////////////////////////////////////
 /// cjk: Export Backend 
 
-B32 wm_get_backend_handle(WM_Context* ctx, WM_BackendHandle* out_info){
-	out_info.info.platform.wayland->display = ctx->platform_context->wl_display;
-	out_info.info.platform.wayland->surface = ctx->platform_context->wl_surface;
-	return BASE_TRUE;
-}
+
 
 ///////////////////////////////////////
 /// cjk: Register Listeners
