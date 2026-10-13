@@ -24,7 +24,7 @@ Arguments can be given in any order. `main` is the required build target.
 | `verbose` | Print the full compile command                      |
 | `clean`   | Delete `build/` first                               |
 
-Examples:
+**Examples:**
 ```sh
 ./build.sh main run             # debug, clang, then run
 ./build.sh main release gcc     # optimized gcc build
