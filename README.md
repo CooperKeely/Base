@@ -1,5 +1,5 @@
 # Base
-C Systems layer for linux
+A cross platform C Systems layer
 
 **Status:** work in progress. See [Current Status](#current-status) and [Roadmap](#roadmap) sections for updates
 
@@ -41,8 +41,10 @@ The binary is written to `build/app`.
 
 ## Current Status
 **Working:** base layer (Arenas, Scratch Scopes, Strings, Math, Logging), linux OS layer, CSV and OBJ parsing, Wayland Window opening with a OpenGL context 
+
 **Not Yet:** X11 support, rendering backend (currently stubs), input handling, Win32 support
-**Known Limitations:** [fixed sized arenas, no expanding arena free lists, no multi threading support]
+
+**Known Limitations:** fixed sized arenas, no expanding arena free lists, no multi threading support
 
 ## Roadmap
  - [X] Wayland support
@@ -55,4 +57,4 @@ The binary is written to `build/app`.
 
 ## Credits
 Source inspired by the [RAD Debugger](https://github.com/EpicGames/raddebugger)
-License: MIT
+License: [MIT](LICENSE)
