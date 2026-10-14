@@ -7,6 +7,7 @@ A cross platform C Systems layer
 **Requires:** Linux with a Wayland compositor (no X11 backend yet).
 
 **Dependencies** Linux: `clang` or `gcc`, `libwayland-dev`, `libegl-dev`.
+
 Optional: `llvm` (for `llvm-symbolizer`, used by the crash handler's backtraces).
 
 ```sh
@@ -54,6 +55,7 @@ The binary is written to `build/app`.
  - [ ] OpenGL Rendering Backend
  - [ ] Vulkan Rendering Backend
  - [ ] Immediate mode UI library
+
 
 ## Credits
 Source inspired by the [RAD Debugger](https://github.com/EpicGames/raddebugger)
