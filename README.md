@@ -6,9 +6,10 @@ A cross platform C Systems layer
 ## Build
 **Requires:** Linux with a Wayland compositor (no X11 backend yet).
 
-**Dependencies** Linux: `clang` or `gcc`, `libwayland-dev`, `libegl-dev`.
+**Dependencies:**
+ - Linux: `clang` or `gcc`, `libwayland-dev`, `libegl-dev`.
 
-Optional: `llvm` (for `llvm-symbolizer`, used by the crash handler's backtraces).
+**Optional:** `llvm` (for `llvm-symbolizer`, used by the crash handler's backtraces).
 
 ```sh
 ./build.sh main [release] [gcc] [run] [asan] [verbose] [clean]
