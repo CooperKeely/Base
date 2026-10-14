@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 # --- Unpack Arguments
 for arg in "$@"; do declare $arg='1'; done
 
-if 	[[ ! -v release  && ! -v profile ]] ;	
+if 	[ ! -v release ] ;	
 	then debug=1; 
 elif	[ -v release ] 				
 	then unset debug; 
@@ -76,8 +76,6 @@ fi
 
 if [ -v release ]; then
 	compile="$compile_release";
-elif [ -v profile ]; then
-	compile="$compile_profile";
 else
 	compile="$compile_debug"; 
 fi
@@ -98,16 +96,6 @@ if [ -v main ]; then
 	echo ""
 
 	cmd="$compile src/main.c $compile_xdg_gfx $compile_link $link_os_gfx $out build/app"
-	if [ -v verbose ]; then echo "[Command]: $cmd"; fi
-
-	$cmd
-
-	echo ""
-elif [ -v token ]; then 
-	didbuild=1 
-	echo ""
-
-	ecmd="$compile src/token_main.c $compile_link $link_os_gfx $out build/app"
 	if [ -v verbose ]; then echo "[Command]: $cmd"; fi
 
 	$cmd
