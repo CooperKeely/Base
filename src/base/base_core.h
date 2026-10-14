@@ -200,6 +200,22 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #define EachNode(idx, T, first) (T *idx = first; idx != NULL; idx = idx->next)
 
 ///////////////////////////////////////
+/// cjk: Linked List Helpers
+
+#define CheckNil(nil, p) ((p) == 0 || (p) == nil)
+#define SetNil(nil, p) ((p) = nil)
+
+// doubly linked lists
+#define DLLInsert_NPZ(nil, f, l, p, n, next, prev) ( \
+    CheckNil(nil, f) ? ((f) = (l) = (n), SetNil(nil, (n)->next), SetNil(nil, (n)->prev)) :\
+    CheckNil(nil, p) ? ((n)->next = (f), (f)->prev = (n), (f) = (n), SetNil(nil, (n)->prev)) :\
+    ((p) == (l))      ? ((l)->next = (n), (n)->prev = (l), (l) = (n), SetNil(nil, (n)->next)) :\
+    (((!CheckNil(nil, p) && CheckNil(nil, (p)->next)) ? (0) : ((p)->next->prev = (n))), ((n)->next = (p)->next), ((p)->next = (n)), ((n)->prev = (p))))
+#define DLLPushBack_NPZ(nil, f, l, n, next, prev) DLLInsert_NPZ(nil, f, l, l, n, next, prev)
+#define DLLPushFront_NPZ(nil, f, l, n, next, prev) DLLInsert_NPZ(nil, l, f, f, n, next, prev)
+#define DLL_Remove_NPZ(nil, f, l, p, n, next, prev)
+
+///////////////////////////////////////
 /// cjk: Units Definitions
 
 #define KB(n) (((U64)(n)) << 10)

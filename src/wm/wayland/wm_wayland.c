@@ -1,9 +1,4 @@
 ///////////////////////////////////////
-/// cjk: Export Backend 
-
-
-
-///////////////////////////////////////
 /// cjk: Register Listeners
 
 static void registry_handle_global(void* data, struct wl_registry *registry, U32 name, const char* interface, U32 version){
@@ -34,7 +29,8 @@ static void xdg_wm_base_ping(void* data, struct xdg_wm_base *xdg_wm_base, uint32
 
 
 // (cjk): egl initializer
-void wm_init_egl(WM_PlatformContext* ctx, U32 width, U32 height){
+/* TODO: move to rendering API
+internal void wm_init_egl(WM_PlatformContext* ctx, U32 width, U32 height){
 	EGLint major;
 	EGLint minor;
 	EGLConfig config;
@@ -77,61 +73,122 @@ void wm_init_egl(WM_PlatformContext* ctx, U32 width, U32 height){
 	if(!err) { LogCtxError(log_way, "Failed to make EGL context current"); }
 
 	gl_loader_init((GL_LoaderProc)eglGetProcAddress);	
-}
+}*/
 
-// (cjk): api implementations
-void wm_init_platform(Arena* arena, WM_Context* ctx){
-	Assert(ctx);
+WM_Context* wm_init(Arena* arena, WM_ConfigFlag flags)
+{
+	WM_Context* wm_ctx = ArenaPushStructZero(arena, WM_Context);
+	Assert(wm_ctx);
+		
+	WM_Display disp = wm_ctx->display;
 
-	// initialize platform context
-	WM_PlatformContext* plat_ctx = ArenaPushStruct(arena, WM_PlatformContext);
-	Assert(plat_ctx);
 
-	plat_ctx->wl_display = wl_display_connect(NULL);
-	Assert(plat_ctx->wl_display);
+	disp->wl_display = wl_display_connect(NULL);
+	Assert(disp->wl_display);
 
-	if(plat_ctx->wl_display){
+	if(disp->wl_display){
 		LogCtxDebug(log_way, "Connected to display\n");
 	}else{
 		LogCtxError(log_way,"Failed to connect to display");
 		InvalidPath;	
 	}
 
-	plat_ctx->wl_registry = wl_display_get_registry(plat_ctx->wl_display);
-	Assert(plat_ctx->wl_registry);
+	// bind to global wayland interfaces 
+	disp->wl_registry = wl_display_get_registry(disp->wl_display);
+	Assert(disp->wl_registry);
 
-	wl_registry_add_listener(plat_ctx->wl_registry, &registry_listener, plat_ctx);
-	wl_display_roundtrip(plat_ctx->wl_display);
-	Assert(plat_ctx->wl_compositor);
-	Assert(plat_ctx->xdg_wm_base);
+	wl_registry_add_listener(disp->wl_registry, &registry_listener, disp);
+	wl_display_roundtrip(disp->wl_display);
+	Assert(disp->wl_compositor);
+	Assert(disp->xdg_wm_base);
 
-	plat_ctx->wl_surface = wl_compositor_create_surface(plat_ctx->wl_compositor);
-	Assert(plat_ctx->wl_surface);
+	return wm_ctx;
+}
 
-	plat_ctx->xdg_surface = xdg_wm_base_get_xdg_surface(plat_ctx->xdg_wm_base, plat_ctx->wl_surface);
-	Assert(plat_ctx->xdg_surface);
+void wm_close(WM_Context* ctx)
+{
 
-	xdg_surface_add_listener(plat_ctx->xdg_surface, &xdg_surface_listener, plat_ctx);
-	plat_ctx->xdg_toplevel = xdg_surface_get_toplevel(plat_ctx->xdg_surface);
-	Assert(plat_ctx->xdg_toplevel);
+}
 
-	xdg_toplevel_set_title(plat_ctx->xdg_toplevel, str8_to_cstring(arena, ctx->title));
-	wl_surface_commit(plat_ctx->wl_surface);
-	wl_display_roundtrip(plat_ctx->wl_display);
 
-	wm_init_egl(plat_ctx, 100, 100);
+
+/// cjk: Window Manger window functions
+WM_Window wm_window_create(Arena arena, WM_Context* wm_ctx, F32 width, F32 height, Str8 window_name)
+{
+	Assert(wm_ctx);
+	WM_Display wl_disp = wm_ctx->display;	
+	 
+
+	// create a wayland surface
+	wl_disp->wl_surface = wl_compositor_create_surface(wl_disp->wl_compositor);
+	Assert(wl_disp->wl_surface);
+
+	// assign a XDG role
+	wl_disp->xdg_surface = xdg_wm_base_get_xdg_surface(wl_disp->xdg_wm_base, wl_disp->wl_surface);
+	Assert(wl_disp->xdg_surface);
+
+	xdg_surface_add_listener(wl_disp->xdg_surface, &xdg_surface_listener, wl_disp);
+	wl_disp->xdg_toplevel = xdg_surface_get_toplevel(wl_disp->xdg_surface);
+	Assert(wl_disp->xdg_toplevel);
+	
+	// set the title
+	xdg_toplevel_set_title(wl_disp->xdg_toplevel, str8_to_cstring(arena, window_name));
+	wm_ctx->title = window_name;
+
+	wl_surface_commit(wl_disp->wl_surface);
+	
+	WM_Window ret = (wl_surface)wl_disp->wl_surface;	
+
+	return ret;
+
+	/* TODO: move to rendering api
+	 wm_init_egl(plat_ctx, 100, 100);
 
 	// Clear the buffer and swap to commit the first frame to the compositor
 	glClearColor(1.0f, 0.3f, 0.3f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 	eglSwapBuffers(plat_ctx->egl_display, plat_ctx->egl_surface);
 
-	ctx->platform_context = plat_ctx;
+	ctx->platform_context = plat_ctx;*/
 }
 
-void wm_close_platform(WM_Context* ctx){
-	struct wl_display* display = ctx->platform_context->wl_display;
-	Assert(display);
-	wl_display_disconnect(display);
+void wm_window_close(WM_Window window)
+{
+	WM_WaylandWindowBundle wl_win = (WM_WaylandWindowBundle*)window;
+	Assert(wl_win);
+
+	if(wl_win->xdg_toplevel) xdg_toplevel_destroy(wl_win->xdg_toplevel);
+	if(wl_win->xdg_surface) xdg_surface(wl_win->xdg_surface);
+	if(wl_win->wl_surface) wl_surface_destroy(wl_win->wl_surface);
+	if(wl_win->wl_registry) wl_registry_destroy(wl_win->wl_surface);
+	if(wl_win->wl_display) wl_display_disconnect(wl_win->wl_display);
 }
+
+void wm_window_set_title(WM_Context* ctx, WM_Window window, Str8 window_name);
+
+void wm_window_is_focused(WM_Context* ctx, WM_Window window);
+
+void wm_window_focus(WM_Context* ctx, WM_Window window);
+
+void wm_window_is_fullscreen(WM_Context* ctx, WM_Window window);
+
+void wm_window_set_fullscreen(WM_Context* ctx, WM_Window window);
+
+void wm_window_is_maximized(WM_Context* ctx, WM_Window window);
+
+void wm_window_set_maximized(WM_Context* ctx, WM_Window window);
+
+void wm_window_is_minimized(WM_Context* ctx, WM_Window window);
+
+void wm_window_set_minimized(WM_Context* ctx, WM_Window window);
+
+void wm_window_bring_to_front(WM_Context* ctx, WM_Window window);
+
+void wm_window_set_monitor(WM_Context* ctx, WM_Window window, WM_Monitor monitor);
+
+F32 wm_window_get_dpi(WM_Context* ctx, WM_Window window);
+
+/// cjk: Event functions
+WM_Event wm_event_get_list(WM_Context* ctx, WM_Window window, Arena arena);
+
 

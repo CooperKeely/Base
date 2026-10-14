@@ -41,42 +41,42 @@ S32 entry_point(U64 argc, U8** argv){
 	B32 running = BASE_TRUE;
 	while(running){
 		// reads the OS events into a doubly linked list using
-		WM_EventList events = wm_event_get_list(wm_ctx, window, frame_arena);
+		WM_Event event_head = wm_event_get_list(wm_ctx, window, frame_arena);
 
 		// traverse the doubly linked list
-		for(WM_Event e = event.head; e != NULL; e = e.next){
+		for EachNode(e, WM_Event, event_head){
 			switch(e.type){
-				// Window related events
-				case WM_EventType_Window_Shown:{}break;
-				case WM_EventType_Window_Hidden:{}break;
-				case WM_EventType_Window_Redraw:{}break;
-				case WM_EventType_Window_FocusGained:{}break;
-				case WM_EventType_Window_FocusLost:{}break;
-				case WM_EventType_Window_Close:{}break;
-				case WM_EventType_Window_Resize:{}break;
-				case WM_EventType_Window_Move:{}break;
+			// Window related events
+			case WM_EventType_Window_Shown:{}break;
+			case WM_EventType_Window_Hidden:{}break;
+			case WM_EventType_Window_Redraw:{}break;
+			case WM_EventType_Window_FocusGained:{}break;
+			case WM_EventType_Window_FocusLost:{}break;
+			case WM_EventType_Window_Close:{}break;
+			case WM_EventType_Window_Resize:{}break;
+			case WM_EventType_Window_Move:{}break;
 
-				// Keyboard related events
-				case WM_EventType_Key_Press:{}break;
-				case WM_EventType_Key_Release:{}break;
-				case WM_EventType_Key_MapChange:{}break;
+			// Keyboard related events
+			case WM_EventType_Key_Press:{}break;
+			case WM_EventType_Key_Release:{}break;
+			case WM_EventType_Key_MapChange:{}break;
 
-				// Mouse related events
-				case WM_EventType_Mouse_EnterWindow:{}break;
-				case WM_EventType_Mouse_LeaveWindow:{}break;
-				case WM_EventType_Mouse_Motion:{}break;
-				case WM_EventType_Mouse_Scroll:{}break;
-				case WM_EventType_Mouse_Press:{}break;
-				case WM_EventType_Mouse_Release:{}break;
+			// Mouse related events
+			case WM_EventType_Mouse_EnterWindow:{}break;
+			case WM_EventType_Mouse_LeaveWindow:{}break;
+			case WM_EventType_Mouse_Motion:{}break;
+			case WM_EventType_Mouse_Scroll:{}break;
+			case WM_EventType_Mouse_Press:{}break;
+			case WM_EventType_Mouse_Release:{}break;
 
-				// System updates
-				case WM_EventType_System_ClipboardUpdate:{}break;
-				case WM_EventType_System_DPIChange:{}break;
-				case WM_EventType_System_DropFile:{}break;
-				case WM_EventType_System_Quit:{
-					running = BASE_FALSE;
-				}break;
-				default:{}break;
+			// System updates
+			case WM_EventType_System_ClipboardUpdate:{}break;
+			case WM_EventType_System_DPIChange:{}break;
+			case WM_EventType_System_DropFile:{}break;
+			case WM_EventType_System_Quit:{
+			running = BASE_FALSE;
+			}break;
+			default:{}break;
 			}	
 
 		}

@@ -5,16 +5,15 @@
 #undef global
 #include <wayland-client.h>
 #define global static
-
-#include <wayland-egl.h>
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-
 #include "../../../include/xdg-shell-client-protocol.h"
 
+//#include <wayland-egl.h>
+//#include <EGL/egl.h>
+//#include <EGL/eglext.h>
 // opengl function loader
-#define GL_LOADER_IMPLEMENTATION
-#include "../../libs/gl_loader.h"
+//#define GL_LOADER_IMPLEMENTATION
+//#include "../../libs/gl_loader.h"
+
 
 static LOG_Context log_way = (LOG_Context){
 	.fd 		= LOG_FD_STDERR,
@@ -23,26 +22,41 @@ static LOG_Context log_way = (LOG_Context){
 	.category	= { sizeof("WAYLAND") - 1, (U8*)"WAYLAND" },
 };
 
-struct WM_PlatformContext{
-	// globals
-	struct wl_display* wl_display; 
-	struct wl_registry* wl_registry;
-	struct wl_compositor* wl_compositor;
-	struct xdg_wm_base* xdg_wm_base;
-
+typedef struct {
+	WM_Diplay* parent_display;
+	
+	// pointers to the next and previous window
+	WM_WaylandWindow* next;
+	WM_WaylandWindow* prev;
+	
 	// objects
 	struct wl_surface* wl_surface;
 	struct xdg_surface* xdg_surface;
 	struct xdg_toplevel* xdg_toplevel;
 
-	// egl context
-	EGLDisplay egl_display;
-	EGLContext egl_context;
-	EGLSurface egl_surface;
-	struct wl_egl_window* egl_window;
+	F32 width;
+	F32 height;
+	
+	B8 is_focused;
+	B8 is_maximized;
+	B8 fullscreen;
+
+} WM_WaylandWindow;
+
+
+struct WM_Display{
+	// globals
+	struct wl_display* wl_display; 
+	struct wl_registry* wl_registry;
+	struct wl_compositor* wl_compositor;
+	struct xdg_wm_base* xdg_wm_base;
+	
+	// doubly linked list of all made windows
+	WM_WaylandWindow* head;
+	WM_WaylandWindow* tail;
 };
 
-void wm_init_egl(WM_PlatformContext* ctx, U32 width, U32 height);
+//void wm_init_egl(WM_PlatformContext* ctx, U32 width, U32 height);
 
 // (cjk): Register Listeners
 

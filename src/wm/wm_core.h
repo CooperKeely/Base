@@ -2,79 +2,6 @@
 #define WM_CORE_H
 
 
-///////////////////////////////////////
-/// cjk: Window API Definitions 
-
-typedef U64 WM_ConfigFlag;
-enum{
-	WM_ConfigFlag_None		= 0,
-	WM_ConfigFlag_Fullscreen 	= (1<<0),
-	WM_ConfigFlag_Resizeable	= (1<<1),
-	WM_ConfigFlag_Undecorated	= (1<<2),
-	WM_ConfigFlag_Hidden		= (1<<3),
-	WM_ConfigFlag_Minimized		= (1<<4),
-	WM_ConfigFlag_Maximized		= (1<<5),
-	WM_ConfigFlag_Unfocused		= (1<<6),
-	WM_ConfigFlag_TopMost		= (1<<7),
-	WM_ConfigFlag_AlwaysRun		= (1<<8),
-	WM_ConfigFlag_COUNT
-};
-
-typedef struct WM_Event WM_Event;
-typedef struct WM_PlatformContext WM_PlatformContext;
-
-typedef struct{
-	U64 u64[1];
-} WM_Window;
-
-typedef struct{
-	U64 u64[1];
-} WM_Monitor;
-
-typedef struct{
-	WM_Monitor* buf;
-	U64 count;
-}WM_MonitorArray;
-
-typedef struct{
-	F32 double_click_time;
-	F32 caret_blink_time;
-	F32 default_refresh_rate; 
-}WM_ConfigValues;
-
-typedef struct {
-	Str8 title;
-	WM_ConfigFlag flags;
-
-	WM_MonitorArray monitors;
-
-	Vec2F32 window_size;
-	Vec2F32 window_size_min;
-	Vec2F32 window_size_max;
-
-	F32 current_dpi;
-
-	ArenaFreeList event_arena;	
-
-
-	WM_PlatformContext* platform_context;
-}WM_Context;
-
-
-///////////////////////////////////////
-/// cjk: Input Handeling API Definitions 
-
-typedef enum{
-	WM_VInput_Modifier_None 	= 0,
-	WM_VInput_Modifier_Shift 	= (1<<0),
-	WM_VInput_Modifier_Function 	= (1<<1),
-	WM_VInput_Modifier_Control 	= (1<<2),
-	WM_VInput_Modifier_Super 	= (1<<3),
-	WM_VInput_Modifier_Alt 		= (1<<4),
-	WM_VInput_Modifier_CapsLock 	= (1<<5),
-	WM_VInput_Modifier_COUNT
-}WM_VInput_Modifier;
-
 
 // virtual key x macro list
 // variable name, string, virtual keycode, base modifiers
@@ -220,6 +147,22 @@ typedef enum{
 	X(LeftBrace,	"{", 		WM_VInput_Modifier_Shift) \
 	X(RightBrace,	"}", 		WM_VInput_Modifier_Shift) \
 
+
+///////////////////////////////////////
+/// cjk: WM_Input API
+
+
+typedef enum{
+	WM_VInput_Modifier_None 	= 0,
+	WM_VInput_Modifier_Shift 	= (1<<0),
+	WM_VInput_Modifier_Function 	= (1<<1),
+	WM_VInput_Modifier_Control 	= (1<<2),
+	WM_VInput_Modifier_Super 	= (1<<3),
+	WM_VInput_Modifier_Alt 		= (1<<4),
+	WM_VInput_Modifier_CapsLock 	= (1<<5),
+	WM_VInput_Modifier_COUNT
+}WM_VInput_Modifier;
+
 typedef enum{
 #define X(name, str, mod) Glue(WM_VKey_, name),
 	WM_VKEY_TABLE 
@@ -239,7 +182,9 @@ read_only WM_VInput_Modifier WM_VKey_Modifiers[] = {
 #undef X
 };
 
-// Input-related functions: mouse 
+///////////////////////////////////////
+/// cjk: WM_Mouse API
+
 
 #define WM_VBUTTON_TABLE \
 	X(Mouse1,	"Mouse1", 	WM_VInput_Modifier_None) \
@@ -308,7 +253,8 @@ typedef enum{
 	WM_EventType_COUNT
 } WM_EventType;
 
-struct WM_Event{
+
+typedef struct {
 	WM_Event* prev;
 	WM_Event* next;
 
@@ -334,24 +280,77 @@ struct WM_Event{
 	OS_Handle system_clip_board;
 	OS_Handle system_file_drop;
 	F32 system_new_dpi;
-};
+}WM_Event;
 
 
 ///////////////////////////////////////
 /// cjk: Window Manager API
+	
+typedef U64 WM_ConfigFlag;
+enum{
+	WM_ConfigFlag_None		= 0,
+	WM_ConfigFlag_Fullscreen 	= (1<<0),
+	WM_ConfigFlag_Resizeable	= (1<<1),
+	WM_ConfigFlag_Undecorated	= (1<<2),
+	WM_ConfigFlag_Hidden		= (1<<3),
+	WM_ConfigFlag_Minimized		= (1<<4),
+	WM_ConfigFlag_Maximized		= (1<<5),
+	WM_ConfigFlag_Unfocused		= (1<<6),
+	WM_ConfigFlag_TopMost		= (1<<7),
+	WM_ConfigFlag_AlwaysRun		= (1<<8),
+	WM_ConfigFlag_COUNT
+};
 
-///////////////////////////////////////
+typedef struct{
+	U64 u64[1];
+} WM_Window;
+
+typedef struct{
+	U64 u64[1];
+} WM_Monitor;
+
+typedef struct{
+	WM_Monitor* buf;
+	U64 count;
+}WM_MonitorArray;
+
+typedef struct{
+	F32 double_click_time;
+	F32 caret_blink_time;
+	F32 default_refresh_rate; 
+}WM_ConfigValues;
+
+// implemented per os
+typedef struct WM_Display WM_Display;
+
+typedef struct {
+	Str8 title;
+	WM_ConfigFlag flags;
+	WM_ConfigValues config_values;
+
+	WM_MonitorArray monitors;
+
+	Vec2F32 window_size;
+	Vec2F32 window_size_min;
+	Vec2F32 window_size_max;
+
+	F32 current_dpi;
+	
+	WM_Display display;
+}WM_Context;
+
+
 /// cjk: General API Implemented Once 
 
-///////////////////////////////////////
 /// cjk: API Implemented Per OS
 
 WM_Context* wm_init(Arena* arena, WM_ConfigFlag flags);
 void wm_close(WM_Context* ctx);
 
+
 /// cjk: Window Manger window functions
 WM_Window wm_window_create(WM_Context* wm_ctx, F32 width, F32 height, Str8 window_name);
-void wm_window_close(WM_Context* ctx, WM_Window* window);
+void wm_window_close(WM_Context* ctx, WM_Window window);
 
 void wm_window_set_title(WM_Context* ctx, WM_Window window, Str8 window_name);
 void wm_window_is_focused(WM_Context* ctx, WM_Window window);
@@ -365,10 +364,8 @@ void wm_window_set_minimized(WM_Context* ctx, WM_Window window);
 void wm_window_bring_to_front(WM_Context* ctx, WM_Window window);
 void wm_window_set_monitor(WM_Context* ctx, WM_Window window, WM_Monitor monitor);
 F32 wm_window_get_dpi(WM_Context* ctx, WM_Window window);
-void wm_window_(WM_Context* ctx, WM_Window window);
 
 /// cjk: Event functions
-B32 wm_event_get(WM_Context* ctx, WM_Event* event);
-
+WM_Event wm_event_get_list(WM_Context* ctx, WM_Window window, Arena arena);
 
 #endif // WM_CORE_H 
