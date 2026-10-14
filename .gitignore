@@ -1,5 +1,3 @@
-/build
-/resources
-/env
-/prof
-/depricated
+build/
+env/
+depricated/
