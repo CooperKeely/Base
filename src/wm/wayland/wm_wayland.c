@@ -75,13 +75,10 @@ internal void wm_init_egl(WM_PlatformContext* ctx, U32 width, U32 height){
 	gl_loader_init((GL_LoaderProc)eglGetProcAddress);	
 }*/
 
-WM_Context* wm_init(Arena* arena, WM_ConfigFlag flags)
+WM_Display wm_init(Arena* arena, WM_ConfigFlag flags)
 {
-	WM_Context* wm_ctx = ArenaPushStructZero(arena, WM_Context);
-	Assert(wm_ctx);
-		
-	WM_Display disp = wm_ctx->display;
-
+	WM_WaylandDisplay* disp = ArenaPushStructZero(arena, WM_Context);
+	Assert(disp);
 
 	disp->wl_display = wl_display_connect(NULL);
 	Assert(disp->wl_display);
@@ -99,10 +96,12 @@ WM_Context* wm_init(Arena* arena, WM_ConfigFlag flags)
 
 	wl_registry_add_listener(disp->wl_registry, &registry_listener, disp);
 	wl_display_roundtrip(disp->wl_display);
+
 	Assert(disp->wl_compositor);
 	Assert(disp->xdg_wm_base);
-
-	return wm_ctx;
+	
+	WM_Display ret_handle = Handle_Pack(WM_Display, disp);
+	return ret_handle;
 }
 
 void wm_close(WM_Context* ctx)
@@ -113,32 +112,41 @@ void wm_close(WM_Context* ctx)
 
 
 /// cjk: Window Manger window functions
-WM_Window wm_window_create(Arena arena, WM_Context* wm_ctx, F32 width, F32 height, Str8 window_name)
+WM_Window wm_window_create(WM_Display disp, Arena arena, F32 width, F32 height, Str8 window_name)
 {
-	Assert(wm_ctx);
-	WM_Display wl_disp = wm_ctx->display;	
-	 
+	WM_WaylandDisplay* wl_disp = Handle_Unpack(WM_WaylandDisplay*, disp);	
+	WM_WaylandWindow* wl_win = ArenaPushStructZero(arena, WM_WaylandWindow);
+
+	Assert(wl_win);
+	Assert(wl_disp);	
+
+	wl_win->height = height;
+	wl_win->width = width;
+	wl_win->name = window_name;	
+	
+	// Add to the list of displays
+	wl_win->parent_display = wl_disp;
+	DLLPushFront(wl_disp->first, wl_disp->last, wl_win);
 
 	// create a wayland surface
-	wl_disp->wl_surface = wl_compositor_create_surface(wl_disp->wl_compositor);
-	Assert(wl_disp->wl_surface);
+	wl_win->wl_surface = wl_compositor_create_surface(wl_disp->wl_compositor);
+	Assert(wl_win->wl_surface);
 
 	// assign a XDG role
-	wl_disp->xdg_surface = xdg_wm_base_get_xdg_surface(wl_disp->xdg_wm_base, wl_disp->wl_surface);
-	Assert(wl_disp->xdg_surface);
+	wl_win->xdg_surface = xdg_wm_base_get_xdg_surface(wl_disp->xdg_wm_base, wl_win->wl_surface);
+	Assert(wl_win->xdg_surface);
 
-	xdg_surface_add_listener(wl_disp->xdg_surface, &xdg_surface_listener, wl_disp);
-	wl_disp->xdg_toplevel = xdg_surface_get_toplevel(wl_disp->xdg_surface);
-	Assert(wl_disp->xdg_toplevel);
+	xdg_surface_add_listener(wl_win->xdg_surface, &xdg_surface_listener, wl_disp);
+	wl_win->xdg_toplevel = xdg_surface_get_toplevel(wl_win->xdg_surface);
+	Assert(wl_win->xdg_toplevel);
 	
 	// set the title
-	xdg_toplevel_set_title(wl_disp->xdg_toplevel, str8_to_cstring(arena, window_name));
+	xdg_toplevel_set_title(wl_win->xdg_toplevel, str8_to_cstring(arena, window_name));
 	wm_ctx->title = window_name;
 
-	wl_surface_commit(wl_disp->wl_surface);
+	wl_surface_commit(wl_win->wl_surface);
 	
-	WM_Window ret = (wl_surface)wl_disp->wl_surface;	
-
+	WM_Window ret_handle = Handle_Pack(WM_Window, wl_win);
 	return ret;
 
 	/* TODO: move to rendering api
@@ -154,41 +162,38 @@ WM_Window wm_window_create(Arena arena, WM_Context* wm_ctx, F32 width, F32 heigh
 
 void wm_window_close(WM_Window window)
 {
-	WM_WaylandWindowBundle wl_win = (WM_WaylandWindowBundle*)window;
+	WM_WaylandWindow* wl_win = Handle_Unpack(WM_WaylandWindow*, window); 
 	Assert(wl_win);
 
 	if(wl_win->xdg_toplevel) xdg_toplevel_destroy(wl_win->xdg_toplevel);
-	if(wl_win->xdg_surface) xdg_surface(wl_win->xdg_surface);
+	if(wl_win->xdg_surface) xdg_surface_destroy(wl_win->xdg_surface);
 	if(wl_win->wl_surface) wl_surface_destroy(wl_win->wl_surface);
 	if(wl_win->wl_registry) wl_registry_destroy(wl_win->wl_surface);
 	if(wl_win->wl_display) wl_display_disconnect(wl_win->wl_display);
 }
 
-void wm_window_set_title(WM_Context* ctx, WM_Window window, Str8 window_name);
 
-void wm_window_is_focused(WM_Context* ctx, WM_Window window);
+/// cjk: API Implemented Per OS
+WM_Display wm_init(Arena* arena, WM_ConfigFlag flags);
+void wm_close(WM_Display disp);
 
-void wm_window_focus(WM_Context* ctx, WM_Window window);
+WM_Window wm_window_create(WM_Display disp, Arena arena, F32 width, F32 height, Str8 window_name);
+void wm_window_close(WM_Window window);
 
-void wm_window_is_fullscreen(WM_Context* ctx, WM_Window window);
+void wm_window_set_title(WM_Window window, Str8 window_name);
+void wm_window_is_focused(WM_Window window);
+void wm_window_focus(WM_Window window);
+void wm_window_is_fullscreen(WM_Window window);
+void wm_window_set_fullscreen(WM_Window window);
+void wm_window_is_maximized(WM_Window window);
+void wm_window_set_maximized(WM_Window window);
+void wm_window_is_minimized(WM_Window window);
+void wm_window_set_minimized(WM_Window window);
+void wm_window_bring_to_front(WM_Window window);
+void wm_window_set_monitor(WM_Window window, WM_Monitor monitor);
+F32 wm_window_get_dpi(WM_Window window);
 
-void wm_window_set_fullscreen(WM_Context* ctx, WM_Window window);
-
-void wm_window_is_maximized(WM_Context* ctx, WM_Window window);
-
-void wm_window_set_maximized(WM_Context* ctx, WM_Window window);
-
-void wm_window_is_minimized(WM_Context* ctx, WM_Window window);
-
-void wm_window_set_minimized(WM_Context* ctx, WM_Window window);
-
-void wm_window_bring_to_front(WM_Context* ctx, WM_Window window);
-
-void wm_window_set_monitor(WM_Context* ctx, WM_Window window, WM_Monitor monitor);
-
-F32 wm_window_get_dpi(WM_Context* ctx, WM_Window window);
-
-/// cjk: Event functions
-WM_Event wm_event_get_list(WM_Context* ctx, WM_Window window, Arena arena);
+/// cjk: Event function
+WM_Event wm_event_get_list(WM_Window window, Arena arena);
 
 

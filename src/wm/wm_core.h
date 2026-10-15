@@ -255,8 +255,8 @@ typedef enum{
 
 
 typedef struct {
-	WM_Event* prev;
 	WM_Event* next;
+	WM_Event* prev;
 
 	WM_EventType type;
 	U64 time_stamp;	
@@ -302,70 +302,38 @@ enum{
 };
 
 typedef struct{
-	U64 u64[1];
-} WM_Window;
-
-typedef struct{
-	U64 u64[1];
-} WM_Monitor;
-
-typedef struct{
-	WM_Monitor* buf;
-	U64 count;
-}WM_MonitorArray;
-
-typedef struct{
 	F32 double_click_time;
 	F32 caret_blink_time;
 	F32 default_refresh_rate; 
 }WM_ConfigValues;
 
-// implemented per os
-typedef struct WM_Display WM_Display;
+// lightweight handles for os specific opaque data types
+typedef struct Handle WM_Window;
+typedef struct Handle WM_Monitor;
+typedef struct Handle WM_Display;
 
-typedef struct {
-	Str8 title;
-	WM_ConfigFlag flags;
-	WM_ConfigValues config_values;
-
-	WM_MonitorArray monitors;
-
-	Vec2F32 window_size;
-	Vec2F32 window_size_min;
-	Vec2F32 window_size_max;
-
-	F32 current_dpi;
-	
-	WM_Display display;
-}WM_Context;
-
-
-/// cjk: General API Implemented Once 
 
 /// cjk: API Implemented Per OS
+WM_Display wm_init(Arena* arena, WM_ConfigFlag flags);
+void wm_close(WM_Display disp);
 
-WM_Context* wm_init(Arena* arena, WM_ConfigFlag flags);
-void wm_close(WM_Context* ctx);
+WM_Window wm_window_create(WM_Display disp, F32 width, F32 height, Str8 window_name);
+void wm_window_close(WM_Window window);
 
+void wm_window_set_title(WM_Window window, Str8 window_name);
+void wm_window_is_focused(WM_Window window);
+void wm_window_focus(WM_Window window);
+void wm_window_is_fullscreen(WM_Window window);
+void wm_window_set_fullscreen(WM_Window window);
+void wm_window_is_maximized(WM_Window window);
+void wm_window_set_maximized(WM_Window window);
+void wm_window_is_minimized(WM_Window window);
+void wm_window_set_minimized(WM_Window window);
+void wm_window_bring_to_front(WM_Window window);
+void wm_window_set_monitor(WM_Window window, WM_Monitor monitor);
+F32 wm_window_get_dpi(WM_Window window);
 
-/// cjk: Window Manger window functions
-WM_Window wm_window_create(WM_Context* wm_ctx, F32 width, F32 height, Str8 window_name);
-void wm_window_close(WM_Context* ctx, WM_Window window);
-
-void wm_window_set_title(WM_Context* ctx, WM_Window window, Str8 window_name);
-void wm_window_is_focused(WM_Context* ctx, WM_Window window);
-void wm_window_focus(WM_Context* ctx, WM_Window window);
-void wm_window_is_fullscreen(WM_Context* ctx, WM_Window window);
-void wm_window_set_fullscreen(WM_Context* ctx, WM_Window window);
-void wm_window_is_maximized(WM_Context* ctx, WM_Window window);
-void wm_window_set_maximized(WM_Context* ctx, WM_Window window);
-void wm_window_is_minimized(WM_Context* ctx, WM_Window window);
-void wm_window_set_minimized(WM_Context* ctx, WM_Window window);
-void wm_window_bring_to_front(WM_Context* ctx, WM_Window window);
-void wm_window_set_monitor(WM_Context* ctx, WM_Window window, WM_Monitor monitor);
-F32 wm_window_get_dpi(WM_Context* ctx, WM_Window window);
-
-/// cjk: Event functions
-WM_Event wm_event_get_list(WM_Context* ctx, WM_Window window, Arena arena);
+/// cjk: Event function
+WM_Event wm_event_get_list(WM_Window window, Arena arena);
 
 #endif // WM_CORE_H 

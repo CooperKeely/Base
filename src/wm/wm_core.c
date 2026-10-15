@@ -30,9 +30,4 @@ void wm_close_window(WM_Context* ctx){
 
 }
 
-B32 wm_get_events(WM_Context* ctx, WM_Event* event){
-
-	return BASE_TRUE;
-}
-
 

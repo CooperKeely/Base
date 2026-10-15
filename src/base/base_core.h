@@ -262,10 +262,6 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
 #define SLLQueuePushFront(f, l, n) 	SLLQueuePushFront_NZ(NULL, f, l, n, next)
 #define SLLQueuePop(f, l)          	SLLQueuePop_NZ(NULL, f, l, next)
 
-
-
-
-
 ///////////////////////////////////////
 /// cjk: Units Definitions
 
@@ -419,6 +415,21 @@ global const S8 min_S8 = 0x80;
 
 global const F32 pi32 = F32Lit(3.1415926535897);
 
+///////////////////////////////////////
+/// cjk: Handel Helpers
+
+// this handle allows for type safe handles
+// at the cost that i cannot use Handle for a variable name
+typedef struct{
+	uint64_t u64[1];
+} __handle__;
+
+#define Handle { __handle__ h; }
+
+#define Handle_Unpack(Type, handle)   	((Type)(U64)((handle).h.u64[0]))
+#define Handle_Pack(HandleType, ptr)	((HandleType){ .h = { .u64 = { (U64)(ptr) } } })
+#define Handle_Is_Valid(handle)       	((handle).h.u64[0] != 0)
+#define Handle_Zero(HandleType)       	((HandleType){.h = { .u64 = { 0 } }})
 
 ///////////////////////////////////////
 /// cjk: Buffer 

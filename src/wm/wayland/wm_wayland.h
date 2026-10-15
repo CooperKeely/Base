@@ -23,9 +23,7 @@ static LOG_Context log_way = (LOG_Context){
 };
 
 typedef struct {
-	WM_Diplay* parent_display;
-	
-	// pointers to the next and previous window
+	WM_WaylandDiplay* parent_display;
 	WM_WaylandWindow* next;
 	WM_WaylandWindow* prev;
 	
@@ -34,32 +32,35 @@ typedef struct {
 	struct xdg_surface* xdg_surface;
 	struct xdg_toplevel* xdg_toplevel;
 
+	Str8 name;
+
 	F32 width;
 	F32 height;
-	
+
 	B8 is_focused;
 	B8 is_maximized;
 	B8 fullscreen;
-
 } WM_WaylandWindow;
 
 
-struct WM_Display{
+typedef struct {
+	// doubly linked list of all made windows
+	WM_WaylandWindow* first;
+	WM_WaylandWindow* last;
+
 	// globals
 	struct wl_display* wl_display; 
 	struct wl_registry* wl_registry;
 	struct wl_compositor* wl_compositor;
 	struct xdg_wm_base* xdg_wm_base;
 	
-	// doubly linked list of all made windows
-	WM_WaylandWindow* head;
-	WM_WaylandWindow* tail;
-};
+	// Data
+	F32 dpi;
+}WM_WaylandDisplay;
 
 //void wm_init_egl(WM_PlatformContext* ctx, U32 width, U32 height);
 
 // (cjk): Register Listeners
-
 static void registry_handle_global(void* data, struct wl_registry *registry, U32 name, const char* interface, U32 version);
 static void registry_handle_global_remove(void* data, struct wl_registry* registry, U32 name);
 static void xdg_surface_configure(void* data, struct xdg_surface* xdg_surface, uint32_t serial);
