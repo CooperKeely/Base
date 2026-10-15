@@ -222,7 +222,7 @@ C_LINKAGE void __asan_unpoison_memory_region(void const volatile *addr,size_t si
     )
 
 #define DLLPushBack_NPZ(nil, f, l, n, next, prev)  	DLLInsert_NPZ(nil, f, l, l, n, next, prev)
-#define DLLPushFront_NPZ(nil, f, l, n, next, prev) 	DLLInsert_NPZ(nil, f, l, 0, n, next, prev)
+#define DLLPushFront_NPZ(nil, f, l, n, next, prev) 	DLLInsert_NPZ(nil, l, f, f, n, next, prev)
 
 #define DLLInsert_NP(f, l, p, n, next, prev) 	DLLInsert_NPZ(NULL, f, l, p, n, next, prev)
 #define DLLPushBack_NP(f, l, n, next, prev)    	DLLPushBack_NPZ(NULL, f, l, n, next, prev)

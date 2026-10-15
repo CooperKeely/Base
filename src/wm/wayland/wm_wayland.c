@@ -2,15 +2,16 @@
 /// cjk: Register Listeners
 
 static void registry_handle_global(void* data, struct wl_registry *registry, U32 name, const char* interface, U32 version){
-	WM_PlatformContext* plat_ctx = (WM_PlatformContext*) data;
+	WM_WaylandDisplay* wl_disp = (WM_WaylandDisplay*) data;
+
 	str8_printf(stdout,"interface : '%s', version: %d, name: %d\n", interface, version, name);
 
 	if (strcmp(interface, wl_compositor_interface.name) == 0) {
-        	plat_ctx->wl_compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 4);
+        	wl_disp->wl_compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 4);
     	}
 	else if(strcmp(interface, xdg_wm_base_interface.name) == 0){
-		plat_ctx->xdg_wm_base = wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);	
-		xdg_wm_base_add_listener(plat_ctx->xdg_wm_base, &xdg_wm_base_listener, plat_ctx);
+		wl_disp->xdg_wm_base = wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);	
+		xdg_wm_base_add_listener(wl_disp->xdg_wm_base, &xdg_wm_base_listener, wl_disp);
 	}
 
 }
@@ -18,8 +19,8 @@ static void registry_handle_global(void* data, struct wl_registry *registry, U32
 static void registry_handle_global_remove(void* data, struct wl_registry* registry, U32 name) { }
 
 static void xdg_surface_configure(void* data, struct xdg_surface* xdg_surface, uint32_t serial){
-	WM_PlatformContext* platform_context = (WM_PlatformContext*) data;
-	
+	WM_WaylandWindow* wl_win = (WM_WaylandWindow*) data;
+
 	xdg_surface_ack_configure(xdg_surface, serial);
 }
 
@@ -77,7 +78,7 @@ internal void wm_init_egl(WM_PlatformContext* ctx, U32 width, U32 height){
 
 WM_Display wm_init(Arena* arena, WM_ConfigFlag flags)
 {
-	WM_WaylandDisplay* disp = ArenaPushStructZero(arena, WM_Context);
+	WM_WaylandDisplay* disp = ArenaPushStructZero(arena, WM_WaylandDisplay);
 	Assert(disp);
 
 	disp->wl_display = wl_display_connect(NULL);
@@ -104,7 +105,7 @@ WM_Display wm_init(Arena* arena, WM_ConfigFlag flags)
 	return ret_handle;
 }
 
-void wm_close(WM_Context* ctx)
+void wm_close(WM_Display disp)
 {
 
 }
@@ -112,7 +113,7 @@ void wm_close(WM_Context* ctx)
 
 
 /// cjk: Window Manger window functions
-WM_Window wm_window_create(WM_Display disp, Arena arena, F32 width, F32 height, Str8 window_name)
+WM_Window wm_window_create(WM_Display disp, Arena* arena, F32 width, F32 height, Str8 window_name)
 {
 	WM_WaylandDisplay* wl_disp = Handle_Unpack(WM_WaylandDisplay*, disp);	
 	WM_WaylandWindow* wl_win = ArenaPushStructZero(arena, WM_WaylandWindow);
@@ -142,12 +143,12 @@ WM_Window wm_window_create(WM_Display disp, Arena arena, F32 width, F32 height, 
 	
 	// set the title
 	xdg_toplevel_set_title(wl_win->xdg_toplevel, str8_to_cstring(arena, window_name));
-	wm_ctx->title = window_name;
+	wl_win->name = window_name;
 
 	wl_surface_commit(wl_win->wl_surface);
 	
 	WM_Window ret_handle = Handle_Pack(WM_Window, wl_win);
-	return ret;
+	return ret_handle;
 
 	/* TODO: move to rendering api
 	 wm_init_egl(plat_ctx, 100, 100);
@@ -163,23 +164,18 @@ WM_Window wm_window_create(WM_Display disp, Arena arena, F32 width, F32 height, 
 void wm_window_close(WM_Window window)
 {
 	WM_WaylandWindow* wl_win = Handle_Unpack(WM_WaylandWindow*, window); 
+	WM_WaylandDisplay* wl_disp = wl_win->parent_display;
 	Assert(wl_win);
 
 	if(wl_win->xdg_toplevel) xdg_toplevel_destroy(wl_win->xdg_toplevel);
 	if(wl_win->xdg_surface) xdg_surface_destroy(wl_win->xdg_surface);
 	if(wl_win->wl_surface) wl_surface_destroy(wl_win->wl_surface);
-	if(wl_win->wl_registry) wl_registry_destroy(wl_win->wl_surface);
-	if(wl_win->wl_display) wl_display_disconnect(wl_win->wl_display);
+	if(wl_disp->wl_registry) wl_registry_destroy(wl_disp->wl_registry);
+	if(wl_disp->wl_display) wl_display_disconnect(wl_disp->wl_display);
 }
 
 
 /// cjk: API Implemented Per OS
-WM_Display wm_init(Arena* arena, WM_ConfigFlag flags);
-void wm_close(WM_Display disp);
-
-WM_Window wm_window_create(WM_Display disp, Arena arena, F32 width, F32 height, Str8 window_name);
-void wm_window_close(WM_Window window);
-
 void wm_window_set_title(WM_Window window, Str8 window_name);
 void wm_window_is_focused(WM_Window window);
 void wm_window_focus(WM_Window window);
@@ -194,6 +190,11 @@ void wm_window_set_monitor(WM_Window window, WM_Monitor monitor);
 F32 wm_window_get_dpi(WM_Window window);
 
 /// cjk: Event function
-WM_Event wm_event_get_list(WM_Window window, Arena arena);
 
+WM_Event* wm_event_get_list(WM_Window window, Arena* arena){
+	WM_WaylandWindow* wl_win = Handle_Unpack(WM_WaylandWindow*, window);
+	
+
+	return NULL;
+}
 

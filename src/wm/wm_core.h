@@ -254,7 +254,8 @@ typedef enum{
 } WM_EventType;
 
 
-typedef struct {
+typedef struct WM_Event WM_Event;
+struct WM_Event{
 	WM_Event* next;
 	WM_Event* prev;
 
@@ -280,7 +281,7 @@ typedef struct {
 	OS_Handle system_clip_board;
 	OS_Handle system_file_drop;
 	F32 system_new_dpi;
-}WM_Event;
+};
 
 
 ///////////////////////////////////////
@@ -317,7 +318,7 @@ typedef struct Handle WM_Display;
 WM_Display wm_init(Arena* arena, WM_ConfigFlag flags);
 void wm_close(WM_Display disp);
 
-WM_Window wm_window_create(WM_Display disp, F32 width, F32 height, Str8 window_name);
+WM_Window wm_window_create(WM_Display disp, Arena* arena, F32 width, F32 height, Str8 window_name);
 void wm_window_close(WM_Window window);
 
 void wm_window_set_title(WM_Window window, Str8 window_name);
@@ -334,6 +335,6 @@ void wm_window_set_monitor(WM_Window window, WM_Monitor monitor);
 F32 wm_window_get_dpi(WM_Window window);
 
 /// cjk: Event function
-WM_Event wm_event_get_list(WM_Window window, Arena arena);
+WM_Event* wm_event_get_list(WM_Window window, Arena* arena);
 
 #endif // WM_CORE_H 

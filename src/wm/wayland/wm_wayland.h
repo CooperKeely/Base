@@ -22,8 +22,11 @@ static LOG_Context log_way = (LOG_Context){
 	.category	= { sizeof("WAYLAND") - 1, (U8*)"WAYLAND" },
 };
 
-typedef struct {
-	WM_WaylandDiplay* parent_display;
+typedef struct WM_WaylandDisplay WM_WaylandDisplay;
+typedef struct WM_WaylandWindow WM_WaylandWindow;
+
+struct WM_WaylandWindow{
+	WM_WaylandDisplay* parent_display;
 	WM_WaylandWindow* next;
 	WM_WaylandWindow* prev;
 	
@@ -40,10 +43,10 @@ typedef struct {
 	B8 is_focused;
 	B8 is_maximized;
 	B8 fullscreen;
-} WM_WaylandWindow;
+}; 
 
 
-typedef struct {
+struct WM_WaylandDisplay {
 	// doubly linked list of all made windows
 	WM_WaylandWindow* first;
 	WM_WaylandWindow* last;
@@ -56,7 +59,7 @@ typedef struct {
 	
 	// Data
 	F32 dpi;
-}WM_WaylandDisplay;
+};
 
 //void wm_init_egl(WM_PlatformContext* ctx, U32 width, U32 height);
 
