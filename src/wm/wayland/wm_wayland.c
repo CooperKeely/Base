@@ -1,80 +1,6 @@
-///////////////////////////////////////
-/// cjk: Register Listeners
 
-static void registry_handle_global(void* data, struct wl_registry *registry, U32 name, const char* interface, U32 version){
-	WM_WaylandDisplay* wl_disp = (WM_WaylandDisplay*) data;
-
-	str8_printf(stdout,"interface : '%s', version: %d, name: %d\n", interface, version, name);
-
-	if (strcmp(interface, wl_compositor_interface.name) == 0) {
-        	wl_disp->wl_compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 4);
-    	}
-	else if(strcmp(interface, xdg_wm_base_interface.name) == 0){
-		wl_disp->xdg_wm_base = wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);	
-		xdg_wm_base_add_listener(wl_disp->xdg_wm_base, &xdg_wm_base_listener, wl_disp);
-	}
-
-}
-
-static void registry_handle_global_remove(void* data, struct wl_registry* registry, U32 name) { }
-
-static void xdg_surface_configure(void* data, struct xdg_surface* xdg_surface, uint32_t serial){
-	WM_WaylandWindow* wl_win = (WM_WaylandWindow*) data;
-
-	xdg_surface_ack_configure(xdg_surface, serial);
-}
-
-static void xdg_wm_base_ping(void* data, struct xdg_wm_base *xdg_wm_base, uint32_t serial){
-	xdg_wm_base_pong(xdg_wm_base, serial);	
-}
-
-
-// (cjk): egl initializer
-/* TODO: move to rendering API
-internal void wm_init_egl(WM_PlatformContext* ctx, U32 width, U32 height){
-	EGLint major;
-	EGLint minor;
-	EGLConfig config;
-	EGLint num_config;
-
-	EGLint ctx_attributes[] = { EGL_NONE };
-	EGLint attributes[] = {
-		EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-		EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-		EGL_RED_SIZE, 8,
-		EGL_GREEN_SIZE, 8,
-		EGL_BLUE_SIZE, 8,
-		EGL_NONE
-	};
-
-	EGLBoolean err;
-
-	ctx->egl_display = eglGetPlatformDisplay(EGL_PLATFORM_WAYLAND_KHR, ctx->wl_display, NULL);
-	if(ctx->egl_display == EGL_NO_DISPLAY){ LogCtxError(log_way, "Failed to get EGL display"); }
-	
-	err = eglInitialize(ctx->egl_display, &major, &minor);
-	if(!err) { LogCtxError(log_way, "Failed to initialize EGL"); }
-
-	err = eglChooseConfig(ctx->egl_display, attributes, &config, 1, &num_config);
-	if(!err || num_config < 1){ LogCtxError(log_way, "Failed to choose EGL config"); }
-
-	err = eglBindAPI(EGL_OPENGL_API);
-	if(!err) { LogCtxError(log_way, "Failed to bind EGL OpenGL API"); }
-
-	ctx->egl_context = eglCreateContext(ctx->egl_display, config, EGL_NO_CONTEXT, ctx_attributes);
-	if(ctx->egl_context == EGL_NO_CONTEXT) { LogCtxError(log_way, "Failed to create EGL context"); }
-
-	ctx->egl_window = wl_egl_window_create(ctx->wl_surface, width, height);
-	if(!ctx->egl_window) { LogCtxError(log_way, "Failed to create EGL window"); }
-
-	ctx->egl_surface = eglCreatePlatformWindowSurface(ctx->egl_display, config, ctx->egl_window, NULL);
-	if(!ctx->egl_surface) { LogCtxError(log_way, "Failed to create EGL surface"); }
-
-	err = eglMakeCurrent(ctx->egl_display, ctx->egl_surface, ctx->egl_surface, ctx->egl_context);
-	if(!err) { LogCtxError(log_way, "Failed to make EGL context current"); }
-
-	gl_loader_init((GL_LoaderProc)eglGetProcAddress);	
-}*/
+///////////////////////////////////////////////////////////////////////////////
+/// cjk: Window manager core api
 
 WM_Display wm_init(Arena* arena, WM_ConfigFlag flags)
 {
@@ -149,16 +75,6 @@ WM_Window wm_window_create(WM_Display disp, Arena* arena, F32 width, F32 height,
 	
 	WM_Window ret_handle = Handle_Pack(WM_Window, wl_win);
 	return ret_handle;
-
-	/* TODO: move to rendering api
-	 wm_init_egl(plat_ctx, 100, 100);
-
-	// Clear the buffer and swap to commit the first frame to the compositor
-	glClearColor(1.0f, 0.3f, 0.3f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-	eglSwapBuffers(plat_ctx->egl_display, plat_ctx->egl_surface);
-
-	ctx->platform_context = plat_ctx;*/
 }
 
 void wm_window_close(WM_Window window)
@@ -175,7 +91,6 @@ void wm_window_close(WM_Window window)
 }
 
 
-/// cjk: API Implemented Per OS
 void wm_window_set_title(WM_Window window, Str8 window_name);
 void wm_window_is_focused(WM_Window window);
 void wm_window_focus(WM_Window window);
@@ -189,12 +104,119 @@ void wm_window_bring_to_front(WM_Window window);
 void wm_window_set_monitor(WM_Window window, WM_Monitor monitor);
 F32 wm_window_get_dpi(WM_Window window);
 
-/// cjk: Event function
+///////////////////////////////////////////////////////////////////////////////
+/// cjk: Window manager event api
 
-WM_Event* wm_event_get_list(WM_Window window, Arena* arena){
+
+WM_Event* wm_event_get_list(WM_Window window, Arena* arena)
+{
 	WM_WaylandWindow* wl_win = Handle_Unpack(WM_WaylandWindow*, window);
+	Assert(wl_win);	
 	
+	// set the current frame arena so all events get allocated to it
+	wl_win->current_frame_arena = arena;
 
-	return NULL;
+	Assert(wl_win->parent_display && wl_win->parent_display->wl_display);
+	wl_display_dispatch_pending(wl_win->parent_display->wl_display);	
+	
+	WM_Event* ret_head = wl_win->event_head;
+	
+	// clear the persistent linked list	
+	wl_win->event_head = NULL;
+	wl_win->current_frame_arena = NULL;
+
+	return ret_head; 
 }
+
+///////////////////////////////////////////////////////////////////////////////
+/// cjk: Wayland Event Listener Implementations
+///////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////
+/// cjk: Wayland Display Discovery
+
+static void registry_handle_global(void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t version)
+{
+	WM_WaylandDisplay* wl_disp = (WM_WaylandDisplay*) data;
+
+	str8_printf(stdout,"interface : '%s', version: %d, name: %d\n", interface, version, name);
+
+	if (strcmp(interface, wl_compositor_interface.name) == 0) {
+        	wl_disp->wl_compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 4);
+    	}
+	else if(strcmp(interface, xdg_wm_base_interface.name) == 0){
+		wl_disp->xdg_wm_base = wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);	
+		xdg_wm_base_add_listener(wl_disp->xdg_wm_base, &xdg_wm_base_listener, wl_disp);
+	}
+}
+
+static void registry_handle_global_remove(void* data, struct wl_registry* registry, uint32_t name);
+
+///////////////////////////////////////////////////////////////////////////////
+/// cjk: Wayland XDG Window Management
+
+// xdg_wm_base
+static void xdg_wm_base_handle_ping(void* data, struct xdg_wm_base* xdg_wm_base, uint32_t serial)
+{
+	(void)data;
+    	xdg_wm_base_pong(xdg_wm_base, serial);
+}
+
+// xdg_surface
+static void xdg_surface_handle_configure(void* data, struct xdg_surface* xdg_surface, uint32_t serial)
+{
+	(void) data;
+	xdg_surface_ack_configure(xdg_surface, serial);
+}
+
+// xdg_toplevel
+static void xdg_toplevel_handle_configure(void* data, struct xdg_toplevel* xdg_toplevel, int32_t width, int32_t height, struct wl_array* states);
+static void xdg_toplevel_handle_close(void* data, struct xdg_toplevel* xdg_toplevel);
+static void xdg_toplevel_handle_configure_bounds(void* data, struct xdg_toplevel* xdg_toplevel, int32_t width, int32_t height);
+static void xdg_toplevel_handle_wm_capabilities(void* data, struct xdg_toplevel* xdg_toplevel, struct wl_array* capabilities);
+
+///////////////////////////////////////////////////////////////////////////////
+/// cjk: Wayland Keyboard and Mouse Listeners
+
+// wl_seat
+static void seat_handle_capabilities(void* data, struct wl_seat* seat, uint32_t caps);
+static void seat_handle_name(void* data, struct wl_seat* seat, const char* name);
+
+// wl_keyboard
+static void keyboard_handle_keymap(void* data, struct wl_keyboard* kb, uint32_t format, int32_t fd, uint32_t size);
+static void keyboard_handle_enter(void* data, struct wl_keyboard* kb, uint32_t serial, struct wl_surface* surface, struct wl_array* keys);
+static void keyboard_handle_leave(void* data, struct wl_keyboard* kb, uint32_t serial, struct wl_surface* surface);
+static void keyboard_handle_key(void* data, struct wl_keyboard* kb, uint32_t serial, uint32_t time, uint32_t key, uint32_t state);
+static void keyboard_handle_modifiers(void* data, struct wl_keyboard* kb, uint32_t serial, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group);
+static void keyboard_handle_repeat_info(void* data, struct wl_keyboard* kb, int32_t rate, int32_t delay);
+
+// wl_pointer
+static void pointer_handle_enter(void* data, struct wl_pointer* ptr, uint32_t serial, struct wl_surface* surface, wl_fixed_t sx, wl_fixed_t sy);
+static void pointer_handle_leave(void* data, struct wl_pointer* ptr, uint32_t serial, struct wl_surface* surface);
+static void pointer_handle_motion(void* data, struct wl_pointer* ptr, uint32_t time, wl_fixed_t sx, wl_fixed_t sy);
+static void pointer_handle_button(void* data, struct wl_pointer* ptr, uint32_t serial, uint32_t time, uint32_t button, uint32_t state);
+static void pointer_handle_axis(void* data, struct wl_pointer* ptr, uint32_t time, uint32_t axis, wl_fixed_t value);
+static void pointer_handle_frame(void* data, struct wl_pointer* ptr);
+static void pointer_handle_axis_source(void* data, struct wl_pointer* ptr, uint32_t axis_source);
+static void pointer_handle_axis_stop(void* data, struct wl_pointer* ptr, uint32_t time, uint32_t axis);
+static void pointer_handle_axis_discrete(void* data, struct wl_pointer* ptr, uint32_t axis, int32_t discrete);
+
+///////////////////////////////////////////////////////////////////////////////
+/// cjk: Wayland Rendering & Sync listeners
+
+// wl_callback (Frame Pacing / VSync)
+static void frame_handle_done(void* data, struct wl_callback* callback, uint32_t callback_data);
+
+// wl_buffer (Software Rendering / Release notification)
+static void buffer_handle_release(void* data, struct wl_buffer* buffer);
+
+///////////////////////////////////////////////////////////////////////////////
+/// cjk: Wayland Monitor Listeners
+
+static void output_handle_geometry(void* data, struct wl_output* output, int32_t x, int32_t y, int32_t physical_width, int32_t physical_height, int32_t subpixel, const char* make, const char* model, int32_t transform);
+static void output_handle_mode(void* data, struct wl_output* output, uint32_t flags, int32_t width, int32_t height, int32_t refresh);
+static void output_handle_done(void* data, struct wl_output* output);
+static void output_handle_scale(void* data, struct wl_output* output, int32_t factor);
+static void output_handle_name(void* data, struct wl_output* output, const char* name);
+static void output_handle_description(void* data, struct wl_output* output, const char* description);
 
