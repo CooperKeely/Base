@@ -5,7 +5,10 @@
 // used to resolve if compositor is wayland or x11 based
 B32 wm_should_use_wayland(void);
 
+# undef global
 # include "wayland/wm_wayland.h"
+# define global static
+
 # include "x11/wm_x11.h"
 #elif defined(OS_WINDOWS)
 # error "Unsupported"
@@ -19,7 +22,6 @@ B32 wm_should_use_wayland(void);
 
 #if defined(OS_LINUX)
 
-global B32 wm_use_wayland = BASE_FALSE;
 
 B32 wm_should_use_wayland(void){
 	Str8 env_result = os_get_env_variable(Str8Lit("WAYLAND_DISPLAY"));
@@ -32,7 +34,10 @@ B32 wm_should_use_wayland(void){
 	return BASE_FALSE;
 }
 
+# undef global
 # include "wayland/wm_wayland.c"
+# define global static
+
 # include "x11/wm_x11.c"
 
 #elif defined(OS_WINDOWS)

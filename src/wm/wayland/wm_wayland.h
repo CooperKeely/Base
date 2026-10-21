@@ -2,9 +2,7 @@
 #define OS_LINUX_WAYLAND_GFX_H
 
 // wayland includes
-#undef global
 #include <wayland-client.h>
-#define global static
 #include "../../../include/xdg-shell-client-protocol.h"
 
 //#include <wayland-egl.h>
@@ -59,12 +57,12 @@ struct WM_WaylandWindow{
 struct WM_WaylandDisplay {
 	
 	// doubly linked list of all made windows
-	WM_WaylandWindow* head;
-	WM_WaylandWindow* tail;
+	WM_WaylandWindow* window_head;
+	WM_WaylandWindow* window_tail;
 
 	// doubly linked list of all made windows
-	WM_WaylandMonitor* head;
-	WM_WaylandMonitor* tail;
+	WM_WaylandMonitor* monitor_head;
+	WM_WaylandMonitor* monitor_tail;
 
 	// globals
 	struct wl_display* wl_display; 
