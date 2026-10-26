@@ -313,12 +313,14 @@ typedef struct Handle WM_Window;
 typedef struct Handle WM_Monitor;
 typedef struct Handle WM_Display;
 
-
 /// cjk: API Implemented Per OS
 WM_Display wm_init(Arena* arena, WM_ConfigFlag flags);
 void wm_close(WM_Display disp);
 
-WM_Window wm_window_create(WM_Display disp, Arena* arena, F32 width, F32 height, Str8 window_name);
+void wm_begin_frame(WM_Window window);
+void wm_end_frame(WM_Window window);
+
+WM_Window wm_window_create(Arena* arena, F32 width, F32 height, Str8 window_name);
 void wm_window_close(WM_Window window);
 
 void wm_window_set_title(WM_Window window, Str8 window_name);

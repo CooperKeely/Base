@@ -2,10 +2,11 @@
 ///////////////////////////////////////////////////////////////////////////////
 /// cjk: Window manager core api
 
+
+
 WM_Display wm_init(Arena* arena, WM_ConfigFlag flags)
 {
-	WM_WaylandDisplay* disp = ArenaPushStructZero(arena, WM_WaylandDisplay);
-	Assert(disp);
+	WM_WaylandDisplay* disp = &g_wm_wayland_display;
 
 	disp->wl_display = wl_display_connect(NULL);
 	Assert(disp->wl_display);
@@ -39,55 +40,66 @@ void wm_close(WM_Display disp)
 
 
 /// cjk: Window Manger window functions
-WM_Window wm_window_create(WM_Display disp, Arena* arena, F32 width, F32 height, Str8 window_name)
+WM_Window wm_window_create(Arena* arena, F32 width, F32 height, Str8 window_name)
 {
-	WM_WaylandDisplay* wl_disp = Handle_Unpack(WM_WaylandDisplay*, disp);	
-	WM_WaylandWindow* wl_win = ArenaPushStructZero(arena, WM_WaylandWindow);
+	WM_WaylandDisplay* disp = &g_wm_wayland_display;
+	WM_WaylandWindow* win = ArenaPushStructZero(arena, WM_WaylandWindow);
 
-	Assert(wl_win);
-	Assert(wl_disp);	
+	Assert(win);
+	Assert(disp);	
 
-	wl_win->height = height;
-	wl_win->width = width;
-	wl_win->name = window_name;	
+	win->height = height;
+	win->width = width;
+	win->name = window_name;	
 	
 	// Add to the list of displays
-	wl_win->parent_display = wl_disp;
-	DLLPushFront(wl_disp->window_head, wl_disp->window_tail, wl_win);
+	DLLPushFront(disp->window_head, disp->window_tail, win);
 
 	// create a wayland surface
-	wl_win->wl_surface = wl_compositor_create_surface(wl_disp->wl_compositor);
-	Assert(wl_win->wl_surface);
+	win->wl_surface = wl_compositor_create_surface(disp->wl_compositor);
+	Assert(win->wl_surface);
 
 	// assign a XDG role
-	wl_win->xdg_surface = xdg_wm_base_get_xdg_surface(wl_disp->xdg_wm_base, wl_win->wl_surface);
-	Assert(wl_win->xdg_surface);
+	win->xdg_surface = xdg_wm_base_get_xdg_surface(disp->xdg_wm_base, win->wl_surface);
+	Assert(win->xdg_surface);
 
-	xdg_surface_add_listener(wl_win->xdg_surface, &g_xdg_surface_listener, wl_disp);
-	wl_win->xdg_toplevel = xdg_surface_get_toplevel(wl_win->xdg_surface);
-	Assert(wl_win->xdg_toplevel);
+	xdg_surface_add_listener(win->xdg_surface, &g_xdg_surface_listener, disp);
+	win->xdg_toplevel = xdg_surface_get_toplevel(win->xdg_surface);
+	Assert(win->xdg_toplevel);
 	
 	// set the title
-	xdg_toplevel_set_title(wl_win->xdg_toplevel, str8_to_cstring(arena, window_name));
-	wl_win->name = window_name;
+	xdg_toplevel_set_title(win->xdg_toplevel, str8_to_cstring(arena, window_name));
+	win->name = window_name;
 
-	wl_surface_commit(wl_win->wl_surface);
+	//  create the wl egl compat struct
+	// TODO: not the sizes get ingnored right new because of my tiling compositor
+	win->wl_egl_window = wl_egl_window_create(win->wl_surface, 1, 1); 	
+
+	wl_surface_commit(win->wl_surface);
 	
-	WM_Window ret_handle = Handle_Pack(WM_Window, wl_win);
+	WM_Window ret_handle = Handle_Pack(WM_Window, win);
 	return ret_handle;
 }
 
 void wm_window_close(WM_Window window)
 {
-	WM_WaylandWindow* wl_win = Handle_Unpack(WM_WaylandWindow*, window); 
-	WM_WaylandDisplay* wl_disp = wl_win->parent_display;
-	Assert(wl_win);
+	WM_WaylandDisplay* disp = &g_wm_wayland_display;
+	WM_WaylandWindow* win = Handle_Unpack(WM_WaylandWindow*, window); 
+	Assert(win);
 
-	if(wl_win->xdg_toplevel) xdg_toplevel_destroy(wl_win->xdg_toplevel);
-	if(wl_win->xdg_surface) xdg_surface_destroy(wl_win->xdg_surface);
-	if(wl_win->wl_surface) wl_surface_destroy(wl_win->wl_surface);
-	if(wl_disp->wl_registry) wl_registry_destroy(wl_disp->wl_registry);
-	if(wl_disp->wl_display) wl_display_disconnect(wl_disp->wl_display);
+	if(win->xdg_toplevel) xdg_toplevel_destroy(win->xdg_toplevel);
+	if(win->xdg_surface) xdg_surface_destroy(win->xdg_surface);
+	if(win->wl_surface) wl_surface_destroy(win->wl_surface);
+	if(disp->wl_registry) wl_registry_destroy(disp->wl_registry);
+	if(disp->wl_display) wl_display_disconnect(disp->wl_display);
+}
+
+void wm_begin_frame(WM_Window window){
+
+}
+
+void wm_end_frame(WM_Window window){
+
 }
 
 
@@ -110,20 +122,20 @@ F32 wm_window_get_dpi(WM_Window window);
 
 WM_Event* wm_event_get_list(WM_Window window, Arena* arena)
 {
-	WM_WaylandWindow* wl_win = Handle_Unpack(WM_WaylandWindow*, window);
-	Assert(wl_win);	
+	WM_WaylandDisplay* disp = &g_wm_wayland_display;
+	WM_WaylandWindow* win = Handle_Unpack(WM_WaylandWindow*, window);
+	Assert(win);	
 	
 	// set the current frame arena so all events get allocated to it
-	wl_win->current_frame_arena = arena;
+	win->current_frame_arena = arena;
 
-	Assert(wl_win->parent_display && wl_win->parent_display->wl_display);
-	wl_display_dispatch_pending(wl_win->parent_display->wl_display);	
+	wl_display_dispatch_pending(disp->wl_display);	
 	
-	WM_Event* ret_head = wl_win->event_head;
+	WM_Event* ret_head = win->event_head;
 	
 	// clear the persistent linked list	
-	wl_win->event_head = NULL;
-	wl_win->current_frame_arena = NULL;
+	win->event_head = NULL;
+	win->current_frame_arena = NULL;
 
 	return ret_head; 
 }
@@ -137,16 +149,15 @@ WM_Event* wm_event_get_list(WM_Window window, Arena* arena)
 
 static void registry_handle_global(void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t version)
 {
-	WM_WaylandDisplay* wl_disp = (WM_WaylandDisplay*) data;
-
+	WM_WaylandDisplay* disp = &g_wm_wayland_display;
 	str8_printf(stdout,"interface : '%s', version: %d, name: %d\n", interface, version, name);
 
 	if (strcmp(interface, wl_compositor_interface.name) == 0) {
-        	wl_disp->wl_compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 4);
+        	disp->wl_compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 4);
     	}
 	else if(strcmp(interface, xdg_wm_base_interface.name) == 0){
-		wl_disp->xdg_wm_base = wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);	
-		xdg_wm_base_add_listener(wl_disp->xdg_wm_base, &g_xdg_wm_base_listener, wl_disp);
+		disp->xdg_wm_base = wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);	
+		xdg_wm_base_add_listener(disp->xdg_wm_base, &g_xdg_wm_base_listener, disp);
 	}
 }
 
@@ -172,7 +183,13 @@ static void xdg_surface_handle_configure(void* data, struct xdg_surface* xdg_sur
 
 // xdg_toplevel
 static void xdg_toplevel_handle_configure(void* data, struct xdg_toplevel* xdg_toplevel, int32_t width, int32_t height, struct wl_array* states)
-{}
+{
+	WM_WaylandWindow* window = (WM_WaylandWindow*) data; 
+	if(width > 0 && height > 0){
+		wl_egl_window_resize(window->wl_egl_window, width, height, 0, 0);
+		// TODO: update window dimenstions
+	}
+}
 static void xdg_toplevel_handle_close(void* data, struct xdg_toplevel* xdg_toplevel)
 {}
 static void xdg_toplevel_handle_configure_bounds(void* data, struct xdg_toplevel* xdg_toplevel, int32_t width, int32_t height)

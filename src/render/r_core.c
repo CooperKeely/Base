@@ -8,6 +8,16 @@
 
 	ctx->platform_context = plat_ctx;*/
 
+
+//#include <wayland-egl.h>
+//#include <EGL/egl.h>
+//#include <EGL/eglext.h>
+// opengl function loader
+//#define GL_LOADER_IMPLEMENTATION
+//#include "../../libs/gl_loader.h"
+
+
+
 // (cjk): egl initializer
 /* TODO: move to rendering API
 internal void wm_init_egl(WM_PlatformContext* ctx, U32 width, U32 height){

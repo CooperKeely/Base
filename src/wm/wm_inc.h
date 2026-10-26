@@ -5,9 +5,7 @@
 // used to resolve if compositor is wayland or x11 based
 B32 wm_should_use_wayland(void);
 
-# undef global
 # include "wayland/wm_wayland.h"
-# define global static
 
 # include "x11/wm_x11.h"
 #elif defined(OS_WINDOWS)
@@ -34,9 +32,7 @@ B32 wm_should_use_wayland(void){
 	return BASE_FALSE;
 }
 
-# undef global
 # include "wayland/wm_wayland.c"
-# define global static
 
 # include "x11/wm_x11.c"
 

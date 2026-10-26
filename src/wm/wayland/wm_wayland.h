@@ -2,16 +2,13 @@
 #define OS_LINUX_WAYLAND_GFX_H
 
 // wayland includes
+#undef global
+
 #include <wayland-client.h>
+#include <wayland-egl.h>
 #include "../../../include/xdg-shell-client-protocol.h"
 
-//#include <wayland-egl.h>
-//#include <EGL/egl.h>
-//#include <EGL/eglext.h>
-// opengl function loader
-//#define GL_LOADER_IMPLEMENTATION
-//#include "../../libs/gl_loader.h"
-
+#define global static
 
 static LOG_Context log_way = (LOG_Context){
 	.fd 		= LOG_FD_STDERR,
@@ -27,11 +24,32 @@ typedef struct WM_WaylandDisplay WM_WaylandDisplay;
 typedef struct WM_WaylandWindow WM_WaylandWindow;
 typedef struct WM_WaylandMonitor WM_WaylandMonitor;
 
+global WM_WaylandDisplay g_wm_wayland_display = {0};
+
+struct WM_WaylandDisplay {
+	
+	// doubly linked list of all made windows
+	WM_WaylandWindow* window_head;
+	WM_WaylandWindow* window_tail;
+
+	// doubly linked list of all made monitors
+	WM_WaylandMonitor* monitor_head;
+	WM_WaylandMonitor* monitor_tail;
+
+	// globals
+	struct wl_display* wl_display; 
+	struct wl_registry* wl_registry;
+	struct wl_compositor* wl_compositor;
+	struct xdg_wm_base* xdg_wm_base;
+	
+};
+
 struct WM_WaylandWindow{
 	// Doubly linked list of all windows
-	WM_WaylandDisplay* parent_display;
 	WM_WaylandWindow* next;
 	WM_WaylandWindow* prev;
+
+	WM_WaylandMonitor* parent_monitor;
 	
 	// Persistent internal event queue
 	Arena* current_frame_arena; // this is used to allocate
@@ -42,6 +60,7 @@ struct WM_WaylandWindow{
 	struct wl_surface* wl_surface;
 	struct xdg_surface* xdg_surface;
 	struct xdg_toplevel* xdg_toplevel;
+	struct wl_egl_window* wl_egl_window;
 
 	Str8 name;
 
@@ -54,32 +73,17 @@ struct WM_WaylandWindow{
 }; 
 
 
-struct WM_WaylandDisplay {
-	
-	// doubly linked list of all made windows
-	WM_WaylandWindow* window_head;
-	WM_WaylandWindow* window_tail;
-
-	// doubly linked list of all made windows
-	WM_WaylandMonitor* monitor_head;
-	WM_WaylandMonitor* monitor_tail;
-
-	// globals
-	struct wl_display* wl_display; 
-	struct wl_registry* wl_registry;
-	struct wl_compositor* wl_compositor;
-	struct xdg_wm_base* xdg_wm_base;
-	
-};
-
-
 struct WM_WaylandMonitor{
 	// doubly linked list of monitors
 	WM_WaylandMonitor* next;
 	WM_WaylandMonitor* prev;
 
+	// doubly linked list of all made windows
+	WM_WaylandWindow* head;
+	WM_WaylandWindow* tail;
+	
 	// data
-	Vec2F32 dimensions;
+	Pnt2U32 dimensions;
 	Pnt2U32 resolution;
 	F32 	dpi;
 	B32 	hi_dpi;
@@ -95,8 +99,8 @@ static void registry_handle_global(void* data, struct wl_registry* registry, uin
 static void registry_handle_global_remove(void* data, struct wl_registry* registry, uint32_t name);
 
 static const struct wl_registry_listener g_registry_listener = {
-    .global        = registry_handle_global,
-    .global_remove = registry_handle_global_remove,
+	registry_handle_global,
+	registry_handle_global_remove,
 };
 
 
