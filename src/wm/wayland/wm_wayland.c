@@ -4,19 +4,12 @@
 
 
 
-WM_Display wm_init(Arena* arena, WM_ConfigFlag flags)
+void wm_create_connection(WM_ConfigFlag flags)
 {
 	WM_WaylandDisplay* disp = &g_wm_wayland_display;
 
 	disp->wl_display = wl_display_connect(NULL);
 	Assert(disp->wl_display);
-
-	if(disp->wl_display){
-		LogCtxDebug(log_way, "Connected to display\n");
-	}else{
-		LogCtxError(log_way,"Failed to connect to display");
-		InvalidPath;	
-	}
 
 	// bind to global wayland interfaces 
 	disp->wl_registry = wl_display_get_registry(disp->wl_display);
@@ -28,19 +21,17 @@ WM_Display wm_init(Arena* arena, WM_ConfigFlag flags)
 	Assert(disp->wl_compositor);
 	Assert(disp->xdg_wm_base);
 	
-	WM_Display ret_handle = Handle_Pack(WM_Display, disp);
 	return ret_handle;
 }
 
-void wm_close(WM_Display disp)
-{
+void wm_close_connection(){
 
 }
 
 
 
 /// cjk: Window Manger window functions
-WM_Window wm_window_create(Arena* arena, F32 width, F32 height, Str8 window_name)
+WM_Window wm_create_window(Arena* arena, F32 width, F32 height, Str8 window_name)
 {
 	WM_WaylandDisplay* disp = &g_wm_wayland_display;
 	WM_WaylandWindow* win = ArenaPushStructZero(arena, WM_WaylandWindow);
@@ -52,7 +43,7 @@ WM_Window wm_window_create(Arena* arena, F32 width, F32 height, Str8 window_name
 	win->width = width;
 	win->name = window_name;	
 	
-	// Add to the list of displays
+	// Add window to the list of windows attached to window manger connection
 	DLLPushFront(disp->window_head, disp->window_tail, win);
 
 	// create a wayland surface
@@ -71,17 +62,13 @@ WM_Window wm_window_create(Arena* arena, F32 width, F32 height, Str8 window_name
 	xdg_toplevel_set_title(win->xdg_toplevel, str8_to_cstring(arena, window_name));
 	win->name = window_name;
 
-	//  create the wl egl compat struct
-	// TODO: not the sizes get ingnored right new because of my tiling compositor
-	win->wl_egl_window = wl_egl_window_create(win->wl_surface, 1, 1); 	
-
 	wl_surface_commit(win->wl_surface);
 	
 	WM_Window ret_handle = Handle_Pack(WM_Window, win);
 	return ret_handle;
 }
 
-void wm_window_close(WM_Window window)
+void wm_close_window(WM_Window window)
 {
 	WM_WaylandDisplay* disp = &g_wm_wayland_display;
 	WM_WaylandWindow* win = Handle_Unpack(WM_WaylandWindow*, window); 
@@ -94,6 +81,21 @@ void wm_window_close(WM_Window window)
 	if(disp->wl_display) wl_display_disconnect(disp->wl_display);
 }
 
+WM_NativeHandles wm_export_native_handles(WM_Window window){
+
+	WM_NativeHandles handles = {0};
+	WM_WaylandWindow* way_win = Handle_Unpack(WM_WaylandWindow*, window);
+
+	Assert(way_win);
+
+	handles.type = GFX_NativeWindowType_Wayland;
+	handles.wayland.display = (void*) g_wm_wayland_display.wl_display;
+	handles.wayland.surface =  (void*) way_win->wl_surface;
+
+	return handles;
+}
+
+
 void wm_begin_frame(WM_Window window){
 
 }
@@ -103,24 +105,25 @@ void wm_end_frame(WM_Window window){
 }
 
 
-void wm_window_set_title(WM_Window window, Str8 window_name);
-void wm_window_is_focused(WM_Window window);
-void wm_window_focus(WM_Window window);
-void wm_window_is_fullscreen(WM_Window window);
-void wm_window_set_fullscreen(WM_Window window);
-void wm_window_is_maximized(WM_Window window);
-void wm_window_set_maximized(WM_Window window);
-void wm_window_is_minimized(WM_Window window);
-void wm_window_set_minimized(WM_Window window);
-void wm_window_bring_to_front(WM_Window window);
-void wm_window_set_monitor(WM_Window window, WM_Monitor monitor);
-F32 wm_window_get_dpi(WM_Window window);
+
+// cjk: window functions
+void wm_set_window_title(WM_Window window, Str8 window_name);
+void wm_is_window_focused(WM_Window window);
+void wm_set_window_focus(WM_Window window);
+void wm_is_window_fullscreen(WM_Window window);
+void wm_set_window_fullscreen(WM_Window window);
+void wm_is_window_maximized(WM_Window window);
+void wm_set_window_maximized(WM_Window window);
+void wm_is_window_minimized(WM_Window window);
+void wm_set_window_minimized(WM_Window window);
+void wm_bring_window_to_front(WM_Window window);
+void wm_set_window_monitor(WM_Window window, WM_Monitor monitor);
 
 ///////////////////////////////////////////////////////////////////////////////
 /// cjk: Window manager event api
 
 
-WM_Event* wm_event_get_list(WM_Window window, Arena* arena)
+WM_Event* wm_get_event_list(WM_Window window, Arena* arena)
 {
 	WM_WaylandDisplay* disp = &g_wm_wayland_display;
 	WM_WaylandWindow* win = Handle_Unpack(WM_WaylandWindow*, window);
@@ -186,8 +189,8 @@ static void xdg_toplevel_handle_configure(void* data, struct xdg_toplevel* xdg_t
 {
 	WM_WaylandWindow* window = (WM_WaylandWindow*) data; 
 	if(width > 0 && height > 0){
-		wl_egl_window_resize(window->wl_egl_window, width, height, 0, 0);
-		// TODO: update window dimenstions
+		// TODO: update window dimenstions queue a resize event
+
 	}
 }
 static void xdg_toplevel_handle_close(void* data, struct xdg_toplevel* xdg_toplevel)

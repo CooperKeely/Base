@@ -25,7 +25,6 @@ typedef struct WM_WaylandDisplay WM_WaylandDisplay;
 typedef struct WM_WaylandWindow WM_WaylandWindow;
 typedef struct WM_WaylandMonitor WM_WaylandMonitor;
 
-global WM_WaylandDisplay g_wm_wayland_display = {0};
 
 struct WM_WaylandDisplay {
 	
@@ -42,9 +41,6 @@ struct WM_WaylandDisplay {
 	struct wl_registry* wl_registry;
 	struct wl_compositor* wl_compositor;
 	struct xdg_wm_base* xdg_wm_base;
-	
-	struct EGLDisplay egl_display;
-
 };
 
 struct WM_WaylandWindow{
@@ -63,7 +59,6 @@ struct WM_WaylandWindow{
 	struct wl_surface* wl_surface;
 	struct xdg_surface* xdg_surface;
 	struct xdg_toplevel* xdg_toplevel;
-	struct wl_egl_window* wl_egl_window;
 
 	Str8 name;
 
@@ -94,6 +89,7 @@ struct WM_WaylandMonitor{
 	Str8 	name;
 };
 
+global WM_WaylandDisplay g_wm_wayland_display = {0};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// cjk: Wayland Display Discovery

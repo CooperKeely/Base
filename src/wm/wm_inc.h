@@ -1,4 +1,3 @@
-
 #include "wm_core.h"
 
 #if defined(OS_LINUX)

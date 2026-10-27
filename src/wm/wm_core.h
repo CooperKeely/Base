@@ -2,7 +2,6 @@
 #define WM_CORE_H
 
 
-
 // virtual key x macro list
 // variable name, string, virtual keycode, base modifiers
 #define WM_VKEY_TABLE \
@@ -283,6 +282,51 @@ struct WM_Event{
 	F32 system_new_dpi;
 };
 
+///////////////////////////////////////
+/// cjk: Native Handle Export
+	
+
+typedef U64 WM_NativeWindowType;
+enum {
+	WM_NativeWindowType_NONE = 0,
+	WM_NativeWindowType_X11,
+	WM_NativeWindowType_Wayland,
+	WM_NativeWindowType_Win32,
+	WM_NativeWindowType_Cocoa,
+	WM_NativeWindowType_COUNT
+};
+
+typedef struct {
+	WM_NativeWindowType type;
+
+	union{
+		struct{
+			void* display;		// Display*
+			U64 surface;		// Window
+		} x11;
+
+		struct{
+			void* display;		// struct wl_display*
+			void* surface;		// struct wl_surface*
+		} wayland;
+	
+		struct {
+			void* hinstance; 	// HINSTANCE
+			void* hwnd;		// HWND
+			void* hdc;		// HDC
+		} win32;
+
+		struct {
+			void* ns_window;	// NSWindow*
+			void* ns_view;		// NSView*
+		} cocoa;
+	};
+
+}WM_NativeHandles;
+
+// cjk: graphics glue layer export helper
+void* wm_export_native_handle(Arena* arena, WM_Window window);
+
 
 ///////////////////////////////////////
 /// cjk: Window Manager API
@@ -310,35 +354,36 @@ typedef struct{
 
 
 
-// lightweight handles for os specific opaque data types
+// cjk: lightweight handles for os specific opaque data types
 typedef struct Handle WM_Window;
 typedef struct Handle WM_Monitor;
 typedef struct Handle WM_Display;
 
-/// cjk: API Implemented Per OS
-WM_Display wm_init(Arena* arena, WM_ConfigFlag flags);
-void wm_close(WM_Display disp);
+// cjk: creates a connection to the OS window manager
+void wm_create_connection(WM_ConfigFlag flags);
+void wm_close_connection();
 
-void wm_begin_frame(WM_Window window);
-void wm_end_frame(WM_Window window);
+// cjk: creates a new window with the window manager 
+WM_Window wm_create_window(Arena* arena, F32 width, F32 height, Str8 window_name);
+void wm_close_window(WM_Window window);
 
-WM_Window wm_window_create(Arena* arena, F32 width, F32 height, Str8 window_name);
-void wm_window_close(WM_Window window);
+// cjk: window functions
+void wm_set_window_title(WM_Window window, Str8 window_name);
+void wm_is_window_focused(WM_Window window);
+void wm_set_window_focus(WM_Window window);
+void wm_is_window_fullscreen(WM_Window window);
+void wm_set_window_fullscreen(WM_Window window);
+void wm_is_window_maximized(WM_Window window);
+void wm_set_window_maximized(WM_Window window);
+void wm_is_window_minimized(WM_Window window);
+void wm_set_window_minimized(WM_Window window);
+void wm_bring_window_to_front(WM_Window window);
+void wm_set_window_monitor(WM_Window window, WM_Monitor monitor);
 
-void wm_window_set_title(WM_Window window, Str8 window_name);
-void wm_window_is_focused(WM_Window window);
-void wm_window_focus(WM_Window window);
-void wm_window_is_fullscreen(WM_Window window);
-void wm_window_set_fullscreen(WM_Window window);
-void wm_window_is_maximized(WM_Window window);
-void wm_window_set_maximized(WM_Window window);
-void wm_window_is_minimized(WM_Window window);
-void wm_window_set_minimized(WM_Window window);
-void wm_window_bring_to_front(WM_Window window);
-void wm_window_set_monitor(WM_Window window, WM_Monitor monitor);
-F32 wm_window_get_dpi(WM_Window window);
+// cjk: monitor functions
+// TODO: add monitor functions
 
-/// cjk: Event function
-WM_Event* wm_event_get_list(WM_Window window, Arena* arena);
+/// cjk: Event functions
+WM_Event* wm_get_event_list(WM_Window window, Arena* arena);
 
 #endif // WM_CORE_H 

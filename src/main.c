@@ -21,6 +21,7 @@
 ///////////////////////////////////////
 /// cjk: window manager test main
 
+/*
 #include "base/base_inc.h"
 #include "wm/wm_inc.h"
 
@@ -135,7 +136,6 @@ S32 wm_test_main(U64 argc, U8** argv){
 	if(!err){ LogError("Failed to initialize EGL: (%d)", eglGetError()); }
 	else {   LogDebug("Successfully initialized EGL display"); }
 
-	/* 
 	 NOTE: This code queries all avaible configurations and prints them
 
 	err = eglGetConfigs(egl_display, NULL, 0, &num_configs);
@@ -154,7 +154,6 @@ S32 wm_test_main(U64 argc, U8** argv){
 		egl_print_config(egl_display, configs[config]);	
 	} 
 
-	*/
 	
 	// retrieves 3 of the best matched configs
 	configs = ArenaPushArray(app_arena, EGLConfig, configs_size);	
@@ -256,14 +255,16 @@ S32 wm_test_main(U64 argc, U8** argv){
 	return 0;
 
 }
+*/
 
 ///////////////////////////////////////
 /// cjk: api example
 
 
+#define ENABLE_RENDER_BACKEND_OPENGL
+
 #include "base/base_inc.h"
 #include "wm/wm_inc.h"
-#include "gfx/gfx_inc.h"
 #include "render/r_inc.h"
 
 
@@ -273,35 +274,39 @@ S32 example_api(U64 argc, U8** argv){
 	
 	Arena* app_arena = arena_alloc();
 
-
-	WM_Display display = wm_init(app_arena, WM_ConfigFlag_Resizeable);
+	wm_create_connection();
 	
 	// Viewport 
-	WM_Window window1 = wm_window_create(app_arena, 1000, 1000, Str8Lit("Viewport"));
-	GFX_Surface surface2 = gfx_surface_create(window1, GFX_BackendType_OpenGL, NULL);
-	B32 viewport_open = BASE_TRUE;
+	WM_Window viewport = wm_create_window(app_arena, 1000, 1000, Str8Lit("Viewport"));
+	R_Target* viewport_render_target = r_create_target(app_arena, 
+								wm_export_native_handles(viewport), 
+								GFX_BackendType_OpenGL, 
+								NULL);
 
-	// Editor window initialization
-	WM_Window window2 = wm_window_create(app_arena, 500, 500, Str8Lit("Editor"));
-	GFX_Surface surface2 = gfx_surface_create(window2, GFX_BackendType_OpenGL, NULL);
-	B32 editor_open = BASE_TRUE;
-	
+	// Editor
+	WM_Window editor = wm_create_window(app_arena, 500, 500, Str8Lit("Editor"));
+	GFX_Surface* editor_render_target = r_create_target(app_arena, 
+								wm_export_native_handles(editor), 
+								GFX_BackendType_OpenGL, 
+								NULL);
+
 	// Shared Rendering Context
-	R_Context render_context = r_init(app_arena, R_ConfigFlag_None);
+	R_Context render_context = r_create_render_context(app_arena, R_ConfigFlag_None);
 
+	B32 editor_open = BASE_TRUE;
+	B32 viewport_open = BASE_TRUE;
 	Arena* frame_arena = arena_alloc();
 
 	while(viewport_open || editor_open){
-		wm_pump_events(display);
 
 		// viewport event loop
 		if(viewport_open){
 
 			// reads the OS events into a doubly linked list
-			WM_Event* event_head = wm_event_get_list(window1, frame_arena);
+			WM_Event* viewport_events = wm_get_event_list(viewport_window, frame_arena);
 
 			// traverse the doubly linked list
-			for EachNode(e, WM_Event, event_head){
+			for EachNode(e, WM_Event, viewport_events){
 				switch(e->type){
 				// Window related events
 				case WM_EventType_Window_Shown:{}break;
@@ -343,10 +348,10 @@ S32 example_api(U64 argc, U8** argv){
 		if(editor_open){
 
 			// reads the OS events into a doubly linked list
-			WM_Event* event_head = wm_event_get_list(window2, frame_arena);
+			WM_Event* editor_events = wm_get_event_list(editor, frame_arena);
 
 			// traverse the doubly linked list
-			for EachNode(e, WM_Event, event_head){
+			for EachNode(e, WM_Event, editor_events){
 				switch(e->type){
 				// Window related events
 				case WM_EventType_Window_Shown:{}break;
@@ -386,30 +391,29 @@ S32 example_api(U64 argc, U8** argv){
 
 
 		if(viewport_open){
-			gfx_make_current(surface1);
-			gfx_begin_frame(surface1);
+			r_make_target_current(viewport_render_target);
+			r_begin_target_frame(viewport_render_target);
 			{
-				r_start_pass(r_ctx, surface);
+				r_start_pass(render_context, viewport_render_target);
 
 				//rendering api must happen here
 
-				r_end_pass(r_ctx);
+				r_end_pass(render_context);
 			}
-			gfx_submit_frame(surface1);
-
+			r_submit_target_frame(viewport_render_target);
 		}
 		
 		if(editor_open){
-			gfx_make_current(surface2);
-			gfx_begin_frame(surface);
-			{	
-				r_start_pass(r_ctx, surface);
+			r_make_target_current(editor_render_target);
+			r_begin_target_frame(editor_render_target);
+			{
+				r_start_pass(render_context, editor_render_target);
 
 				//rendering api must happen here
 
-				r_end_pass(r_ctx);
+				r_end_pass(render_context);
 			}
-			gfx_submit_frame(surface2);
+			r_submit_target_frame(editor_render_target);
 
 		}
 
@@ -417,9 +421,8 @@ S32 example_api(U64 argc, U8** argv){
 		arena_pop_to(frame_arena, 0);
 	}
 
-	r_close(render_context);
-	gfx_close(surface);
-	wm_close(display);
+	r_close_render_context(render_context);
+	wm_close_connection();
 
 	arena_release(app_arena);
 	arena_release(frame_arena);
@@ -428,8 +431,7 @@ S32 example_api(U64 argc, U8** argv){
 }
 
 S32 entry_point(U64 argc, U8** argv){
-	wm_test_main(argc, argv);	
-
+	example_api(argc, argv);	
 }
 
 int main(int argc, char** argv){os_entry_point(argc, (U8**) argv, &entry_point);}
