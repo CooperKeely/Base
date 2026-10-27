@@ -308,6 +308,8 @@ typedef struct{
 	F32 default_refresh_rate; 
 }WM_ConfigValues;
 
+
+
 // lightweight handles for os specific opaque data types
 typedef struct Handle WM_Window;
 typedef struct Handle WM_Monitor;

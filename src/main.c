@@ -260,11 +260,11 @@ S32 wm_test_main(U64 argc, U8** argv){
 ///////////////////////////////////////
 /// cjk: api example
 
-//#include "base/base_inc.h"
-// #include "wm/wm_inc.h"
 
-//#define RENDER_ENABLE_OPENGL
-//#include "render/r_inc.h"
+#include "base/base_inc.h"
+#include "wm/wm_inc.h"
+#include "gfx/gfx_inc.h"
+#include "render/r_inc.h"
 
 
 S32 example_api(U64 argc, U8** argv){
@@ -272,70 +272,153 @@ S32 example_api(U64 argc, U8** argv){
 	(void) argv;
 	
 	Arena* app_arena = arena_alloc();
-	Arena* frame_arena = arena_alloc();
+
 
 	WM_Display display = wm_init(app_arena, WM_ConfigFlag_Resizeable);
-	WM_Window window = wm_window_create(app_arena, 1000, 1000, Str8Lit("Software Renderer"));
+	
+	// Viewport 
+	WM_Window window1 = wm_window_create(app_arena, 1000, 1000, Str8Lit("Viewport"));
+	GFX_Surface surface2 = gfx_surface_create(window1, GFX_BackendType_OpenGL, NULL);
+	B32 viewport_open = BASE_TRUE;
 
-	// Initialize Rendering Context
-	// R_Context render_context = r_init(app_arena, R_ConfigFlag_None);
-	// R_Target render_target = r_attach_to_target(render_context, window, 1000, 1000);	
+	// Editor window initialization
+	WM_Window window2 = wm_window_create(app_arena, 500, 500, Str8Lit("Editor"));
+	GFX_Surface surface2 = gfx_surface_create(window2, GFX_BackendType_OpenGL, NULL);
+	B32 editor_open = BASE_TRUE;
+	
+	// Shared Rendering Context
+	R_Context render_context = r_init(app_arena, R_ConfigFlag_None);
 
-	B32 running = BASE_TRUE;
-	while(running){
-		// reads the OS events into a doubly linked list using
-		WM_Event* event_head = wm_event_get_list(window, frame_arena);
+	Arena* frame_arena = arena_alloc();
 
-		// traverse the doubly linked list
-		for EachNode(e, WM_Event, event_head){
-			switch(e->type){
-			// Window related events
-			case WM_EventType_Window_Shown:{}break;
-			case WM_EventType_Window_Hidden:{}break;
-			case WM_EventType_Window_Redraw:{}break;
-			case WM_EventType_Window_FocusGained:{}break;
-			case WM_EventType_Window_FocusLost:{}break;
-			case WM_EventType_Window_Close:{}break;
-			case WM_EventType_Window_Resize:{}break;
-			case WM_EventType_Window_Move:{}break;
+	while(viewport_open || editor_open){
+		wm_pump_events(display);
 
-			// Keyboard related events
-			case WM_EventType_Key_Press:{}break;
-			case WM_EventType_Key_Release:{}break;
-			case WM_EventType_Key_MapChange:{}break;
+		// viewport event loop
+		if(viewport_open){
 
-			// Mouse related events
-			case WM_EventType_Mouse_EnterWindow:{}break;
-			case WM_EventType_Mouse_LeaveWindow:{}break;
-			case WM_EventType_Mouse_Motion:{}break;
-			case WM_EventType_Mouse_Scroll:{}break;
-			case WM_EventType_Mouse_Press:{}break;
-			case WM_EventType_Mouse_Release:{}break;
+			// reads the OS events into a doubly linked list
+			WM_Event* event_head = wm_event_get_list(window1, frame_arena);
 
-			// System updates
-			case WM_EventType_System_ClipboardUpdate:{}break;
-			case WM_EventType_System_DPIChange:{}break;
-			case WM_EventType_System_DropFile:{}break;
-			case WM_EventType_System_Quit:{
-				running = BASE_FALSE;
-			}break;
-			default:{}break;
-			}	
+			// traverse the doubly linked list
+			for EachNode(e, WM_Event, event_head){
+				switch(e->type){
+				// Window related events
+				case WM_EventType_Window_Shown:{}break;
+				case WM_EventType_Window_Hidden:{}break;
+				case WM_EventType_Window_Redraw:{}break;
+				case WM_EventType_Window_FocusGained:{}break;
+				case WM_EventType_Window_FocusLost:{}break;
+				case WM_EventType_Window_Close:{}break;
+				case WM_EventType_Window_Resize:{}break;
+				case WM_EventType_Window_Move:{}break;
+
+				// Keyboard related events
+				case WM_EventType_Key_Press:{}break;
+				case WM_EventType_Key_Release:{}break;
+				case WM_EventType_Key_MapChange:{}break;
+
+				// Mouse related events
+				case WM_EventType_Mouse_EnterWindow:{}break;
+				case WM_EventType_Mouse_LeaveWindow:{}break;
+				case WM_EventType_Mouse_Motion:{}break;
+				case WM_EventType_Mouse_Scroll:{}break;
+				case WM_EventType_Mouse_Press:{}break;
+				case WM_EventType_Mouse_Release:{}break;
+
+				// System updates
+				case WM_EventType_System_ClipboardUpdate:{}break;
+				case WM_EventType_System_DPIChange:{}break;
+				case WM_EventType_System_DropFile:{}break;
+				case WM_EventType_System_Quit:{
+					viewport_open = BASE_FALSE;
+				}break;
+				default:{}break;
+				}	
+			}
 
 		}
 
+		// editor event loop
+		if(editor_open){
+
+			// reads the OS events into a doubly linked list
+			WM_Event* event_head = wm_event_get_list(window2, frame_arena);
+
+			// traverse the doubly linked list
+			for EachNode(e, WM_Event, event_head){
+				switch(e->type){
+				// Window related events
+				case WM_EventType_Window_Shown:{}break;
+				case WM_EventType_Window_Hidden:{}break;
+				case WM_EventType_Window_Redraw:{}break;
+				case WM_EventType_Window_FocusGained:{}break;
+				case WM_EventType_Window_FocusLost:{}break;
+				case WM_EventType_Window_Close:{}break;
+				case WM_EventType_Window_Resize:{}break;
+				case WM_EventType_Window_Move:{}break;
+
+				// Keyboard related events
+				case WM_EventType_Key_Press:{}break;
+				case WM_EventType_Key_Release:{}break;
+				case WM_EventType_Key_MapChange:{}break;
+
+				// Mouse related events
+				case WM_EventType_Mouse_EnterWindow:{}break;
+				case WM_EventType_Mouse_LeaveWindow:{}break;
+				case WM_EventType_Mouse_Motion:{}break;
+				case WM_EventType_Mouse_Scroll:{}break;
+				case WM_EventType_Mouse_Press:{}break;
+				case WM_EventType_Mouse_Release:{}break;
+
+				// System updates
+				case WM_EventType_System_ClipboardUpdate:{}break;
+				case WM_EventType_System_DPIChange:{}break;
+				case WM_EventType_System_DropFile:{}break;
+				case WM_EventType_System_Quit:{
+					editor_open = BASE_FALSE;
+				}break;
+				default:{}break;
+				}	
+			}
+
+		}
+
+
+		if(viewport_open){
+			gfx_make_current(surface1);
+			gfx_begin_frame(surface1);
+			{
+				r_start_pass(r_ctx, surface);
+
+				//rendering api must happen here
+
+				r_end_pass(r_ctx);
+			}
+			gfx_submit_frame(surface1);
+
+		}
 		
-		//r_begin_frame(render_target);
-		// rendering api must happen here
-		//r_end_frame(render_target);
-		//r_submit_frame(render_target);
-		
+		if(editor_open){
+			gfx_make_current(surface2);
+			gfx_begin_frame(surface);
+			{	
+				r_start_pass(r_ctx, surface);
+
+				//rendering api must happen here
+
+				r_end_pass(r_ctx);
+			}
+			gfx_submit_frame(surface2);
+
+		}
 
 		// de allocate all the frame related data
 		arena_pop_to(frame_arena, 0);
 	}
 
-	//r_close(render_context);
+	r_close(render_context);
+	gfx_close(surface);
 	wm_close(display);
 
 	arena_release(app_arena);

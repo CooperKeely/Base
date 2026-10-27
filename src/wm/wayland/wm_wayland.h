@@ -17,6 +17,7 @@ static LOG_Context log_way = (LOG_Context){
 	.category	= { sizeof("WAYLAND") - 1, (U8*)"WAYLAND" },
 };
 
+
 ///////////////////////////////////////////////////////////////////////////////
 /// cjk: Window Manager Wayland Specific Data Types
 
@@ -42,6 +43,8 @@ struct WM_WaylandDisplay {
 	struct wl_compositor* wl_compositor;
 	struct xdg_wm_base* xdg_wm_base;
 	
+	struct EGLDisplay egl_display;
+
 };
 
 struct WM_WaylandWindow{
