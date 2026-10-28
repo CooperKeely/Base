@@ -1,5 +1,4 @@
 #include "target/r_target_core.h"
-#include "target/r_target_core.c"
 
 #if defined(OS_LINUX)
 

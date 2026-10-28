@@ -2,7 +2,7 @@
 #define R_TARGET_CORE_H
 
 ///////////////////////////////////////////////////////////////////////////////
-/// cjk: Window Manager Graphics Backend Abstraction
+/// cjk: Render Target Abstraction
 ///////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -48,6 +48,8 @@ typedef struct {
 
 }R_NativeHandles;
 
+
+
 typedef U64 R_TargetBackend;
 enum {
 	R_TargetBackend_NONE = 0,
@@ -57,7 +59,6 @@ enum {
 	R_TargetBackend_Metal,
 	R_TargetBackend_COUNT
 };
-
 
 typedef struct {
 	R_TargetBackend backend;
@@ -69,6 +70,7 @@ typedef struct {
 			void* context;		// EGLContext
 			void* config;		// EGLConfig
 			void* wl_egl_window; 	// struct wl_egl_window*
+			B32 loaded_gl;
 		} opengl;
 
 		struct{
@@ -87,13 +89,12 @@ typedef struct {
 
 }R_Target;
 
-R_Target* gfx_create_target(Arena* arena, void* handle, GFX_BackendType backend);
 
-void gfx_make_current(R_Target* target);
+R_Target* r_create_target(Arena* arena, void* handle);
+void r_close_target(R_Target* target);
 
-void gfx_begin_frame(R_Target* surface);
-void gfx_submit_frame(R_SURFACE_Surface* surface);
+void r_begin_frame(R_Target* target);
+void r_end_frame(R_Target* target);
 
-void gfx_close(R_SURFACE_Surface* surface);
 
 #endif // R_TARGET_CORE_H 

@@ -36,7 +36,7 @@ git_hash_full=$(git rev-parse HEAD)
 
 # --- Compile/Link Definitions
 #-fno-omit-frame-pointer 
-clang_common="-I../src -I ../include -std=c99 -rdynamic -DBUILD_GIT_HASH=\"$git_hash\" -DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -Wall -Wextra -Wno-unused-function -Wno-unused-value -Wno-unused-variable -Wno-unused-parameter"
+clang_common="-I./src -I./include -I./src/libs -std=c99 -rdynamic -DBUILD_GIT_HASH=\"$git_hash\" -DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -Wall -Wextra -Wno-unused-function -Wno-unused-value -Wno-unused-variable -Wno-unused-parameter"
 
 clang_debug="$compiler ${asan_flags} -g3 -O0 ${clang_common} ${auto_compile_flags}"
 clang_release="$compiler ${asan_flags} -g -O3 -DBUILD_DEBUG=0 ${clang_common} ${auto_compile_flags}"
@@ -44,7 +44,7 @@ clang_profile="$compiler -pg -O0 -DBUILD_DEBUG=0 ${clang_common} ${auto_compile_
 clang_link="-lm -ldl -lrt"
 clang_out="-o"
 
-gcc_common="-I../src -I../include -std=c99 -rdynamic -DBUILD_GIT_HASH=\"$git_hash\" -DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -Wall -Wextra -Wno-unused-function -Wno-unused-value -Wno-unused-variable -Wno-unused-parameter"
+gcc_common="-I./src -I./include -I./src/libs -std=c99 -rdynamic -DBUILD_GIT_HASH=\"$git_hash\" -DBUILD_GIT_HASH_FULL=\"$git_hash_full\" -Wall -Wextra -Wno-unused-function -Wno-unused-value -Wno-unused-variable -Wno-unused-parameter"
 
 gcc_debug="$compiler -g3 -O0 ${gcc_common} ${auto_compile_flags}"
 gcc_release="$compiler -g -O3 -DBUILD_DEBUG=0 ${gcc_common} ${auto_compile_flags}"

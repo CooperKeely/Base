@@ -13,187 +13,41 @@
 /// 	- DearIMGUI : https://github.com/ocornut/imgui
 /// 	- https://www.youtube.com/watch?v=7Tr0ty9-yeQ&t=3974s
 
-
 ///////////////////////////////////////
-/// cjk: header files include
+/// cjk: Test Main
 
 
-///////////////////////////////////////
-/// cjk: window manager test main
+#define ENABLE_RENDER_BACKEND_OPENGL
 
-/*
 #include "base/base_inc.h"
 #include "wm/wm_inc.h"
+#include "render/r_inc.h"
 
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-
-// opengl function loader
-#define GL_LOADER_IMPLEMENTATION
-#include "./libs/gl_loader.h"
-
-typedef struct {
-    EGLint attribute;
-    const char *name;
-} EGLAttributeName;
-
-static const EGLAttributeName egl_attrib_list[] = {
-    { EGL_BUFFER_SIZE,             "EGL_BUFFER_SIZE" },
-    { EGL_ALPHA_SIZE,              "EGL_ALPHA_SIZE" },
-    { EGL_BLUE_SIZE,               "EGL_BLUE_SIZE" },
-    { EGL_GREEN_SIZE,              "EGL_GREEN_SIZE" },
-    { EGL_RED_SIZE,                "EGL_RED_SIZE" },
-    { EGL_DEPTH_SIZE,              "EGL_DEPTH_SIZE" },
-    { EGL_STENCIL_SIZE,            "EGL_STENCIL_SIZE" },
-    { EGL_CONFIG_CAVEAT,           "EGL_CONFIG_CAVEAT" },
-    { EGL_CONFIG_ID,               "EGL_CONFIG_ID" },
-    { EGL_LEVEL,                   "EGL_LEVEL" },
-    { EGL_MAX_PBUFFER_HEIGHT,      "EGL_MAX_PBUFFER_HEIGHT" },
-    { EGL_MAX_PBUFFER_PIXELS,      "EGL_MAX_PBUFFER_PIXELS" },
-    { EGL_MAX_PBUFFER_WIDTH,       "EGL_MAX_PBUFFER_WIDTH" },
-    { EGL_NATIVE_RENDERABLE,       "EGL_NATIVE_RENDERABLE" },
-    { EGL_NATIVE_VISUAL_ID,        "EGL_NATIVE_VISUAL_ID" },
-    { EGL_NATIVE_VISUAL_TYPE,      "EGL_NATIVE_VISUAL_TYPE" },
-    { EGL_SAMPLES,                 "EGL_SAMPLES" },
-    { EGL_SAMPLE_BUFFERS,          "EGL_SAMPLE_BUFFERS" },
-    { EGL_SURFACE_TYPE,            "EGL_SURFACE_TYPE" },
-    { EGL_TRANSPARENT_TYPE,        "EGL_TRANSPARENT_TYPE" },
-    { EGL_TRANSPARENT_BLUE_VALUE,  "EGL_TRANSPARENT_BLUE_VALUE" },
-    { EGL_TRANSPARENT_GREEN_VALUE, "EGL_TRANSPARENT_GREEN_VALUE" },
-    { EGL_TRANSPARENT_RED_VALUE,   "EGL_TRANSPARENT_RED_VALUE" },
-    { EGL_BIND_TO_TEXTURE_RGB,     "EGL_BIND_TO_TEXTURE_RGB" },
-    { EGL_BIND_TO_TEXTURE_RGBA,    "EGL_BIND_TO_TEXTURE_RGBA" },
-    { EGL_MIN_SWAP_INTERVAL,       "EGL_MIN_SWAP_INTERVAL" },
-    { EGL_MAX_SWAP_INTERVAL,       "EGL_MAX_SWAP_INTERVAL" },
-    { EGL_LUMINANCE_SIZE,          "EGL_LUMINANCE_SIZE" },
-    { EGL_ALPHA_MASK_SIZE,         "EGL_ALPHA_MASK_SIZE" },
-    { EGL_COLOR_BUFFER_TYPE,       "EGL_COLOR_BUFFER_TYPE" },
-    { EGL_RENDERABLE_TYPE,         "EGL_RENDERABLE_TYPE" },
-    { EGL_CONFORMANT,              "EGL_CONFORMANT" }
-};
-
-void egl_print_config(EGLDisplay display, EGLConfig config){
-
-	EGLBoolean err;
-
-	EGLint config_id;
-	err = eglGetConfigAttrib(display, config, EGL_CONFIG_ID, &config_id);
-	if(!err) { LogWarning("Couldn't retrieve EGL_CONFIG_ID"); }
-
-
-	LogDebug("\n================ EGL Config ID: %d ================", config_id);
-
-	U32 number_of_attributes = ArrayCount(egl_attrib_list);
-	for EachIndex(j, number_of_attributes) {
-		EGLint value = 0;
-		err = eglGetConfigAttrib(display, config, egl_attrib_list[j].attribute, &value);
-		if (err) { LogDebug("  %-30s : %d (0x%X)", egl_attrib_list[j].name, value, value); } 
-		else { LogWarning("  %-30s : <Unavailable / Error 0x%X>", egl_attrib_list[j].name, eglGetError()); }
-	}
-}
-
-
-S32 wm_test_main(U64 argc, U8** argv){
+S32 single_window(U64 argc, U8** argv){
 	(void) argc;
 	(void) argv;
 	
 	Arena* app_arena = arena_alloc();
+
+	wm_create_connection(WM_ConfigFlag_None);
+	
+	// Viewport 
+	WM_Window viewport = wm_create_window(app_arena, 1000, 1000, Str8Lit("Viewport"));
+	R_Target* viewport_render_target = r_create_target(app_arena, wm_get_native_handles(app_arena, viewport));
+	
+	// Shared Rendering Context
+	R_Context render_context = r_create_context(app_arena, R_ConfigFlag_None);
+
+	B32 viewport_open = BASE_TRUE;
 	Arena* frame_arena = arena_alloc();
 
-	WM_Display wm_display = wm_init(app_arena, WM_ConfigFlag_Resizeable);
-	WM_Window wm_window = wm_window_create(app_arena, 1000, 1000, Str8Lit("Software Renderer"));
-	
-	// unpack for use in egl
-	WM_WaylandDisplay* way_display = Handle_Unpack(WM_WaylandDisplay*, wm_display);
-	WM_WaylandWindow* way_window = Handle_Unpack(WM_WaylandWindow*, wm_window);
+	while(viewport_open){
 
-
-	EGLint major;
-	EGLint minor;
-	EGLConfig* configs;
-	EGLint configs_size = 3;
-	EGLint num_configs;
-
-	EGLint ctx_attributes[] = { EGL_NONE };
-	EGLint attributes[] = {
-		EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-		EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-		EGL_RED_SIZE, 8,
-		EGL_GREEN_SIZE, 8,
-		EGL_BLUE_SIZE, 8,
-		EGL_ALPHA_SIZE, 8,
-		EGL_NONE
-	};
-
-	EGLBoolean err;
-
-	EGLDisplay egl_display = eglGetDisplay(way_display->wl_display);
-	if(egl_display == EGL_NO_DISPLAY){ 
-		LogError("Failed to get EGL display"); 
-	}else{  LogDebug("Connected to EGL display"); }
-
-	err = eglInitialize(egl_display, &major, &minor); 
-	if(!err){ LogError("Failed to initialize EGL: (%d)", eglGetError()); }
-	else {   LogDebug("Successfully initialized EGL display"); }
-
-	 NOTE: This code queries all avaible configurations and prints them
-
-	err = eglGetConfigs(egl_display, NULL, 0, &num_configs);
-	if(!err){ LogError("Failed to get number of configs: (%d)", eglGetError()); }
-	else {   LogDebug("Successfully got number of EGL configs"); }
-
-	configs = ArenaPushArray(app_arena, EGLConfig, num_configs);
-
-	EGLint retrieved_configs = 0;
-	err = eglGetConfigs(egl_display, configs, num_configs, &retrieved_configs);
-	if(!err){ LogError("Failed to get configs: (%d)", eglGetError()); }
-	else {   LogDebug("Successfully got EGL configs"); }
-	Assert(retrieved_configs == num_configs);
-
-	for EachIndex(config, retrieved_configs){
-		egl_print_config(egl_display, configs[config]);	
-	} 
-
-	
-	// retrieves 3 of the best matched configs
-	configs = ArenaPushArray(app_arena, EGLConfig, configs_size);	
-	err = eglChooseConfig(egl_display, attributes, configs, configs_size, &num_configs);
-	if(!err) { LogError("Failed to choose config: %d", eglGetError()); }
-	else { LogDebug("Successfully matched %d configs", num_configs); }
-
-	Assert(configs[0] != EGL_NONE);
-	EGLConfig config = configs[0];
-
-	err = eglBindAPI(EGL_OPENGL_API);
-	if(!err) { LogError("Failed to bind to egl OpenGL api"); }
-	else { LogDebug("Successfully attached to egl OpenGl Api"); }
-
-	EGLContext egl_context = eglCreateContext(egl_display, config, EGL_NO_CONTEXT, ctx_attributes);
-	if (egl_context == EGL_NO_CONTEXT){ LogError("Failed to attach to egl context : %d", eglGetError()); }	
-	else { LogDebug("Successfully attached to egl context"); }
-
-
-	// create egl surface
-	EGLSurface egl_surface = eglCreateWindowSurface(egl_display, config, way_window->wl_egl_window, NULL);
-	if (egl_surface == EGL_NO_SURFACE){ LogError("Failed to attach to native window : %d", eglGetError()); }	
-	else { LogDebug("Successfully attached to native window"); }
-
-	// make the current context
-	err = eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
-	if (!err) { LogError("Failed to make the current context: %d", eglGetError()); }
-	else { LogDebug("Successfully made the current context"); }
-
-	gl_loader_init((GL_LoaderProc) eglGetProcAddress);
-
-	
-
-	B32 running = BASE_TRUE;
-	while(running){
-		// reads the OS events into a doubly linked list using
-		WM_Event* event_head = wm_event_get_list(wm_window, frame_arena);
+		// reads the OS events into a doubly linked list
+		WM_Event* viewport_events = wm_get_event_list(viewport, frame_arena);
 
 		// traverse the doubly linked list
-		for EachNode(e, WM_Event, event_head){
+		for EachNode(e, WM_Event, viewport_events){
 			switch(e->type){
 			// Window related events
 			case WM_EventType_Window_Shown:{}break;
@@ -223,75 +77,63 @@ S32 wm_test_main(U64 argc, U8** argv){
 			case WM_EventType_System_DPIChange:{}break;
 			case WM_EventType_System_DropFile:{}break;
 			case WM_EventType_System_Quit:{
-				running = BASE_FALSE;
+				viewport_open = BASE_FALSE;
 			}break;
 			default:{}break;
 			}	
-
 		}
 
-		glClearColor(1.0f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		eglSwapBuffers(egl_display, egl_surface);
+	
+		if(viewport_open){
+			r_begin_frame(viewport_render_target);
+			{
+				r_start_pass(render_context, viewport_render_target);
+
+				//rendering api must happen here
+				glClearColor(1.0f, 0.3f, 0.3f, 1.0f);
+				glClear(GL_COLOR_BUFFER_BIT);
 
 
+				r_end_pass(render_context);
+			}
+			r_end_frame(viewport_render_target);
+		}
+		
 		// de allocate all the frame related data
 		arena_pop_to(frame_arena, 0);
 	}
 
-	err = eglDestroyContext(egl_display, egl_context);
-	if(!err){ LogError("Failed to destroy EGL context: (%d)", eglGetError()); }
-	else { LogDebug("Successfully destroyed EGL context"); }
+	r_close_target(viewport_render_target);
+	r_close_context(render_context);
 
-	err = eglTerminate(egl_display); 
-	if(!err){ LogError("Failed to terminate EGL: (%d)", eglGetError()); }
-	else { LogDebug("Successfully terminated EGL display"); }
-
-	wm_close(wm_display);
+	wm_close_window(viewport);
+	wm_close_connection();
 
 	arena_release(app_arena);
 	arena_release(frame_arena);
 
 	return 0;
-
 }
-*/
-
-///////////////////////////////////////
-/// cjk: api example
 
 
-#define ENABLE_RENDER_BACKEND_OPENGL
-
-#include "base/base_inc.h"
-#include "wm/wm_inc.h"
-#include "render/r_inc.h"
-
-
-S32 example_api(U64 argc, U8** argv){
+S32 dual_window(U64 argc, U8** argv){
 	(void) argc;
 	(void) argv;
 	
 	Arena* app_arena = arena_alloc();
 
-	wm_create_connection();
+	wm_create_connection(WM_ConfigFlag_None);
 	
 	// Viewport 
 	WM_Window viewport = wm_create_window(app_arena, 1000, 1000, Str8Lit("Viewport"));
-	R_Target* viewport_render_target = r_create_target(app_arena, 
-								wm_export_native_handles(viewport), 
-								GFX_BackendType_OpenGL, 
-								NULL);
+	R_Target* viewport_render_target = r_create_target(app_arena, wm_get_native_handles(app_arena, viewport));
 
 	// Editor
 	WM_Window editor = wm_create_window(app_arena, 500, 500, Str8Lit("Editor"));
-	GFX_Surface* editor_render_target = r_create_target(app_arena, 
-								wm_export_native_handles(editor), 
-								GFX_BackendType_OpenGL, 
-								NULL);
+	R_Target* editor_render_target = r_create_target(app_arena, wm_get_native_handles(app_arena, editor));
 
 	// Shared Rendering Context
-	R_Context render_context = r_create_render_context(app_arena, R_ConfigFlag_None);
+	R_Context render_context = r_create_context(app_arena, R_ConfigFlag_None);
 
 	B32 editor_open = BASE_TRUE;
 	B32 viewport_open = BASE_TRUE;
@@ -303,7 +145,7 @@ S32 example_api(U64 argc, U8** argv){
 		if(viewport_open){
 
 			// reads the OS events into a doubly linked list
-			WM_Event* viewport_events = wm_get_event_list(viewport_window, frame_arena);
+			WM_Event* viewport_events = wm_get_event_list(viewport, frame_arena);
 
 			// traverse the doubly linked list
 			for EachNode(e, WM_Event, viewport_events){
@@ -391,29 +233,33 @@ S32 example_api(U64 argc, U8** argv){
 
 
 		if(viewport_open){
-			r_make_target_current(viewport_render_target);
-			r_begin_target_frame(viewport_render_target);
+			r_begin_frame(viewport_render_target);
 			{
 				r_start_pass(render_context, viewport_render_target);
 
 				//rendering api must happen here
+				glClearColor(1.0f, 0.3f, 0.3f, 1.0f);
+				glClear(GL_COLOR_BUFFER_BIT);
+
 
 				r_end_pass(render_context);
 			}
-			r_submit_target_frame(viewport_render_target);
+			r_end_frame(viewport_render_target);
 		}
 		
 		if(editor_open){
-			r_make_target_current(editor_render_target);
-			r_begin_target_frame(editor_render_target);
+			r_begin_frame(editor_render_target);
 			{
 				r_start_pass(render_context, editor_render_target);
 
 				//rendering api must happen here
+				glClearColor(0.3f, 0.3f, 1.0f, 1.0f);
+				glClear(GL_COLOR_BUFFER_BIT);
+
 
 				r_end_pass(render_context);
 			}
-			r_submit_target_frame(editor_render_target);
+			r_end_frame(editor_render_target);
 
 		}
 
@@ -421,7 +267,12 @@ S32 example_api(U64 argc, U8** argv){
 		arena_pop_to(frame_arena, 0);
 	}
 
-	r_close_render_context(render_context);
+	r_close_target(viewport_render_target);
+	r_close_target(editor_render_target);
+	r_close_context(render_context);
+
+	wm_close_window(viewport);
+	wm_close_window(editor);
 	wm_close_connection();
 
 	arena_release(app_arena);
@@ -430,8 +281,4 @@ S32 example_api(U64 argc, U8** argv){
 	return 0;
 }
 
-S32 entry_point(U64 argc, U8** argv){
-	example_api(argc, argv);	
-}
-
-int main(int argc, char** argv){os_entry_point(argc, (U8**) argv, &entry_point);}
+int main(int argc, char** argv){os_entry_point(argc, (U8**) argv, &single_window);}

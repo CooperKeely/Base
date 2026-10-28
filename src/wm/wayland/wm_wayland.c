@@ -21,7 +21,6 @@ void wm_create_connection(WM_ConfigFlag flags)
 	Assert(disp->wl_compositor);
 	Assert(disp->xdg_wm_base);
 	
-	return ret_handle;
 }
 
 void wm_close_connection(){
@@ -81,18 +80,19 @@ void wm_close_window(WM_Window window)
 	if(disp->wl_display) wl_display_disconnect(disp->wl_display);
 }
 
-WM_NativeHandles wm_export_native_handles(WM_Window window){
-
-	WM_NativeHandles handles = {0};
+void* wm_get_native_handles(Arena* arena, WM_Window window)
+{
+		
+	WM_NativeHandles* handles = ArenaPushStructZero(arena, WM_NativeHandles);
 	WM_WaylandWindow* way_win = Handle_Unpack(WM_WaylandWindow*, window);
 
 	Assert(way_win);
 
-	handles.type = GFX_NativeWindowType_Wayland;
-	handles.wayland.display = (void*) g_wm_wayland_display.wl_display;
-	handles.wayland.surface =  (void*) way_win->wl_surface;
+	handles->type = WM_NativeWindowType_Wayland;
+	handles->wayland.display = (void*) g_wm_wayland_display.wl_display;
+	handles->wayland.surface =  (void*) way_win->wl_surface;
 
-	return handles;
+	return (void*) handles;
 }
 
 
@@ -153,7 +153,7 @@ WM_Event* wm_get_event_list(WM_Window window, Arena* arena)
 static void registry_handle_global(void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t version)
 {
 	WM_WaylandDisplay* disp = &g_wm_wayland_display;
-	str8_printf(stdout,"interface : '%s', version: %d, name: %d\n", interface, version, name);
+	//str8_printf(stdout,"interface : '%s', version: %d, name: %d\n", interface, version, name);
 
 	if (strcmp(interface, wl_compositor_interface.name) == 0) {
         	disp->wl_compositor = wl_registry_bind(registry, name, &wl_compositor_interface, 4);

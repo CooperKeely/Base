@@ -283,6 +283,35 @@ struct WM_Event{
 };
 
 ///////////////////////////////////////
+/// cjk: Window Manager API
+	
+typedef U64 WM_ConfigFlag;
+enum{
+	WM_ConfigFlag_None		= 0,
+	WM_ConfigFlag_Fullscreen 	= (1<<0),
+	WM_ConfigFlag_Resizeable	= (1<<1),
+	WM_ConfigFlag_Undecorated	= (1<<2),
+	WM_ConfigFlag_Hidden		= (1<<3),
+	WM_ConfigFlag_Minimized		= (1<<4),
+	WM_ConfigFlag_Maximized		= (1<<5),
+	WM_ConfigFlag_Unfocused		= (1<<6),
+	WM_ConfigFlag_TopMost		= (1<<7),
+	WM_ConfigFlag_AlwaysRun		= (1<<8),
+	WM_ConfigFlag_COUNT
+};
+
+typedef struct{
+	F32 double_click_time;
+	F32 caret_blink_time;
+	F32 default_refresh_rate; 
+}WM_ConfigValues;
+
+// cjk: lightweight handles for os specific opaque data types
+typedef struct Handle WM_Window;
+typedef struct Handle WM_Monitor;
+typedef struct Handle WM_Display;
+
+///////////////////////////////////////
 /// cjk: Native Handle Export
 	
 
@@ -324,40 +353,10 @@ typedef struct {
 
 }WM_NativeHandles;
 
+
 // cjk: graphics glue layer export helper
-void* wm_export_native_handle(Arena* arena, WM_Window window);
+void* wm_get_native_handles(Arena* arena, WM_Window window);
 
-
-///////////////////////////////////////
-/// cjk: Window Manager API
-	
-typedef U64 WM_ConfigFlag;
-enum{
-	WM_ConfigFlag_None		= 0,
-	WM_ConfigFlag_Fullscreen 	= (1<<0),
-	WM_ConfigFlag_Resizeable	= (1<<1),
-	WM_ConfigFlag_Undecorated	= (1<<2),
-	WM_ConfigFlag_Hidden		= (1<<3),
-	WM_ConfigFlag_Minimized		= (1<<4),
-	WM_ConfigFlag_Maximized		= (1<<5),
-	WM_ConfigFlag_Unfocused		= (1<<6),
-	WM_ConfigFlag_TopMost		= (1<<7),
-	WM_ConfigFlag_AlwaysRun		= (1<<8),
-	WM_ConfigFlag_COUNT
-};
-
-typedef struct{
-	F32 double_click_time;
-	F32 caret_blink_time;
-	F32 default_refresh_rate; 
-}WM_ConfigValues;
-
-
-
-// cjk: lightweight handles for os specific opaque data types
-typedef struct Handle WM_Window;
-typedef struct Handle WM_Monitor;
-typedef struct Handle WM_Display;
 
 // cjk: creates a connection to the OS window manager
 void wm_create_connection(WM_ConfigFlag flags);
