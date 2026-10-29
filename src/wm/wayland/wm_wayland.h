@@ -6,7 +6,7 @@
 
 #include <wayland-client.h>
 #include <wayland-egl.h>
-#include "../../../include/xdg-shell-client-protocol.h"
+#include "xdg-shell-client-protocol.h"
 
 #define global static
 
@@ -35,7 +35,7 @@ struct WM_WaylandDisplay {
 	// doubly linked list of all made monitors
 	WM_WaylandMonitor* monitor_head;
 	WM_WaylandMonitor* monitor_tail;
-
+	
 	// globals
 	struct wl_display* wl_display; 
 	struct wl_registry* wl_registry;
@@ -90,6 +90,145 @@ struct WM_WaylandMonitor{
 };
 
 global WM_WaylandDisplay g_wm_wayland_display = {0};
+
+///////////////////////////////////////////////////////////////////////////////
+/// cjk: Wayland Event API
+
+#define WM_VKEY_TABLE \
+	X(WM_VKey_Tab, & )\		
+	X(WM_VKey_Enter, & )\	
+	X(WM_VKey_Escape, & )\	
+	X(WM_VKey_Space, & )\	
+	X(WM_VKey_Backspace, & )\	
+	X(WM_VKey_CapsLock, & )\	
+	X(WM_VKey_Super, & )\	
+	X(WM_VKey_UpArrow, & )\	
+	X(WM_VKey_DownArrow, & )\	
+	X(WM_VKey_LeftArrow, & )\	
+	X(WM_VKey_RightArrow, & )\	
+	X(WM_VKey_Alt_R, & )\	
+	X(WM_VKey_Alt_L, & )\	
+	X(WM_VKey_Ctrl_R, & )\	
+	X(WM_VKey_Ctrl_L, & )\	
+	X(WM_VKey_Shift_R, & )\	
+	X(WM_VKey_Shift_L, & )\	
+	X(WM_VKey_Function, & )\	
+	X(WM_VKey_F1, & )\		
+	X(WM_VKey_F2, & )\		
+	X(WM_VKey_F3, & )\		
+	X(WM_VKey_F4, & )\		
+	X(WM_VKey_F5, & )\		
+	X(WM_VKey_F6, & )\		
+	X(WM_VKey_F7, & )\		
+	X(WM_VKey_F8, & )\		
+	X(WM_VKey_F9, & )\		
+	X(WM_VKey_F10, & )\		
+	X(WM_VKey_F11, & )\		
+	X(WM_VKey_F12, & )\		
+	X(WM_VKey_Insert, & )\	
+	X(WM_VKey_Delete, & )\	
+	X(WM_VKey_PageDown, & )\	
+	X(WM_VKey_PageUp, & )\	
+	X(WM_VKey_Home, & )\		
+	X(WM_VKey_End, & )\		
+	X(WM_VKey_A, & )\		
+	X(WM_VKey_B, & )\		
+	X(WM_VKey_C, & )\		
+	X(WM_VKey_D, & )\		
+	X(WM_VKey_E, & )\		
+	X(WM_VKey_F, & )\		
+	X(WM_VKey_G, & )\		
+	X(WM_VKey_H, & )\		
+	X(WM_VKey_I, & )\		
+	X(WM_VKey_J, & )\		
+	X(WM_VKey_K, & )\		
+	X(WM_VKey_L, & )\		
+	X(WM_VKey_M, & )\		
+	X(WM_VKey_N, & )\		
+	X(WM_VKey_O, & )\		
+	X(WM_VKey_P, & )\		
+	X(WM_VKey_Q, & )\		
+	X(WM_VKey_R, & )\		
+	X(WM_VKey_S, & )\		
+	X(WM_VKey_T, & )\		
+	X(WM_VKey_U, & )\		
+	X(WM_VKey_V, & )\		
+	X(WM_VKey_W, & )\		
+	X(WM_VKey_X, & )\		
+	X(WM_VKey_Y, & )\		
+	X(WM_VKey_Z, & )\		
+	X(WM_VKey_a, & )\		
+	X(WM_VKey_b, & )\		
+	X(WM_VKey_c, & )\		
+	X(WM_VKey_d, & )\		
+	X(WM_VKey_e, & )\		
+	X(WM_VKey_f, & )\		
+	X(WM_VKey_g, & )\		
+	X(WM_VKey_h, & )\		
+	X(WM_VKey_i, & )\		
+	X(WM_VKey_j, & )\		
+	X(WM_VKey_k, & )\		
+	X(WM_VKey_l, & )\		
+	X(WM_VKey_m, & )\		
+	X(WM_VKey_n, & )\		
+	X(WM_VKey_o, & )\		
+	X(WM_VKey_p, & )\		
+	X(WM_VKey_q, & )\		
+	X(WM_VKey_r, & )\		
+	X(WM_VKey_s, & )\		
+	X(WM_VKey_t, & )\		
+	X(WM_VKey_u, & )\		
+	X(WM_VKey_v, & )\		
+	X(WM_VKey_w, & )\		
+	X(WM_VKey_x, & )\		
+	X(WM_VKey_y, & )\		
+	X(WM_VKey_z, & )\		
+	X(WM_VKey_1, & )\		
+	X(WM_VKey_2, & )\		
+	X(WM_VKey_3, & )\		
+	X(WM_VKey_4, & )\		
+	X(WM_VKey_5, & )\		
+	X(WM_VKey_6, & )\		
+	X(WM_VKey_7, & )\		
+	X(WM_VKey_8, & )\		
+	X(WM_VKey_9, & )\		
+	X(WM_VKey_0, & )\		
+	X(WM_VKey_Exclamation, & )\	
+	X(WM_VKey_At, & )\		
+	X(WM_VKey_Pound, & )\	
+	X(WM_VKey_DollarSign, & )\	
+	X(WM_VKey_Percent, & )\	
+	X(WM_VKey_Carat, & )\	
+	X(WM_VKey_And, & )\		
+	X(WM_VKey_Star, & )\		
+	X(WM_VKey_LeftParen, & )\	
+	X(WM_VKey_RightParen, & )\	
+	X(WM_VKey_Comma, & )\	
+	X(WM_VKey_Period, & )\	
+	X(WM_VKey_ForwardSlash, & )\	
+	X(WM_VKey_BackSlash, & )\	
+	X(WM_VKey_SemiColon, & )\	
+	X(WM_VKey_Quote, & )\	
+	X(WM_VKey_BackQuote, & )\	
+	X(WM_VKey_Minus, & )\	
+	X(WM_VKey_Equal, & )\	
+	X(WM_VKey_LeftBracket, & )\	
+	X(WM_VKey_RightBracket, & )\	
+	X(WM_VKey_LessThan, & )\	
+	X(WM_VKey_GreaterThan, & )\	
+	X(WM_VKey_QuestionMark, & )\	
+	X(WM_VKey_Colon, & )\	
+	X(WM_VKey_DoubleQuote, & )\	
+	X(WM_VKey_Bar, & )\		
+	X(WM_VKey_Tilde, & )\	
+	X(WM_VKey_Underscore, & )\	
+	X(WM_VKey_Plus, & )\		
+	X(WM_VKey_LeftBrace, & )\	
+	X(WM_VKey_RightBrace, & )\	
+
+
+WM_VKey wm_wayland_key_to_vkey(U32 key);
+WM_VButton wm_wayland_button_to_vbutton(U32 button);
 
 ///////////////////////////////////////////////////////////////////////////////
 /// cjk: Wayland Display Discovery

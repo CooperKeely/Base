@@ -24,7 +24,8 @@ void wm_create_connection(WM_ConfigFlag flags)
 }
 
 void wm_close_connection(){
-
+	WM_WaylandDisplay* disp = &g_wm_wayland_display;
+	wl_display_disconnect(disp->wl_display);	
 }
 
 
@@ -48,18 +49,18 @@ WM_Window wm_create_window(Arena* arena, F32 width, F32 height, Str8 window_name
 	// create a wayland surface
 	win->wl_surface = wl_compositor_create_surface(disp->wl_compositor);
 	Assert(win->wl_surface);
+	wl_surface_set_user_data(win->wl_surface, win);
 
 	// assign a XDG role
 	win->xdg_surface = xdg_wm_base_get_xdg_surface(disp->xdg_wm_base, win->wl_surface);
 	Assert(win->xdg_surface);
 
-	xdg_surface_add_listener(win->xdg_surface, &g_xdg_surface_listener, disp);
+	xdg_surface_add_listener(win->xdg_surface, &g_xdg_surface_listener, win);
 	win->xdg_toplevel = xdg_surface_get_toplevel(win->xdg_surface);
 	Assert(win->xdg_toplevel);
 	
 	// set the title
 	xdg_toplevel_set_title(win->xdg_toplevel, str8_to_cstring(arena, window_name));
-	win->name = window_name;
 
 	wl_surface_commit(win->wl_surface);
 	
@@ -143,6 +144,14 @@ WM_Event* wm_get_event_list(WM_Window window, Arena* arena)
 	return ret_head; 
 }
 
+WM_VKey wm_wayland_key_to_vkey(U32 key){
+
+}
+
+WM_VButton wm_wayland_button_to_vbutton(U32 button){
+
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 /// cjk: Wayland Event Listener Implementations
 ///////////////////////////////////////////////////////////////////////////////
@@ -165,7 +174,9 @@ static void registry_handle_global(void* data, struct wl_registry* registry, uin
 }
 
 static void registry_handle_global_remove(void* data, struct wl_registry* registry, uint32_t name)
-{}
+{
+
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// cjk: Wayland XDG Window Management
@@ -193,12 +204,20 @@ static void xdg_toplevel_handle_configure(void* data, struct xdg_toplevel* xdg_t
 
 	}
 }
+
 static void xdg_toplevel_handle_close(void* data, struct xdg_toplevel* xdg_toplevel)
-{}
+{
+}
+
 static void xdg_toplevel_handle_configure_bounds(void* data, struct xdg_toplevel* xdg_toplevel, int32_t width, int32_t height)
-{}
+{
+
+}
+
 static void xdg_toplevel_handle_wm_capabilities(void* data, struct xdg_toplevel* xdg_toplevel, struct wl_array* capabilities)
-{}
+{
+
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// cjk: Wayland Keyboard and Mouse Listeners
@@ -211,27 +230,98 @@ static void seat_handle_name(void* data, struct wl_seat* seat, const char* name)
 
 // wl_keyboard
 static void keyboard_handle_keymap(void* data, struct wl_keyboard* kb, uint32_t format, int32_t fd, uint32_t size)
-{NotImplemented;}
+{
+}
+
 static void keyboard_handle_enter(void* data, struct wl_keyboard* kb, uint32_t serial, struct wl_surface* surface, struct wl_array* keys)
-{NotImplemented;}
+{
+	WM_WaylandWindow* win = (WM_WaylandWindow*) wl_surface_get_user_data(surface);
+	WM_Event* event = ArenaPushStructZero(win->current_frame_arena, WM_Event);
+	event.type = WM_EventType_Window_FocusGained;
+	DLLPushBack(win->event_head, win->event_tail, win);
+}
+
 static void keyboard_handle_leave(void* data, struct wl_keyboard* kb, uint32_t serial, struct wl_surface* surface)
-{NotImplemented;}
+{
+	WM_WaylandWindow* win = (WM_WaylandWindow*) wl_surface_get_user_data(surface);
+	WM_Event* event = ArenaPushStructZero(win->current_frame_arena, WM_Event);
+	event.type = WM_EventType_Window_FocusLost;
+	DLLPushBack(win->event_head, win->event_tail, win);
+}
+
 static void keyboard_handle_key(void* data, struct wl_keyboard* kb, uint32_t serial, uint32_t time, uint32_t key, uint32_t state)
-{NotImplemented;}
+{
+	WM_WaylandWindow* win = (WM_WaylandWindow*) wl_surface_get_user_data(surface);
+	WM_Event* event = ArenaPushStructZero(win->current_frame_arena, WM_Event);
+
+	if 	(state == 0) event.type = WM_EventType_Key_Press;
+	else if (state == 1) event.type = WM_EventType_Key_Release;
+	
+	event.time_stamp = (U64) time;
+
+	// TODO: handle wayland keycodes
+
+	DLLPushBack(win->event_head, win->event_tail, win);
+
+}
+
 static void keyboard_handle_modifiers(void* data, struct wl_keyboard* kb, uint32_t serial, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group)
 {NotImplemented;}
+
 static void keyboard_handle_repeat_info(void* data, struct wl_keyboard* kb, int32_t rate, int32_t delay)
-{NotImplemented;}
+{
+	WM_WaylandWindow* win = (WM_WaylandWindow*) wl_surface_get_user_data(surface);
+	WM_Event* event = ArenaPushStructZero(win->current_frame_arena, WM_Event);
+	event.key_is_repeat = BASE_TRUE;
+	
+
+	DLLPushBack(win->event_head, win->event_tail, win);
+}
 
 // wl_pointer
 static void pointer_handle_enter(void* data, struct wl_pointer* ptr, uint32_t serial, struct wl_surface* surface, wl_fixed_t sx, wl_fixed_t sy)
-{NotImplemented;}
+{
+	WM_WaylandWindow* win = (WM_WaylandWindow*) wl_surface_get_user_data(surface);
+	WM_Event* event = ArenaPushStructZero(win->current_frame_arena, WM_Event);
+	event.type = WM_EventType_Mouse_EnterWindow;
+
+	F64 x = wl_fixed_to_double(sx);
+	F64 y = wl_fixed_to_double(sy);
+	event.mouse_locaiton = vec2_f64(x, y);
+
+	DLLPushBack(win->event_head, win->event_tail, win);
+}
+
 static void pointer_handle_leave(void* data, struct wl_pointer* ptr, uint32_t serial, struct wl_surface* surface)
-{NotImplemented;}
+{
+	WM_WaylandWindow* win = (WM_WaylandWindow*) wl_surface_get_user_data(surface);
+	WM_Event* event = ArenaPushStructZero(win->current_frame_arena, WM_Event);
+	event.type = WM_EventType_Mouse_LeaveWindow;
+
+	DLLPushBack(win->event_head, win->event_tail, win);
+}
+
 static void pointer_handle_motion(void* data, struct wl_pointer* ptr, uint32_t time, wl_fixed_t sx, wl_fixed_t sy)
-{NotImplemented;}
+{
+	WM_WaylandWindow* win = (WM_WaylandWindow*) wl_surface_get_user_data(surface);
+	WM_Event* event = ArenaPushStructZero(win->current_frame_arena, WM_Event);
+	event.type = WM_EventType_Mouse_EnterWindow;
+
+	F64 x = wl_fixed_to_double(sx);
+	F64 y = wl_fixed_to_double(sy);
+	event.mouse_locaiton = vec2_f64(x, y);
+	event.time_stamp = (U64) time;
+
+	DLLPushBack(win->event_head, win->event_tail, win);
+}
+
 static void pointer_handle_button(void* data, struct wl_pointer* ptr, uint32_t serial, uint32_t time, uint32_t button, uint32_t state)
-{NotImplemented;}
+{
+		
+
+
+}
+
 static void pointer_handle_axis(void* data, struct wl_pointer* ptr, uint32_t time, uint32_t axis, wl_fixed_t value)
 {NotImplemented;}
 static void pointer_handle_frame(void* data, struct wl_pointer* ptr)
